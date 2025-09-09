@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState } from 'react'
 
 export default function Header() {
@@ -20,8 +21,21 @@ export default function Header() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link href="/" className="text-2xl font-bold text-primary-900 hover:text-primary-600 transition-colors">
-              Arkham Ventures
+            <Link href="/" className="flex items-center space-x-3">
+              {/* Logo Image */}
+              <div className="relative w-8 h-8 md:w-10 md:h-10">
+                <Image
+                  src="/AV-logo.png"
+                  alt="Arkham Ventures Logo"
+                  fill
+                  className="object-contain"
+                  sizes="(max-width: 768px) 32px, 40px"
+                />
+              </div>
+              {/* Logo Text */}
+              {/* <span className="text-xl md:text-2xl font-bold text-primary-900 hover:text-primary-600 transition-colors">
+                Arkham Ventures
+              </span> */}
             </Link>
           </div>
 

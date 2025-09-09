@@ -38,7 +38,7 @@ export default function About() {
                   Who We Are
                 </h3>
                 <p className="text-gray-700 mb-6 leading-relaxed">
-                  Arkham Ventures is a dynamic holding company established in 2023 with a global presence.
+                  Arkham Ventures is a dynamic holding company established in 2024 with a global presence.
                   We oversee a diverse portfolio of technology and innovation projects, providing strategic
                   guidance, resources, and expertise to help ventures reach their full potential.
                 </p>
@@ -98,7 +98,7 @@ export default function About() {
             <div className="space-y-8">
               <div className="flex flex-col md:flex-row items-start md:items-center">
                 <div className="flex-shrink-0 w-16 h-16 bg-primary-500 rounded-full flex items-center justify-center mb-4 md:mb-0 md:mr-6">
-                  <span className="text-white font-bold text-lg">2023</span>
+                  <span className="text-white font-bold text-lg">2024</span>
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-primary-900 mb-2">
@@ -114,7 +114,7 @@ export default function About() {
 
               <div className="flex flex-col md:flex-row items-start md:items-center">
                 <div className="flex-shrink-0 w-16 h-16 bg-accent-500 rounded-full flex items-center justify-center mb-4 md:mb-0 md:mr-6">
-                  <span className="text-white font-bold text-lg">2024</span>
+                  <span className="text-white font-bold text-lg">2025</span>
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-primary-900 mb-2">
@@ -130,7 +130,7 @@ export default function About() {
 
               <div className="flex flex-col md:flex-row items-start md:items-center">
                 <div className="flex-shrink-0 w-16 h-16 bg-primary-600 rounded-full flex items-center justify-center mb-4 md:mb-0 md:mr-6">
-                  <span className="text-white font-bold text-lg">2025</span>
+                  <span className="text-white font-bold text-lg">2026</span>
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-primary-900 mb-2">
