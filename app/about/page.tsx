@@ -42,23 +42,23 @@ export default function About() {
           <div className="max-w-6xl mx-auto grid gap-10 lg:grid-cols-[1.1fr_0.9fr] items-start">
             <Reveal>
               <h2 className="section-title mb-4">A partner who ships.</h2>
-              <p className="text-gray-700 mb-4">
+              <p className="text-gray-700 mb-4 dark:text-gray-300">
                 I am a senior software engineer and AI consultant with a focus on building systems that drive measurable business impact.
                 Over the past decade, I have helped founders, operators, and product teams deliver faster by combining clear strategy with
                 hands-on execution.
               </p>
-              <p className="text-gray-700 mb-4">
+              <p className="text-gray-700 mb-4 dark:text-gray-300">
                 My work blends modern engineering with practical AI adoption - translating real-world needs into solutions that are easy to
                 maintain and actually used by the people they are built for.
               </p>
-              <p className="text-gray-700">
+              <p className="text-gray-700 dark:text-gray-300">
                 When we work together, you get direct access to me. No layers, no handoffs, and no noise.
               </p>
             </Reveal>
 
             <Reveal className="card-glass rounded-2xl p-8" delay={0.1}>
-              <h3 className="text-xl font-semibold text-primary-900 mb-4">Core expertise</h3>
-              <ul className="space-y-3 text-gray-700">
+              <h3 className="text-xl font-semibold text-primary-900 mb-4 dark:text-white">Core expertise</h3>
+              <ul className="space-y-3 text-gray-700 dark:text-gray-300">
                 <li className="flex items-start gap-3"><span className="mt-1 h-2 w-2 rounded-full bg-accent-500" />AI strategy, automation, and product integration</li>
                 <li className="flex items-start gap-3"><span className="mt-1 h-2 w-2 rounded-full bg-accent-500" />Full-stack web and mobile application development</li>
                 <li className="flex items-start gap-3"><span className="mt-1 h-2 w-2 rounded-full bg-accent-500" />Cloud architecture, APIs, and scalable systems</li>
@@ -68,19 +68,19 @@ export default function About() {
           </div>
         </section>
 
-        <section className="py-16 md:py-20 px-4 sm:px-6 lg:px-8 bg-white/80">
+        <section className="py-16 md:py-20 px-4 sm:px-6 lg:px-8 bg-white/80 dark:bg-primary-900/60">
           <div className="max-w-6xl mx-auto grid gap-8 md:grid-cols-3">
             <Reveal className="card-glass rounded-2xl p-6">
-              <h3 className="text-lg font-semibold text-primary-900 mb-3">Pragmatic approach</h3>
-              <p className="text-gray-700">I start with the business outcome, then map the simplest path to deliver it.</p>
+              <h3 className="text-lg font-semibold text-primary-900 mb-3 dark:text-white">Pragmatic approach</h3>
+              <p className="text-gray-700 dark:text-gray-300">I start with the business outcome, then map the simplest path to deliver it.</p>
             </Reveal>
             <Reveal className="card-glass rounded-2xl p-6" delay={0.05}>
-              <h3 className="text-lg font-semibold text-primary-900 mb-3">Human-first AI</h3>
-              <p className="text-gray-700">I design AI systems that feel intuitive, safe, and actually adopted by your team.</p>
+              <h3 className="text-lg font-semibold text-primary-900 mb-3 dark:text-white">Human-first AI</h3>
+              <p className="text-gray-700 dark:text-gray-300">I design AI systems that feel intuitive, safe, and actually adopted by your team.</p>
             </Reveal>
             <Reveal className="card-glass rounded-2xl p-6" delay={0.1}>
-              <h3 className="text-lg font-semibold text-primary-900 mb-3">Transparent delivery</h3>
-              <p className="text-gray-700">Clear milestones, honest timelines, and a partner who keeps you in the loop.</p>
+              <h3 className="text-lg font-semibold text-primary-900 mb-3 dark:text-white">Transparent delivery</h3>
+              <p className="text-gray-700 dark:text-gray-300">Clear milestones, honest timelines, and a partner who keeps you in the loop.</p>
             </Reveal>
           </div>
         </section>

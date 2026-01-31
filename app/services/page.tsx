@@ -26,18 +26,18 @@ export default function Services() {
             <Reveal className="card-glass rounded-3xl p-8 md:p-10">
               <div className="flex flex-col lg:flex-row gap-6 lg:items-center">
                 <div className="lg:w-2/3">
-                  <h2 className="text-2xl md:text-3xl font-semibold text-primary-900 mb-4">Custom Software Solutions</h2>
-                  <p className="text-gray-700 mb-4">
+                  <h2 className="text-2xl md:text-3xl font-semibold text-primary-900 mb-4 dark:text-white">Custom Software Solutions</h2>
+                  <p className="text-gray-700 mb-4 dark:text-gray-300">
                     Build applications that solve real business problems - from customer-facing platforms to internal tools that unlock speed.
                   </p>
-                  <ul className="grid gap-3 text-gray-700">
+                  <ul className="grid gap-3 text-gray-700 dark:text-gray-300">
                     <li className="flex items-start gap-3"><span className="mt-1 h-2 w-2 rounded-full bg-accent-500" />Web apps, mobile apps, and internal dashboards</li>
                     <li className="flex items-start gap-3"><span className="mt-1 h-2 w-2 rounded-full bg-accent-500" />Modern tech stack, clean code, and scalable architecture</li>
                     <li className="flex items-start gap-3"><span className="mt-1 h-2 w-2 rounded-full bg-accent-500" />Maintainable delivery with clear documentation</li>
                   </ul>
                 </div>
                 <div className="lg:w-1/3">
-                  <div className="rounded-2xl bg-primary-900 text-white p-6">
+                  <div className="rounded-2xl bg-primary-900 text-white p-6 dark:bg-primary-800">
                     <p className="text-sm uppercase tracking-[0.2em] text-primary-100/70">Best for</p>
                     <p className="text-lg font-semibold mt-3">Teams ready to modernize or launch new digital products.</p>
                   </div>
@@ -48,11 +48,11 @@ export default function Services() {
             <Reveal className="card-glass rounded-3xl p-8 md:p-10" delay={0.05}>
               <div className="flex flex-col lg:flex-row gap-6 lg:items-center">
                 <div className="lg:w-2/3">
-                  <h2 className="text-2xl md:text-3xl font-semibold text-primary-900 mb-4">AI Automation & Integration</h2>
-                  <p className="text-gray-700 mb-4">
+                  <h2 className="text-2xl md:text-3xl font-semibold text-primary-900 mb-4 dark:text-white">AI Automation & Integration</h2>
+                  <p className="text-gray-700 mb-4 dark:text-gray-300">
                     Automate repetitive work, integrate AI tools into existing workflows, and build custom systems that give your team more bandwidth.
                   </p>
-                  <ul className="grid gap-3 text-gray-700">
+                  <ul className="grid gap-3 text-gray-700 dark:text-gray-300">
                     <li className="flex items-start gap-3"><span className="mt-1 h-2 w-2 rounded-full bg-accent-500" />Custom AI solutions: chatbots, document processing, data analysis</li>
                     <li className="flex items-start gap-3"><span className="mt-1 h-2 w-2 rounded-full bg-accent-500" />Workflow automation across CRM, support, and ops</li>
                     <li className="flex items-start gap-3"><span className="mt-1 h-2 w-2 rounded-full bg-accent-500" />Security and governance guidance for production-ready AI</li>
@@ -70,18 +70,18 @@ export default function Services() {
             <Reveal className="card-glass rounded-3xl p-8 md:p-10" delay={0.1}>
               <div className="flex flex-col lg:flex-row gap-6 lg:items-center">
                 <div className="lg:w-2/3">
-                  <h2 className="text-2xl md:text-3xl font-semibold text-primary-900 mb-4">AI Training & Workshops</h2>
-                  <p className="text-gray-700 mb-4">
+                  <h2 className="text-2xl md:text-3xl font-semibold text-primary-900 mb-4 dark:text-white">AI Training & Workshops</h2>
+                  <p className="text-gray-700 mb-4 dark:text-gray-300">
                     Hands-on sessions that get your team comfortable with AI tools and workflows - tailored to your industry and use cases.
                   </p>
-                  <ul className="grid gap-3 text-gray-700">
+                  <ul className="grid gap-3 text-gray-700 dark:text-gray-300">
                     <li className="flex items-start gap-3"><span className="mt-1 h-2 w-2 rounded-full bg-accent-500" />From ChatGPT fundamentals to advanced AI workflows</li>
                     <li className="flex items-start gap-3"><span className="mt-1 h-2 w-2 rounded-full bg-accent-500" />Live exercises, templates, and playbooks</li>
                     <li className="flex items-start gap-3"><span className="mt-1 h-2 w-2 rounded-full bg-accent-500" />Customized to your tools, team size, and goals</li>
                   </ul>
                 </div>
                 <div className="lg:w-1/3">
-                  <div className="rounded-2xl bg-primary-900 text-white p-6">
+                  <div className="rounded-2xl bg-primary-900 text-white p-6 dark:bg-primary-800">
                     <p className="text-sm uppercase tracking-[0.2em] text-primary-100/70">Best for</p>
                     <p className="text-lg font-semibold mt-3">Teams that want AI skills they can use immediately.</p>
                   </div>

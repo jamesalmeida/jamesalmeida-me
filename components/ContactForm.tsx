@@ -99,14 +99,14 @@ export default function ContactForm() {
 
   if (isSubmitted) {
     return (
-      <div className="bg-accent-50 border border-accent-200 rounded-lg p-6 text-center">
+      <div className="bg-accent-50 border border-accent-200 rounded-lg p-6 text-center dark:bg-primary-800/60 dark:border-primary-700">
         <div className="w-16 h-16 bg-accent-500 rounded-full flex items-center justify-center mx-auto mb-4">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-primary-900 mb-2">Message Sent Successfully!</h3>
-        <p className="text-gray-700">
+        <h3 className="text-lg font-semibold text-primary-900 mb-2 dark:text-white">Message Sent Successfully!</h3>
+        <p className="text-gray-700 dark:text-gray-300">
           Thank you for reaching out. I will get back to you within 24 hours.
         </p>
         <button
@@ -122,13 +122,13 @@ export default function ContactForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6" noValidate>
       {errors.general && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-700">{errors.general}</p>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 dark:bg-red-900/30 dark:border-red-700">
+          <p className="text-red-700 dark:text-red-200">{errors.general}</p>
         </div>
       )}
 
       <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">
           Full Name *
         </label>
         <input
@@ -137,8 +137,8 @@ export default function ContactForm() {
           name="name"
           value={formData.name}
           onChange={handleInputChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-colors bg-white ${
-            errors.name ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-colors bg-white placeholder:text-gray-400 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-500 ${
+            errors.name ? 'border-red-300 focus:ring-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
           }`}
           placeholder="Your full name"
           aria-describedby={errors.name ? "name-error" : undefined}
@@ -152,7 +152,7 @@ export default function ContactForm() {
       </div>
 
       <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">
           Email Address *
         </label>
         <input
@@ -161,8 +161,8 @@ export default function ContactForm() {
           name="email"
           value={formData.email}
           onChange={handleInputChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-colors bg-white ${
-            errors.email ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-colors bg-white placeholder:text-gray-400 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-500 ${
+            errors.email ? 'border-red-300 focus:ring-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
           }`}
           placeholder="your.email@example.com"
           aria-describedby={errors.email ? "email-error" : undefined}
@@ -176,7 +176,7 @@ export default function ContactForm() {
       </div>
 
       <div>
-        <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">
           Message *
         </label>
         <textarea
@@ -185,8 +185,8 @@ export default function ContactForm() {
           value={formData.message}
           onChange={handleInputChange}
           rows={6}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-colors resize-vertical bg-white ${
-            errors.message ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-colors resize-vertical bg-white placeholder:text-gray-400 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-500 ${
+            errors.message ? 'border-red-300 focus:ring-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
           }`}
           placeholder="Tell me about your project or inquiry..."
           aria-describedby={errors.message ? "message-error" : undefined}
