@@ -7,10 +7,10 @@ export default function Footer() {
         <div className="grid md:grid-cols-4 gap-8">
           {/* Company Info */}
           <div className="md:col-span-2">
-            <h3 className="text-2xl font-bold mb-4">Arkham Ventures</h3>
+            <h3 className="text-2xl font-bold mb-4">James Almeida</h3>
             <p className="text-primary-100 mb-4 max-w-md">
-              Empowering innovation through diverse ventures. A holding company managing
-              multiple projects in technology and innovation.
+              AI consulting and custom software for teams that want clarity, speed, and measurable impact.
+              Turning modern AI into a competitive advantage.
             </p>
             <div className="flex space-x-4">
               <a
@@ -43,6 +43,11 @@ export default function Footer() {
               <li>
                 <Link href="/" className="text-primary-100 hover:text-white transition-colors">
                   Home
+                </Link>
+              </li>
+              <li>
+                <Link href="/services" className="text-primary-100 hover:text-white transition-colors">
+                  Services
                 </Link>
               </li>
               <li>
@@ -80,7 +85,7 @@ export default function Footer() {
         {/* Copyright */}
         <div className="border-t border-primary-800 mt-8 pt-8 text-center">
           <p className="text-primary-100">
-            © {new Date().getFullYear()} Arkham Ventures. All rights reserved.
+            Copyright {new Date().getFullYear()} James Almeida. All rights reserved.
           </p>
         </div>
       </div>

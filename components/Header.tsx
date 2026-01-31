@@ -16,7 +16,7 @@ export default function Header() {
   }
 
   return (
-    <header className="bg-white shadow-sm sticky top-0 z-50">
+    <header className="bg-white/90 backdrop-blur shadow-sm sticky top-0 z-50">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -26,16 +26,21 @@ export default function Header() {
               <div className="relative w-8 h-8 md:w-10 md:h-10">
                 <Image
                   src="/AV-logo.png"
-                  alt="Arkham Ventures Logo"
+                  alt="James Almeida Logo"
                   fill
                   className="object-contain"
                   sizes="(max-width: 768px) 32px, 40px"
                 />
               </div>
               {/* Logo Text */}
-              {/* <span className="text-xl md:text-2xl font-bold text-primary-900 hover:text-primary-600 transition-colors">
-                Arkham Ventures
-              </span> */}
+              <div className="leading-tight">
+                <span className="block text-lg md:text-xl font-semibold text-primary-900">
+                  James Almeida
+                </span>
+                <span className="block text-xs md:text-sm text-gray-500">
+                  AI Consulting & Custom Software
+                </span>
+              </div>
             </Link>
           </div>
 
@@ -44,6 +49,9 @@ export default function Header() {
             <div className="ml-10 flex items-baseline space-x-4">
               <Link href="/" className="nav-link">
                 Home
+              </Link>
+              <Link href="/services" className="nav-link">
+                Services
               </Link>
               <Link href="/about" className="nav-link">
                 About
@@ -95,6 +103,13 @@ export default function Header() {
               onClick={closeMenu}
             >
               Home
+            </Link>
+            <Link
+              href="/services"
+              className="block px-3 py-2 text-base font-medium text-primary-900 hover:text-primary-600 hover:bg-gray-100 rounded-md"
+              onClick={closeMenu}
+            >
+              Services
             </Link>
             <Link
               href="/about"

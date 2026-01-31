@@ -99,15 +99,15 @@ export default function ContactForm() {
 
   if (isSubmitted) {
     return (
-      <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-        <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+      <div className="bg-accent-50 border border-accent-200 rounded-lg p-6 text-center">
+        <div className="w-16 h-16 bg-accent-500 rounded-full flex items-center justify-center mx-auto mb-4">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-green-800 mb-2">Message Sent Successfully!</h3>
-        <p className="text-green-700">
-          Thank you for reaching out. We'll get back to you within 24 hours.
+        <h3 className="text-lg font-semibold text-primary-900 mb-2">Message Sent Successfully!</h3>
+        <p className="text-gray-700">
+          Thank you for reaching out. I will get back to you within 24 hours.
         </p>
         <button
           onClick={() => setIsSubmitted(false)}
@@ -137,7 +137,7 @@ export default function ContactForm() {
           name="name"
           value={formData.name}
           onChange={handleInputChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-colors bg-white ${
             errors.name ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
           }`}
           placeholder="Your full name"
@@ -161,7 +161,7 @@ export default function ContactForm() {
           name="email"
           value={formData.email}
           onChange={handleInputChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-colors bg-white ${
             errors.email ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
           }`}
           placeholder="your.email@example.com"
@@ -185,10 +185,10 @@ export default function ContactForm() {
           value={formData.message}
           onChange={handleInputChange}
           rows={6}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors resize-vertical ${
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-colors resize-vertical bg-white ${
             errors.message ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
           }`}
-          placeholder="Tell us about your project or inquiry..."
+          placeholder="Tell me about your project or inquiry..."
           aria-describedby={errors.message ? "message-error" : undefined}
           aria-invalid={errors.message ? "true" : "false"}
         />

@@ -5,25 +5,25 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Arkham Ventures - Empowering Innovation Through Diverse Ventures',
-  description: 'A holding company managing multiple projects in technology and innovation. We foster transformative ideas and build sustainable ventures.',
-  keywords: 'holding company, technology, innovation, ventures, business',
-  authors: [{ name: 'Arkham Ventures' }],
-  creator: 'Arkham Ventures',
-  publisher: 'Arkham Ventures',
+  title: 'James Almeida - AI Consulting & Custom Software',
+  description: 'AI consulting and custom software for teams that want clarity, speed, and measurable impact.',
+  keywords: 'AI consulting, custom software, automation, product development, workshops',
+  authors: [{ name: 'James Almeida' }],
+  creator: 'James Almeida',
+  publisher: 'James Almeida',
   openGraph: {
-    title: 'Arkham Ventures - Empowering Innovation Through Diverse Ventures',
-    description: 'A holding company managing multiple projects in technology and innovation.',
-    url: 'https://arkham.ventures',
-    siteName: 'Arkham Ventures',
+    title: 'James Almeida - AI Consulting & Custom Software',
+    description: 'AI consulting and custom software for teams that want clarity, speed, and measurable impact.',
+    url: 'https://jamesalmeida.me',
+    siteName: 'James Almeida',
     locale: 'en_US',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Arkham Ventures - Empowering Innovation Through Diverse Ventures',
-    description: 'A holding company managing multiple projects in technology and innovation.',
-    creator: '@arkhamventures',
+    title: 'James Almeida - AI Consulting & Custom Software',
+    description: 'AI consulting and custom software for teams that want clarity, speed, and measurable impact.',
+    creator: '@jamesalmeida',
   },
   robots: {
     index: true,
