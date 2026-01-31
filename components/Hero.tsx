@@ -1,26 +1,46 @@
+'use client'
+
 import Link from 'next/link'
+import { motion, useReducedMotion } from 'framer-motion'
 
 export default function Hero() {
+  const shouldReduceMotion = useReducedMotion()
+
   return (
-    <section className="hero-gradient text-white py-20 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto text-center">
-        <h1 className="text-4xl md:text-6xl font-bold mb-6">
-          Arkham Ventures
-        </h1>
-        <p className="text-xl md:text-2xl text-primary-100 mb-4">
-          Empowering Innovation Through Diverse Ventures
-        </p>
-        <p className="text-lg md:text-xl text-primary-200 mb-8 max-w-2xl mx-auto">
-          A holding company managing multiple projects in technology and innovation.
-          We foster transformative ideas and build sustainable ventures.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link href="/contact" className="btn-primary inline-block">
-            Get Started
-          </Link>
-          <Link href="/about" className="btn-secondary inline-block">
-            Learn More
-          </Link>
+    <section className="hero-gradient text-white py-20 md:py-28 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      <div className="absolute inset-0 opacity-60">
+        <div className="absolute -top-20 -right-24 h-64 w-64 rounded-full bg-accent-500/20 blur-3xl" />
+        <div className="absolute bottom-0 left-0 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+      </div>
+      <div className="max-w-6xl mx-auto relative z-10">
+        <div className="text-center">
+          <motion.h1
+            className="text-4xl md:text-6xl font-semibold leading-tight mb-6"
+            initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 }}
+          >
+            Turning AI into your competitive advantage.
+          </motion.h1>
+          <motion.p
+            className="text-lg md:text-2xl text-primary-100/90 max-w-3xl mx-auto mb-8"
+            initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: 'easeOut', delay: 0.2 }}
+          >
+            AI consulting and custom software delivered with clarity, speed, and measurable outcomes.
+            I help teams ship smarter automation, products, and workflows that stick.
+          </motion.p>
+          <motion.div
+            className="flex justify-center"
+            initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: 'easeOut', delay: 0.3 }}
+          >
+            <Link href="/contact" className="btn-primary inline-flex items-center justify-center">
+              Book a Call
+            </Link>
+          </motion.div>
         </div>
       </div>
     </section>

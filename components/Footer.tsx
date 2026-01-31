@@ -7,14 +7,14 @@ export default function Footer() {
         <div className="grid md:grid-cols-4 gap-8">
           {/* Company Info */}
           <div className="md:col-span-2">
-            <h3 className="text-2xl font-bold mb-4">Arkham Ventures</h3>
+            <h3 className="text-2xl font-bold mb-4">James Almeida</h3>
             <p className="text-primary-100 mb-4 max-w-md">
-              Empowering innovation through diverse ventures. A holding company managing
-              multiple projects in technology and innovation.
+              AI consulting and custom software for teams that want clarity, speed, and measurable impact.
+              Turning modern AI into a competitive advantage.
             </p>
             <div className="flex space-x-4">
               <a
-                href="https://www.linkedin.com/company/arkham-ventures-inc"
+                href="https://www.linkedin.com/in/jamesworkswell/"
                 className="w-10 h-10 bg-primary-800 hover:bg-accent-500 rounded-full flex items-center justify-center transition-colors"
                 aria-label="LinkedIn"
                 target="_blank"
@@ -46,6 +46,11 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/services" className="text-primary-100 hover:text-white transition-colors">
+                  Services
+                </Link>
+              </li>
+              <li>
                 <Link href="/about" className="text-primary-100 hover:text-white transition-colors">
                   About
                 </Link>
@@ -68,11 +73,10 @@ export default function Footer() {
                 </a>
               </p>
               <p>
-                <a href="tel:+16692583337" className="hover:text-white transition-colors">
-                  +1 (669) 258-3337
+                <a href="tel:+12134425855" className="hover:text-white transition-colors">
+                  +1 (213) 442-5855
                 </a>
               </p>
-              <p>2108 N ST. STE N<br />Sacramento CA 95816<br />United States</p>
             </div>
           </div>
         </div>
@@ -80,7 +84,7 @@ export default function Footer() {
         {/* Copyright */}
         <div className="border-t border-primary-800 mt-8 pt-8 text-center">
           <p className="text-primary-100">
-            © {new Date().getFullYear()} Arkham Ventures. All rights reserved.
+            Copyright {new Date().getFullYear()} James Almeida. All rights reserved.
           </p>
         </div>
       </div>
