@@ -8,14 +8,32 @@ export default function About() {
       <Header />
 
       <main className="flex-grow">
-        <section className="hero-gradient text-white py-20 md:py-28 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-5xl mx-auto text-center">
+        <section className="hero-gradient text-white py-24 md:py-36 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+          {/* Decorative elements */}
+          <div className="absolute inset-0">
+            <div className="absolute -top-20 -right-24 h-96 w-96 rounded-full bg-accent-500/20 blur-3xl" />
+            <div className="absolute bottom-0 left-10 h-72 w-72 rounded-full bg-accent-500/10 blur-3xl" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full bg-white/5 blur-3xl" />
+          </div>
+          {/* Grid pattern overlay */}
+          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+
+          <div className="max-w-5xl mx-auto relative z-10">
             <Reveal>
-              <p className="text-sm uppercase tracking-[0.3em] text-primary-100/80 mb-4">About</p>
-              <h1 className="text-4xl md:text-6xl font-semibold mb-6">Hi, I am James Almeida.</h1>
-              <p className="text-lg md:text-2xl text-primary-100/90 max-w-3xl mx-auto">
-                I help teams turn ambitious ideas into practical software and AI systems that deliver real results.
-              </p>
+              <div className="flex flex-col items-center">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-accent-500/30 bg-accent-500/10 mb-8">
+                  <div className="h-2 w-2 rounded-full bg-accent-400 animate-pulse" />
+                  <span className="text-sm font-medium text-accent-300 tracking-wide">Available for new projects</span>
+                </div>
+                <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 text-center leading-tight">
+                  Engineer. Consultant.<br />
+                  <span className="text-accent-400">Problem solver.</span>
+                </h1>
+                <p className="text-lg md:text-xl text-primary-100/80 max-w-2xl mx-auto text-center leading-relaxed">
+                  I&apos;m James Almeida — a senior software engineer and AI consultant who helps teams
+                  build the right thing, the right way, and actually ship it.
+                </p>
+              </div>
             </Reveal>
           </div>
         </section>
