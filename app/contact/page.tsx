@@ -70,7 +70,7 @@ export default function Contact() {
                   <div>
                     <h3 className="text-lg font-semibold text-primary-900 mb-1 dark:text-white">Location</h3>
                     <p className="text-gray-600 dark:text-gray-300">
-                      Sacramento, CA - working remotely worldwide
+                      Los Angeles, CA — willing to travel
                     </p>
                   </div>
                 </div>
