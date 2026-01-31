@@ -40,19 +40,13 @@ export default function Hero() {
             I help teams ship smarter automation, products, and workflows that stick.
           </motion.p>
           <motion.div
-            className="flex flex-col sm:flex-row gap-4 justify-center"
+            className="flex justify-center"
             initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: 'easeOut', delay: 0.3 }}
           >
             <Link href="/contact" className="btn-primary inline-flex items-center justify-center">
               Book a Call
-            </Link>
-            <Link
-              href="/services"
-              className="btn-secondary inline-flex items-center justify-center border-white text-white hover:bg-white hover:text-primary-900"
-            >
-              View Services
             </Link>
           </motion.div>
         </div>
