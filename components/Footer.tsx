@@ -14,7 +14,7 @@ export default function Footer() {
             </p>
             <div className="flex space-x-4">
               <a
-                href="https://www.linkedin.com/company/arkham-ventures-inc"
+                href="https://www.linkedin.com/in/jamesworkswell/"
                 className="w-10 h-10 bg-primary-800 hover:bg-accent-500 rounded-full flex items-center justify-center transition-colors"
                 aria-label="LinkedIn"
                 target="_blank"
@@ -73,11 +73,10 @@ export default function Footer() {
                 </a>
               </p>
               <p>
-                <a href="tel:+16692583337" className="hover:text-white transition-colors">
-                  +1 (669) 258-3337
+                <a href="tel:+12134425855" className="hover:text-white transition-colors">
+                  +1 (213) 442-5855
                 </a>
               </p>
-              <p>2108 N ST. STE N<br />Sacramento CA 95816<br />United States</p>
             </div>
           </div>
         </div>
