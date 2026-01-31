@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { useState } from 'react'
 import ThemeToggle from './ThemeToggle'
 
@@ -22,26 +21,13 @@ export default function Header() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link href="/" className="flex items-center space-x-3">
-              {/* Logo Image */}
-              <div className="relative w-8 h-8 md:w-10 md:h-10">
-                <Image
-                  src="/AV-logo.png"
-                  alt="James Almeida Logo"
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 768px) 32px, 40px"
-                />
-              </div>
-              {/* Logo Text */}
-              <div className="leading-tight">
-                <span className="block text-lg md:text-xl font-semibold text-primary-900 dark:text-white">
-                  James Almeida
-                </span>
-                <span className="block text-xs md:text-sm text-gray-500 dark:text-gray-400">
-                  AI Consulting & Custom Software
-                </span>
-              </div>
+            <Link href="/" className="leading-tight">
+              <span className="block text-lg md:text-xl font-semibold text-primary-900 dark:text-white">
+                James Almeida
+              </span>
+              <span className="block text-xs md:text-sm text-gray-500 dark:text-gray-400">
+                AI Consulting &amp; Custom Software
+              </span>
             </Link>
           </div>
 
