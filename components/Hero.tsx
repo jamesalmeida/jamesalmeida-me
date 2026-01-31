@@ -14,14 +14,6 @@ export default function Hero() {
       </div>
       <div className="max-w-6xl mx-auto relative z-10">
         <div className="text-center">
-          <motion.p
-            className="text-sm uppercase tracking-[0.3em] text-primary-100/80 mb-4"
-            initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
-          >
-            James Almeida
-          </motion.p>
           <motion.h1
             className="text-4xl md:text-6xl font-semibold leading-tight mb-6"
             initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 18 }}
