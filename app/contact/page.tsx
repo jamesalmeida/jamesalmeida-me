@@ -2,6 +2,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import ContactForm from '@/components/ContactForm'
 import Reveal from '@/components/Reveal'
+import CalEmbed from '@/components/CalEmbed'
 
 export default function Contact() {
   return (
@@ -37,9 +38,8 @@ export default function Contact() {
                 <p className="text-gray-700 mb-6 dark:text-gray-300">
                   Prefer to talk live? Book a short consultation and I will map next steps with you.
                 </p>
-                {/* TODO: Replace with Cal.com embed */}
-                <div className="rounded-xl border border-dashed border-gray-300 bg-white/70 p-6 text-center text-gray-500 dark:border-primary-600 dark:bg-primary-800/60 dark:text-gray-300">
-                  Cal.com embed placeholder
+                <div className="rounded-xl overflow-hidden min-h-[400px]">
+                  <CalEmbed />
                 </div>
               </div>
 
