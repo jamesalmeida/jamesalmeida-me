@@ -86,6 +86,15 @@ export default function Footer() {
           <p className="text-primary-100">
             Copyright {new Date().getFullYear()} James Almeida. All rights reserved.
           </p>
+          <div className="mt-3 flex justify-center gap-4 text-sm text-primary-100/60">
+            <Link href="/privacy-policy" className="hover:text-white transition-colors">
+              Privacy Policy
+            </Link>
+            <span>·</span>
+            <Link href="/terms-of-service" className="hover:text-white transition-colors">
+              Terms of Service
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
