@@ -18,6 +18,8 @@
     "@assistant-ui/react-ai-sdk": "1.1.21",
     "@assistant-ui/react-markdown": "^0.11.0",
     "ai": "^5.0.33",
+    "framer-motion": "^12.38.0",
+    "lucide-react": "^1.8.0",
     "next": "^15.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
