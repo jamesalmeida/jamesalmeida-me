@@ -161,6 +161,17 @@ function UserMessage() {
 
 function Composer() {
   const isRunning = useThread((state) => state.isRunning);
+  const wasRunningRef = useRef(false);
+
+  useEffect(() => {
+    if (isRunning && !wasRunningRef.current) {
+      // Dismiss mobile keyboard once a message starts sending
+      if (typeof document !== "undefined") {
+        (document.activeElement as HTMLElement | null)?.blur();
+      }
+    }
+    wasRunningRef.current = isRunning;
+  }, [isRunning]);
 
   return (
     <ComposerPrimitive.Root className="border-t border-[var(--border)] bg-white/55 px-3 py-3 sm:px-6 sm:py-4">

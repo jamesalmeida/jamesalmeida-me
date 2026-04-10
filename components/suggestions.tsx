@@ -143,7 +143,7 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
   };
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10">
+    <div className="mx-auto flex max-w-3xl flex-col gap-5 px-6 py-2 sm:gap-6 sm:py-10">
       <div className="space-y-3">
         <p className="eyebrow text-xs text-[var(--muted)]">{config.title}</p>
         <h2 className="max-w-xl font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif] text-3xl leading-tight tracking-[-0.03em] text-[var(--foreground)] sm:text-4xl">

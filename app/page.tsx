@@ -32,6 +32,22 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    const updateAppHeight = () => {
+      const height = window.visualViewport?.height ?? window.innerHeight;
+      document.documentElement.style.setProperty("--app-height", `${height}px`);
+    };
+    updateAppHeight();
+    window.visualViewport?.addEventListener("resize", updateAppHeight);
+    window.addEventListener("resize", updateAppHeight);
+    window.addEventListener("orientationchange", updateAppHeight);
+    return () => {
+      window.visualViewport?.removeEventListener("resize", updateAppHeight);
+      window.removeEventListener("resize", updateAppHeight);
+      window.removeEventListener("orientationchange", updateAppHeight);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isHydrated) return;
     writeStoredThreads(storedThreads);
   }, [isHydrated, storedThreads]);
@@ -66,7 +82,7 @@ export default function Home() {
 
   if (!isHydrated) {
     return (
-      <div className="flex min-h-dvh items-center justify-center px-6">
+      <div className="app-shell flex items-center justify-center px-6">
         <div className="grain-panel rounded-[2rem] border border-[var(--border)] px-6 py-5 text-sm text-[var(--muted)]">
           Loading portfolio assistant...
         </div>
@@ -75,8 +91,8 @@ export default function Home() {
   }
 
   return (
-    <div className="relative h-dvh overflow-hidden px-3 py-3 sm:px-4 sm:py-4">
-      <div className="grain-panel flex h-[calc(100dvh-1.5rem)] overflow-hidden rounded-[2rem] border border-[var(--border)] sm:h-[calc(100dvh-2rem)]">
+    <div className="app-shell relative overflow-hidden px-3 py-3 sm:px-4 sm:py-4">
+      <div className="app-panel grain-panel flex overflow-hidden rounded-[2rem] border border-[var(--border)]">
         <ThreadList
           activeThreadId={activeThreadId}
           isOpen={isSidebarOpen}

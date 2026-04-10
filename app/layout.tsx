@@ -1,10 +1,18 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "James Almeida — AI Chat Portfolio",
   description:
     "A full-screen AI chat portfolio for exploring James Almeida's projects, experience, socials, and resume.",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#f7f5ef",
+  viewportFit: "cover",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
