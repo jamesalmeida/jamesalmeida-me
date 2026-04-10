@@ -20,15 +20,27 @@ body {
 }
 
 html {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
   background: var(--background);
 }
 
+@media (min-width: 1024px) {
+  html {
+    background:
+      radial-gradient(circle at top left, rgba(0, 0, 0, 0.045), transparent 28%),
+      linear-gradient(135deg, rgba(0, 0, 0, 0.02), transparent 48%),
+      var(--background);
+  }
+}
+
 body {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
   margin: 0;
-  background:
-    radial-gradient(circle at top left, rgba(0, 0, 0, 0.045), transparent 28%),
-    linear-gradient(135deg, rgba(0, 0, 0, 0.02), transparent 48%),
-    var(--background);
+  background: transparent;
   color: var(--foreground);
   font-family:
     "Avenir Next",
@@ -42,12 +54,20 @@ body {
 }
 
 .app-panel {
-  height: calc(var(--app-height, 100dvh) - 1.5rem);
+  height: var(--app-height, 100dvh);
+}
+
+.app-panel.grain-panel {
+  box-shadow: none;
 }
 
 @media (min-width: 640px) {
   .app-panel {
     height: calc(var(--app-height, 100dvh) - 2rem);
+  }
+
+  .app-panel.grain-panel {
+    box-shadow: var(--shadow);
   }
 }
 

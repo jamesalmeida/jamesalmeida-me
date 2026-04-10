@@ -91,7 +91,7 @@ export default function Home() {
   }
 
   return (
-    <div className="app-shell relative overflow-hidden px-3 py-3 sm:px-4 sm:py-4">
+    <div className="app-shell relative overflow-hidden px-3 sm:px-4 sm:py-4">
       <div className="app-panel grain-panel flex overflow-hidden rounded-[2rem] border border-[var(--border)]">
         <ThreadList
           activeThreadId={activeThreadId}
