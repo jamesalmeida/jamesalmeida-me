@@ -9,10 +9,9 @@ import {
   ThreadPrimitive,
   useThread,
 } from "@assistant-ui/react";
-import { useAISDKRuntime } from "@assistant-ui/react-ai-sdk";
-import { useChat } from "@ai-sdk/react";
+import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
-import type { UIMessage } from "ai";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import { useEffect, useRef } from "react";
 import { Suggestions } from "./suggestions";
 import type { PortfolioThread } from "@/lib/threads";
@@ -30,16 +29,10 @@ export function Thread({
   onOpenSidebar,
   thread,
 }: ThreadProps) {
-  const chat = useChat();
-  
-  // Set initial messages when thread changes
-  useEffect(() => {
-    if (initialMessages.length > 0) {
-      chat.setMessages(initialMessages);
-    }
-  }, [thread.id]);
-  
-  const runtime = useAISDKRuntime(chat);
+  const runtime = useChatRuntime({
+    messages: initialMessages,
+    transport: new DefaultChatTransport({ api: "/api/chat" }),
+  });
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
