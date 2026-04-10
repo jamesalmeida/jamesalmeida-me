@@ -8,13 +8,14 @@ import {
   MessagePartPrimitive,
   ThreadPrimitive,
   useThread,
+  useThreadRuntime,
   useThreadViewport,
 } from "@assistant-ui/react";
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowDown, ArrowUp, Square } from "lucide-react";
+import { ArrowDown, ArrowUp, RotateCcw, Square } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Suggestions } from "./suggestions";
 import type { PortfolioThread } from "@/lib/threads";
@@ -39,22 +40,14 @@ export function Thread({
     <AssistantRuntimeProvider runtime={runtime}>
       <ThreadPersistence onMessagesChange={onMessagesChange} />
       <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-[var(--border)] px-4 py-4 sm:px-6">
-          <div className="min-w-0">
-            <p className="eyebrow text-xs text-[var(--muted)]">Active Thread</p>
-            <h2 className="truncate font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif] text-2xl tracking-[-0.03em]">
-              {thread.title}
-            </h2>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-              {thread.description}
-            </p>
-          </div>
-        </header>
+        <Header thread={thread} />
 
         <div className="relative min-h-0 flex-1">
           <ThreadPrimitive.Viewport className="absolute inset-0 overflow-y-auto px-4 pb-6 pt-6 sm:px-6">
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
-              <Suggestions threadId={thread.id} />
+              <ThreadPrimitive.Empty>
+                <Suggestions threadId={thread.id} />
+              </ThreadPrimitive.Empty>
               <ThreadPrimitive.Messages
                 components={{
                   AssistantMessage: AssistantMessage,
@@ -69,6 +62,40 @@ export function Thread({
         <Composer />
       </ThreadPrimitive.Root>
     </AssistantRuntimeProvider>
+  );
+}
+
+function Header({ thread }: { thread: PortfolioThread }) {
+  const runtime = useThreadRuntime();
+  const messages = useThread((state) => state.messages);
+  const hasMessages = messages.length > 0;
+
+  const handleRestart = () => {
+    runtime.reset();
+  };
+
+  return (
+    <header className="flex items-center justify-between border-b border-[var(--border)] px-4 py-4 sm:px-6">
+      <div className="min-w-0">
+        <p className="eyebrow text-xs text-[var(--muted)]">Active Thread</p>
+        <h2 className="truncate font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif] text-2xl tracking-[-0.03em]">
+          {thread.title}
+        </h2>
+        <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+          {thread.description}
+        </p>
+      </div>
+      {hasMessages && (
+        <button
+          onClick={handleRestart}
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-white text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)]"
+          aria-label="Restart conversation"
+          title="Restart"
+        >
+          <RotateCcw size={16} />
+        </button>
+      )}
+    </header>
   );
 }
 
