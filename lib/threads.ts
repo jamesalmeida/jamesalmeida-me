@@ -177,8 +177,15 @@ export function getThreadMessages(
   threadId: ThreadId,
   storedThreads: StoredThreads,
 ): UIMessage[] {
-  const thread = THREADS_BY_ID[threadId];
-  return [...thread.baseMessages, ...(storedThreads[threadId]?.userMessages ?? [])];
+  // Pre-seeded thread content is represented by the suggestion pills (see
+  // components/suggestions.tsx). The JSON base messages are intentionally NOT
+  // loaded into the runtime — they would otherwise render as chat bubbles on
+  // first view, which conflicts with the suggestion-pill landing experience.
+  //
+  // When the user engages a thread (clicks a suggestion or types a message),
+  // the conversation starts fresh from their input, and the system prompt +
+  // context.md provide the AI with enough background to answer correctly.
+  return storedThreads[threadId]?.userMessages ?? [];
 }
 
 export function saveThreadMessages(
@@ -186,12 +193,14 @@ export function saveThreadMessages(
   threadId: ThreadId,
   messages: UIMessage[],
 ): StoredThreads {
-  const baseCount = THREADS_BY_ID[threadId].baseMessages.length;
+  // Base messages are no longer injected into the runtime, so all rendered
+  // messages are user-originated or assistant replies to user input. Store
+  // them as-is.
   const existing = storedThreads[threadId];
   const nextState: StoredThreadState = {
     createdAt: existing?.createdAt ?? Date.now(),
     lastVisited: Date.now(),
-    userMessages: messages.slice(baseCount),
+    userMessages: messages,
   };
 
   return {
