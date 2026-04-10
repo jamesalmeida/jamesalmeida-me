@@ -1,0 +1,6 @@
+[
+  {
+    "role": "assistant",
+    "content": "# Selected Projects\n\nJames's portfolio leans heavily toward product rebuilds, frontend systems, and AI-native implementation work.\n\n## Sheldn.ai\n- Represents James's current AI-facing direction\n- Useful reference point for discussing agentic workflows, practical AI implementation, and rapid product shaping\n- Best question to ask next: `What kind of AI consulting work does James do now?`\n\n## Society6 Artist Studio\n- Rebuilt a critical creator workflow in React\n- Helped artists design products and manage what they sell\n- Strong example of modernizing a legacy product without losing business momentum\n\n## iROKOtv Rebuild\n- Full frontend rebuild in React\n- Supported a better subscriber experience with fewer user complaints\n- Good example of product work where UX and performance both mattered\n\n## Datadog Website Rebuild\n- Led a full rebuild of DatadogHQ.com\n- Worked directly with leadership on design and implementation decisions\n- Combined brand execution, engineering, and stakeholder management\n\nIf you want, I can also break these down by **impact**, **tech stack**, or **what each project says about James as a builder**."
+  }
+]
