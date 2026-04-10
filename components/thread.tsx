@@ -54,9 +54,7 @@ export function Thread({
         <div className="relative min-h-0 flex-1">
           <ThreadPrimitive.Viewport className="absolute inset-0 overflow-y-auto px-4 pb-6 pt-6 sm:px-6">
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
-              <ThreadPrimitive.Empty>
-                <Suggestions threadId={thread.id} />
-              </ThreadPrimitive.Empty>
+              <Suggestions threadId={thread.id} />
               <ThreadPrimitive.Messages
                 components={{
                   AssistantMessage: AssistantMessage,
