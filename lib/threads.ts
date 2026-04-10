@@ -59,7 +59,7 @@ export const THREADS: PortfolioThread[] = [
     id: "new-chat",
     title: "New Chat",
     icon: "NC",
-    description: "Open-ended questions about James's work, strengths, and availability.",
+    description: "Open-ended questions about James' work, strengths, and availability.",
     seeded: false,
     baseMessages: [],
   },

@@ -42,7 +42,7 @@ export function ThreadList({
   return (
     <>
       <button
-        className="absolute right-4 top-4 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--foreground)] lg:hidden"
+        className="absolute left-4 top-4 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--foreground)] lg:hidden"
         onClick={() => onOpenChange(!isOpen)}
         aria-label="Open menu"
       >
@@ -65,7 +65,7 @@ export function ThreadList({
           </button>
         </div>
 
-        <div className="flex flex-1 flex-col px-5 py-5">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5">
           <div className="space-y-3 border-b border-[var(--border)] pb-5">
             <p className="eyebrow text-xs text-[var(--muted)]">AI portfolio</p>
             <div>
@@ -79,7 +79,7 @@ export function ThreadList({
             </div>
           </div>
 
-          <nav className="mt-5 flex-1 space-y-6">
+          <nav className="mt-5 space-y-6">
             {newChatThread ? (
               <div className="space-y-2">
                 <p className="eyebrow text-[11px] text-[var(--muted)]">Default</p>
@@ -108,7 +108,7 @@ export function ThreadList({
             </div>
           </nav>
 
-          <div className="border-t border-[var(--border)] pt-5">
+          <div className="mt-auto border-t border-[var(--border)] pt-5">
             <p className="eyebrow text-[11px] text-[var(--muted)] mb-3">Connect</p>
             <div className="flex items-center gap-2">
               <a

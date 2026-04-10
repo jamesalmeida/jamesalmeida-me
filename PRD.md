@@ -43,7 +43,7 @@ A personal portfolio/website at **jamesalmeida.me** built with **Next.js** and *
 | # | Decision | Notes |
 |---|----------|-------|
 | 1 | **Multi-provider LLM with admin toggle** | Start with OpenAI + Anthropic. Admin panel to switch models at runtime. |
-| 2 | **Persona: James's AI assistant** | Speaks on James's behalf, not as James. Knows everything in the context doc. |
+| 2 | **Persona: James' AI assistant** | Speaks on James' behalf, not as James. Knows everything in the context doc. |
 | 3 | **Single context document** | `/data/context.md` — bio, experience, projects, skills, socials. Loaded into system prompt. Easy to update. |
 | 4 | **Overwrite existing repo** | jamesalmeida.me already on Vercel + GitHub. Replace with new Next.js project. |
 | 5 | **Black & white MVP** | Minimal design. shadcn template out of the box. Polish later. |
@@ -77,7 +77,7 @@ The sidebar thread list serves as both chat history and site navigation:
 │  THREAD LIST     │                              │
 │                  │    (active thread content)   │
 │  💬 New Chat     │                              │
-│   ← default      │    Welcome! I'm James's AI   │
+│   ← default      │    Welcome! I'm James' AI    │
 │                  │    assistant. Ask me anything │
 │  ─────────────   │    about his work...         │
 │  📁 PRE-SEEDED   │                              │
@@ -182,7 +182,7 @@ interface StoredThreads {
 // /lib/system-prompt.ts
 const systemPrompt = `
 You are James Almeida's AI assistant on his personal website.
-You help visitors learn about James's work, experience, and projects.
+You help visitors learn about James' work, experience, and projects.
 You speak warmly and knowledgeably about James, but you are his assistant, not James himself.
 
 ${contextDocument} // loaded from /data/context.md
@@ -246,7 +246,7 @@ jamesalmeida.me/
 - [ ] Scaffold Next.js 15 project with `npx assistant-ui@latest create` (shadcn template)
 - [ ] Configure black & white theme (Tailwind)
 - [ ] Set up `/api/chat` route with OpenAI (default) + Anthropic support
-- [ ] Create `/data/context.md` with James's full context
+- [ ] Create `/data/context.md` with James' full context
 - [ ] Build system prompt that injects context
 - [ ] Implement thread list with pre-seeded threads
 - [ ] Create pre-seeded thread data (Projects, Experience, Socials, Resume)
@@ -271,7 +271,7 @@ jamesalmeida.me/
 - [ ] Voice input (built-in assistant-ui dictation)
 - [ ] Server-side persistence (Vercel KV or Assistant Cloud) for cross-device
 - [ ] Visitor analytics — what do people ask most?
-- [ ] Custom model fine-tuning on James's writing style
+- [ ] Custom model fine-tuning on James' writing style
 - [ ] More pre-seeded threads as content grows
 
 ---
@@ -339,7 +339,7 @@ DEFAULT_MODEL=claude-sonnet-4-6   # Default model
 - [ ] Visitor can chat in any thread and follow-ups stream in real-time
 - [ ] Chat history persists across page refreshes (localStorage)
 - [ ] Admin can switch models without redeploying
-- [ ] Responses are accurate about James's background
+- [ ] Responses are accurate about James' background
 - [ ] Mobile experience works (drawer for thread list)
 - [ ] Page loads fast (<2s), first token streams in <1s
 - [ ] Live at jamesalmeida.me

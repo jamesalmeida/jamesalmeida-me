@@ -75,17 +75,18 @@ function Header({ thread }: { thread: PortfolioThread }) {
   };
 
   return (
-    <header className="flex items-center justify-between border-b border-[var(--border)] px-4 py-4 sm:px-6">
-      <div className="min-w-0">
-        <p className="eyebrow text-xs text-[var(--muted)]">Active Thread</p>
+    <header className="flex items-center border-b border-[var(--border)] px-4 py-4 sm:px-6 lg:justify-between">
+      <div className="h-10 w-10 flex-shrink-0 lg:hidden" aria-hidden />
+      <div className="min-w-0 flex-1 text-center lg:flex-initial lg:text-left">
+        <p className="eyebrow hidden text-xs text-[var(--muted)] lg:block">Active Thread</p>
         <h2 className="truncate font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif] text-2xl tracking-[-0.03em]">
           {thread.title}
         </h2>
-        <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+        <p className="mt-1 hidden max-w-2xl text-sm leading-6 text-[var(--muted)] lg:block">
           {thread.description}
         </p>
       </div>
-      {hasMessages && (
+      {hasMessages ? (
         <button
           onClick={handleRestart}
           className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-white text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)]"
@@ -94,6 +95,8 @@ function Header({ thread }: { thread: PortfolioThread }) {
         >
           <RotateCcw size={16} />
         </button>
+      ) : (
+        <div className="h-10 w-10 flex-shrink-0 lg:hidden" aria-hidden />
       )}
     </header>
   );
@@ -166,7 +169,7 @@ function Composer() {
           rows={1}
           autoFocus
           className="max-h-[160px] min-h-[2.75rem] flex-1 resize-none overflow-y-auto rounded-[1.5rem] border border-[var(--border)] bg-white px-4 py-2.5 text-sm leading-6 shadow-[0_10px_30px_rgba(0,0,0,0.05)] outline-none transition placeholder:text-[var(--muted)] focus:border-black/20 sm:px-5 sm:py-3"
-          placeholder="Ask about James's work, projects, stack, or availability..."
+          placeholder="Ask about James..."
         />
         {isRunning ? (
           <ComposerPrimitive.Cancel

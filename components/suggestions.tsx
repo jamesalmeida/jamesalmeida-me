@@ -19,7 +19,7 @@ const THREAD_SUGGESTIONS: Record<ThreadId, ThreadSuggestions> = {
   "new-chat": {
     title: "James Almeida",
     subtitle: "Ask the portfolio anything.",
-    description: "This assistant can walk you through James's projects, work history, technical strengths, and how to get in touch.",
+    description: "This assistant can walk you through James' projects, work history, technical strengths, and how to get in touch.",
     suggestions: [
       {
         title: "Who is James?",
@@ -27,7 +27,7 @@ const THREAD_SUGGESTIONS: Record<ThreadId, ThreadSuggestions> = {
       },
       {
         title: "Show me projects",
-        prompt: "Show me the projects that best represent James's work.",
+        prompt: "Show me the projects that best represent James' work.",
       },
       {
         title: "What's the tech stack?",
@@ -41,7 +41,7 @@ const THREAD_SUGGESTIONS: Record<ThreadId, ThreadSuggestions> = {
   },
   projects: {
     title: "Projects",
-    subtitle: "Explore James's key builds and product work.",
+    subtitle: "Explore James' key builds and product work.",
     suggestions: [
       {
         title: "Sheldn.ai",
@@ -63,7 +63,7 @@ const THREAD_SUGGESTIONS: Record<ThreadId, ThreadSuggestions> = {
   },
   experience: {
     title: "Experience",
-    subtitle: "James's career across AI, product, and frontend engineering.",
+    subtitle: "James' career across AI, product, and frontend engineering.",
     suggestions: [
       {
         title: "AI Consulting",
@@ -107,7 +107,7 @@ const THREAD_SUGGESTIONS: Record<ThreadId, ThreadSuggestions> = {
   },
   resume: {
     title: "Resume",
-    subtitle: "Download or explore James's experience.",
+    subtitle: "Download or explore James' experience.",
     suggestions: [
       {
         title: "Download Resume",

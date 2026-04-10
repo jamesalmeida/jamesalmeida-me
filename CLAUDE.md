@@ -84,7 +84,7 @@ lib/
   threads.ts               # Pre-seeded thread definitions
 
 data/
-  context.md               # James's bio/experience/projects (single source of truth)
+  context.md               # James' bio/experience/projects (single source of truth)
   threads/
     projects.json          # Pre-seeded Projects thread messages
     experience.json        # Pre-seeded Experience thread messages
