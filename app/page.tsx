@@ -90,7 +90,6 @@ export default function Home() {
             key={activeThreadId}
             initialMessages={activeMessages}
             onMessagesChange={(messages) => handleMessagesChange(activeThreadId, messages)}
-            onOpenSidebar={() => setIsSidebarOpen(true)}
             thread={activeThread}
           />
         </main>

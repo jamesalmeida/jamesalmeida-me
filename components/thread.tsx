@@ -19,14 +19,12 @@ import type { PortfolioThread } from "@/lib/threads";
 type ThreadProps = {
   initialMessages: UIMessage[];
   onMessagesChange: (messages: UIMessage[]) => void;
-  onOpenSidebar: () => void;
   thread: PortfolioThread;
 };
 
 export function Thread({
   initialMessages,
   onMessagesChange,
-  onOpenSidebar,
   thread,
 }: ThreadProps) {
   const runtime = useChatRuntime({
@@ -48,13 +46,6 @@ export function Thread({
               {thread.description}
             </p>
           </div>
-          <button
-            className="hidden rounded-full border border-[var(--border)] px-4 py-2 text-xs tracking-[0.18em] text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)] lg:block"
-            onClick={onOpenSidebar}
-            type="button"
-          >
-            THREADS
-          </button>
         </header>
 
         <ThreadPrimitive.Viewport className="relative flex-1 overflow-y-auto px-4 pb-6 pt-6 sm:px-6">
@@ -69,7 +60,7 @@ export function Thread({
               }}
             />
           </div>
-          <ThreadPrimitive.ScrollToBottom className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full border border-[var(--border)] bg-[var(--panel-strong)] px-4 py-2 text-xs text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.08)] transition hover:border-black/20 hover:text-[var(--foreground)]">
+          <ThreadPrimitive.ScrollToBottom className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full border border-[var(--border)] bg-[var(--panel-strong)] px-4 py-2 text-xs text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.08)] transition hover:border-black/20 hover:text-[var(--foreground)] data-[disabled]:hidden">
             Jump to latest
           </ThreadPrimitive.ScrollToBottom>
         </ThreadPrimitive.Viewport>
@@ -130,7 +121,9 @@ function Composer() {
     <ComposerPrimitive.Root className="border-t border-[var(--border)] bg-white/55 px-4 py-4 sm:px-6">
       <div className="mx-auto flex max-w-4xl items-end gap-3">
         <ComposerPrimitive.Input
-          className="min-h-[4rem] flex-1 rounded-[1.5rem] border border-[var(--border)] bg-white px-5 py-4 text-sm leading-6 shadow-[0_10px_30px_rgba(0,0,0,0.05)] outline-none transition placeholder:text-[var(--muted)] focus:border-black/20"
+          rows={1}
+          autoFocus
+          className="flex-1 resize-none rounded-[1.5rem] border border-[var(--border)] bg-white px-5 py-4 text-sm leading-6 shadow-[0_10px_30px_rgba(0,0,0,0.05)] outline-none transition placeholder:text-[var(--muted)] focus:border-black/20 max-h-[160px] overflow-y-auto"
           placeholder="Ask about James's work, projects, stack, or availability..."
         />
         {isRunning ? (
