@@ -30,9 +30,14 @@ export function Thread({
   onOpenSidebar,
   thread,
 }: ThreadProps) {
-  const chat = useChat({
-    initialMessages,
-  });
+  const chat = useChat();
+  
+  // Set initial messages when thread changes
+  useEffect(() => {
+    if (initialMessages.length > 0) {
+      chat.setMessages(initialMessages);
+    }
+  }, [thread.id]);
   
   const runtime = useAISDKRuntime(chat);
 
