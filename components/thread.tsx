@@ -10,7 +10,7 @@ import {
   useThread,
 } from "@assistant-ui/react";
 import { useAISDKRuntime } from "@assistant-ui/react-ai-sdk";
-import { useChat } from "@ai-sdk/react";
+import { useChat } from "ai/react";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import type { UIMessage } from "ai";
 import { useEffect, useRef } from "react";
