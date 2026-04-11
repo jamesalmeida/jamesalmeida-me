@@ -28,13 +28,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!mounted) return;
-    
+
     localStorage.setItem("jamesalmeida-theme", theme);
-    
+
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
+    }
+
+    // Update iOS Safari theme-color meta tag for status bar / home indicator
+    const themeMeta = document.getElementById("theme-color-meta");
+    if (themeMeta) {
+      themeMeta.setAttribute("content", theme === "dark" ? "#0a0a0a" : "#f7f5ef");
     }
   }, [theme, mounted]);
 
