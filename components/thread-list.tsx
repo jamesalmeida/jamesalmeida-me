@@ -78,17 +78,12 @@ export function ThreadList({
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5">
-          <div className="space-y-3 border-b border-[var(--border)] pb-5">
+          <div className="border-b border-[var(--border)] pb-5">
             <p className="eyebrow text-xs text-[var(--muted)]">AI portfolio</p>
-            <div>
-              <h1 className="font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif] text-[1.85rem] leading-none tracking-[-0.04em]">
-                James Almeida
-              </h1>
-              <p className="mt-3 max-w-xs text-sm leading-6 text-[var(--muted)]">
-                A chat-first portfolio covering projects, experience, socials, and
-                the full resume.
-              </p>
-            </div>
+            <p className="mt-3 max-w-xs text-sm leading-6 text-[var(--muted)]">
+              A chat-first portfolio covering projects, experience, socials, and
+              the full resume.
+            </p>
           </div>
 
           <nav className="mt-5 space-y-6">

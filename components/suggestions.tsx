@@ -18,8 +18,7 @@ type ThreadSuggestions = {
 const THREAD_SUGGESTIONS: Record<ThreadId, ThreadSuggestions> = {
   "new-chat": {
     title: "James Almeida",
-    subtitle: "Ask the portfolio anything.",
-    description: "This assistant can walk you through James' projects, work history, technical strengths, and how to get in touch.",
+    subtitle: "Ask me about James.",
     suggestions: [
       {
         title: "Who is James?",

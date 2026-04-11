@@ -57,8 +57,8 @@ const toSeedMessages = (threadId: string, messages: SeedRecord[]) =>
 export const THREADS: PortfolioThread[] = [
   {
     id: "new-chat",
-    title: "New Chat",
-    icon: "NC",
+    title: "James Almeida",
+    icon: "JA",
     description: "Open-ended questions about James' work, strengths, and availability.",
     seeded: false,
     baseMessages: [],
