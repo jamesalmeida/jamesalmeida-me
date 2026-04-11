@@ -1,6 +1,7 @@
 "use client";
 
-import { FileText, Mail, Menu, X } from "lucide-react";
+import { FileText, Mail, Menu, Moon, Sun, X } from "lucide-react";
+import { useTheme } from "@/components/theme-provider";
 import type { PortfolioThread, ThreadId } from "@/lib/threads";
 
 function GithubIcon({ size = 16 }: { size?: number }) {
@@ -36,6 +37,7 @@ export function ThreadList({
   previews,
   threads,
 }: ThreadListProps) {
+  const { theme, toggleTheme } = useTheme();
   const seededThreads = threads.filter((thread) => thread.seeded);
   const newChatThread = threads.find((thread) => thread.id === "new-chat");
 
@@ -56,13 +58,23 @@ export function ThreadList({
       >
         <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4 lg:hidden">
           <div className="text-sm font-medium">Navigation</div>
-          <button
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)]"
-            onClick={() => onOpenChange(false)}
-            aria-label="Close menu"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)]"
+              aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+              title={theme === "light" ? "Dark mode" : "Light mode"}
+            >
+              {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+            </button>
+            <button
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)]"
+              onClick={() => onOpenChange(false)}
+              aria-label="Close menu"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5">

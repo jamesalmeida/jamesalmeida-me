@@ -10,6 +10,16 @@
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.08);
 }
 
+.dark {
+  --background: #0a0a0a;
+  --foreground: #f5f5f5;
+  --panel: rgba(23, 23, 23, 0.72);
+  --panel-strong: rgba(23, 23, 23, 0.9);
+  --border: rgba(245, 245, 245, 0.12);
+  --muted: rgba(245, 245, 245, 0.58);
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -163,6 +173,10 @@ textarea {
   font-size: 0.92em;
 }
 
+.dark .message-markdown code {
+  background: rgba(245, 245, 245, 0.12);
+}
+
 .message-markdown pre {
   overflow-x: auto;
   border: 1px solid rgba(17, 17, 17, 0.08);
@@ -170,6 +184,12 @@ textarea {
   background: #111111;
   color: #f7f5ef;
   padding: 0.95rem 1rem;
+}
+
+.dark .message-markdown pre {
+  border-color: rgba(245, 245, 245, 0.12);
+  background: #1a1a1a;
+  color: #f5f5f5;
 }
 
 .message-markdown pre code {
@@ -184,6 +204,11 @@ textarea {
   color: rgba(17, 17, 17, 0.72);
 }
 
+.dark .message-markdown blockquote {
+  border-left-color: rgba(245, 245, 245, 0.22);
+  color: rgba(245, 245, 245, 0.72);
+}
+
 .message-markdown table {
   width: 100%;
   border-collapse: collapse;
@@ -194,4 +219,9 @@ textarea {
   border-bottom: 1px solid rgba(17, 17, 17, 0.1);
   padding: 0.55rem 0.4rem;
   text-align: left;
+}
+
+.dark .message-markdown th,
+.dark .message-markdown td {
+  border-bottom-color: rgba(245, 245, 245, 0.1);
 }
