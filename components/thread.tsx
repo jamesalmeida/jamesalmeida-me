@@ -15,7 +15,7 @@ import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowDown, ArrowUp, Moon, RotateCcw, Square, Sun } from "lucide-react";
+import { ArrowDown, ArrowUp, RotateCcw, Square } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Suggestions } from "./suggestions";
 import { useTheme } from "./theme-provider";
@@ -70,7 +70,7 @@ function Header({ thread }: { thread: PortfolioThread }) {
   const runtime = useThreadRuntime();
   const messages = useThread((state) => state.messages);
   const hasMessages = messages.length > 0;
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
 
   const handleRestart = () => {
     runtime.reset();
@@ -81,7 +81,7 @@ function Header({ thread }: { thread: PortfolioThread }) {
   const btnBg = theme === "dark" ? "rgba(23, 23, 23, 0.9)" : "rgba(255, 255, 255, 0.9)";
 
   return (
-    <header 
+    <header
       className="flex items-center border-b border-[var(--border)] px-4 py-4 sm:px-6 lg:justify-between"
       style={{ backgroundColor: bgColor }}
     >
@@ -95,30 +95,19 @@ function Header({ thread }: { thread: PortfolioThread }) {
           {thread.description}
         </p>
       </div>
-      <div className="flex items-center gap-2">
+      {hasMessages ? (
         <button
-          onClick={toggleTheme}
-          className="hidden h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)] lg:flex"
+          onClick={handleRestart}
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)]"
           style={{ backgroundColor: btnBg }}
-          aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
-          title={theme === "light" ? "Dark mode" : "Light mode"}
+          aria-label="Restart conversation"
+          title="Restart"
         >
-          {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+          <RotateCcw size={16} />
         </button>
-        {hasMessages ? (
-          <button
-            onClick={handleRestart}
-            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)]"
-            style={{ backgroundColor: btnBg }}
-            aria-label="Restart conversation"
-            title="Restart"
-          >
-            <RotateCcw size={16} />
-          </button>
-        ) : (
-          <div className="h-10 w-10 flex-shrink-0 lg:hidden" aria-hidden />
-        )}
-      </div>
+      ) : (
+        <div className="h-10 w-10 flex-shrink-0 lg:hidden" aria-hidden />
+      )}
     </header>
   );
 }
