@@ -125,7 +125,7 @@ export function ThreadList({
             <div className="flex items-center gap-2">
               <a
                 href="mailto:hello@jamesalmeida.com"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-white/60 text-[var(--muted)] transition hover:-translate-y-px hover:border-black/20 hover:bg-white hover:text-[var(--foreground)]"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] transition hover:-translate-y-px hover:border-black/20 hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
                 aria-label="Email James"
                 title="Email"
               >
@@ -135,7 +135,7 @@ export function ThreadList({
                 href="https://github.com/jamesalmeida"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-white/60 text-[var(--muted)] transition hover:-translate-y-px hover:border-black/20 hover:bg-white hover:text-[var(--foreground)]"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] transition hover:-translate-y-px hover:border-black/20 hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
                 aria-label="James on GitHub"
                 title="GitHub"
               >
@@ -145,7 +145,7 @@ export function ThreadList({
                 href="https://linkedin.com/in/jamesalmeida"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-white/60 text-[var(--muted)] transition hover:-translate-y-px hover:border-black/20 hover:bg-white hover:text-[var(--foreground)]"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] transition hover:-translate-y-px hover:border-black/20 hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
                 aria-label="James on LinkedIn"
                 title="LinkedIn"
               >
@@ -155,7 +155,7 @@ export function ThreadList({
                 href="/resume.pdf"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-white/60 text-[var(--muted)] transition hover:-translate-y-px hover:border-black/20 hover:bg-white hover:text-[var(--foreground)]"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] transition hover:-translate-y-px hover:border-black/20 hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
                 aria-label="Download Resume PDF"
                 title="Resume PDF"
               >
@@ -194,7 +194,7 @@ function ThreadButton({
       className={`w-full rounded-[1.25rem] border px-4 py-3 text-left transition duration-200 ${
         isActive
           ? "border-black/20 bg-black text-white shadow-[0_18px_42px_rgba(0,0,0,0.14)]"
-          : "border-[var(--border)] bg-white/65 hover:-translate-y-px hover:border-black/20 hover:bg-white"
+          : "border-[var(--border)] bg-[var(--panel)] hover:-translate-y-px hover:border-black/20 hover:bg-[var(--panel-strong)]"
       }`}
       onClick={onClick}
     >

@@ -91,7 +91,7 @@ function Header({ thread }: { thread: PortfolioThread }) {
       <div className="flex items-center gap-2">
         <button
           onClick={toggleTheme}
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-white text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)]"
+          className="hidden h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)] lg:flex"
           aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
           title={theme === "light" ? "Dark mode" : "Light mode"}
         >
@@ -100,7 +100,7 @@ function Header({ thread }: { thread: PortfolioThread }) {
         {hasMessages ? (
           <button
             onClick={handleRestart}
-            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-white text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)]"
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)]"
             aria-label="Restart conversation"
             title="Restart"
           >
@@ -128,7 +128,7 @@ function ScrollToBottomButton() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="absolute bottom-4 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-white text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition hover:border-black/20 hover:text-[var(--foreground)]"
+          className="absolute bottom-4 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition hover:border-black/20 hover:text-[var(--foreground)]"
           aria-label="Scroll to latest message"
         >
           <ArrowDown size={16} />
@@ -141,7 +141,7 @@ function ScrollToBottomButton() {
 function AssistantMessage() {
   return (
     <MessagePrimitive.Root className="flex w-full justify-start">
-      <div className="min-w-0 max-w-[85%] rounded-[1.5rem] border border-[var(--border)] bg-white/80 px-5 py-4 shadow-[0_16px_40px_rgba(0,0,0,0.06)] sm:max-w-3xl">
+      <div className="min-w-0 max-w-[85%] rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel)] px-5 py-4 shadow-[0_16px_40px_rgba(0,0,0,0.06)] sm:max-w-3xl">
         <MessagePrimitive.Parts
           components={{
             Text: MarkdownText,
@@ -186,14 +186,14 @@ function Composer() {
   }, [isRunning]);
 
   return (
-    <ComposerPrimitive.Root className="border-t border-[var(--border)] bg-white/55 px-3 py-3 sm:px-6 sm:py-4">
+    <ComposerPrimitive.Root className="border-t border-[var(--border)] bg-[var(--panel)] px-3 py-3 sm:px-6 sm:py-4">
       <div className="mx-auto flex max-w-4xl items-end gap-2 sm:gap-3">
         <ComposerPrimitive.Input
           rows={1}
           autoFocus
           unstable_focusOnScrollToBottom={false}
           unstable_focusOnRunStart={false}
-          className="max-h-[160px] min-h-[2.75rem] flex-1 resize-none overflow-y-auto rounded-[1.5rem] border border-[var(--border)] bg-white px-4 py-2.5 text-sm leading-6 shadow-[0_10px_30px_rgba(0,0,0,0.05)] outline-none transition placeholder:text-[var(--muted)] focus:border-black/20 sm:px-5 sm:py-3"
+          className="max-h-[160px] min-h-[2.75rem] flex-1 resize-none overflow-y-auto rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] px-4 py-2.5 text-sm leading-6 shadow-[0_10px_30px_rgba(0,0,0,0.05)] outline-none transition placeholder:text-[var(--muted)] focus:border-black/20 sm:px-5 sm:py-3"
           placeholder="Ask about James..."
         />
         {isRunning ? (

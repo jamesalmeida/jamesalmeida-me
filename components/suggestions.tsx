@@ -160,7 +160,7 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
           <button
             key={suggestion.prompt}
             onClick={() => handleClick(suggestion.prompt)}
-            className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--panel-strong)] p-4 text-left transition duration-200 hover:-translate-y-px hover:border-black/30 hover:bg-white"
+            className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--panel-strong)] p-4 text-left transition duration-200 hover:-translate-y-px hover:border-black/30 hover:bg-[var(--panel-strong)]"
           >
             <div className="text-sm font-medium">{suggestion.title}</div>
             <div className="mt-2 text-sm leading-6 text-[var(--muted)]">
