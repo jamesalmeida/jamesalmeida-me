@@ -32,6 +32,7 @@ export function Thread({
   onMessagesChange,
   thread,
 }: ThreadProps) {
+  const { theme } = useTheme();
   const runtime = useChatRuntime({
     messages: initialMessages,
     transport: new DefaultChatTransport({ api: "/api/chat" }),
@@ -40,7 +41,7 @@ export function Thread({
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <ThreadPersistence onMessagesChange={onMessagesChange} />
-      <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
+      <ThreadPrimitive.Root key={theme} className="relative flex min-h-0 flex-1 flex-col">
         <Header thread={thread} />
 
         <div className="relative min-h-0 flex-1">
@@ -77,7 +78,7 @@ function Header({ thread }: { thread: PortfolioThread }) {
   };
 
   return (
-    <header className="flex items-center border-b border-[var(--border)] px-4 py-4 sm:px-6 lg:justify-between">
+    <header className="flex items-center border-b border-[var(--border)] bg-[var(--panel)] px-4 py-4 sm:px-6 lg:justify-between">
       <div className="h-10 w-10 flex-shrink-0 lg:hidden" aria-hidden />
       <div className="min-w-0 flex-1 text-center lg:flex-initial lg:text-left">
         <p className="eyebrow hidden text-xs text-[var(--muted)] lg:block">Active Thread</p>
@@ -173,6 +174,7 @@ function UserMessage() {
 
 function Composer() {
   const isRunning = useThread((state) => state.isRunning);
+  const { theme } = useTheme();
   const wasRunningRef = useRef(false);
 
   useEffect(() => {
