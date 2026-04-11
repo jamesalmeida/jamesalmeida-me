@@ -32,7 +32,6 @@ export function Thread({
   onMessagesChange,
   thread,
 }: ThreadProps) {
-  const { theme } = useTheme();
   const runtime = useChatRuntime({
     messages: initialMessages,
     transport: new DefaultChatTransport({ api: "/api/chat" }),
@@ -41,7 +40,7 @@ export function Thread({
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <ThreadPersistence onMessagesChange={onMessagesChange} />
-      <ThreadPrimitive.Root key={theme} className="relative flex min-h-0 flex-1 flex-col">
+      <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
         <Header thread={thread} />
 
         <div className="relative min-h-0 flex-1">
@@ -77,8 +76,15 @@ function Header({ thread }: { thread: PortfolioThread }) {
     runtime.reset();
   };
 
+  // Inline styles for iOS Safari compatibility
+  const bgColor = theme === "dark" ? "rgba(23, 23, 23, 0.72)" : "rgba(255, 255, 255, 0.72)";
+  const btnBg = theme === "dark" ? "rgba(23, 23, 23, 0.9)" : "rgba(255, 255, 255, 0.9)";
+
   return (
-    <header className="flex items-center border-b border-[var(--border)] bg-[var(--panel)] px-4 py-4 sm:px-6 lg:justify-between">
+    <header 
+      className="flex items-center border-b border-[var(--border)] px-4 py-4 sm:px-6 lg:justify-between"
+      style={{ backgroundColor: bgColor }}
+    >
       <div className="h-10 w-10 flex-shrink-0 lg:hidden" aria-hidden />
       <div className="min-w-0 flex-1 text-center lg:flex-initial lg:text-left">
         <p className="eyebrow hidden text-xs text-[var(--muted)] lg:block">Active Thread</p>
@@ -92,7 +98,8 @@ function Header({ thread }: { thread: PortfolioThread }) {
       <div className="flex items-center gap-2">
         <button
           onClick={toggleTheme}
-          className="hidden h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)] lg:flex"
+          className="hidden h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)] lg:flex"
+          style={{ backgroundColor: btnBg }}
           aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
           title={theme === "light" ? "Dark mode" : "Light mode"}
         >
@@ -101,7 +108,8 @@ function Header({ thread }: { thread: PortfolioThread }) {
         {hasMessages ? (
           <button
             onClick={handleRestart}
-            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)]"
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)]"
+            style={{ backgroundColor: btnBg }}
             aria-label="Restart conversation"
             title="Restart"
           >
@@ -187,15 +195,22 @@ function Composer() {
     wasRunningRef.current = isRunning;
   }, [isRunning]);
 
+  // Inline styles for iOS Safari compatibility
+  const bgColor = theme === "dark" ? "rgba(23, 23, 23, 0.72)" : "rgba(255, 255, 255, 0.72)";
+  const inputBg = theme === "dark" ? "rgba(23, 23, 23, 0.9)" : "rgba(255, 255, 255, 0.9)";
+
   return (
-    <ComposerPrimitive.Root className="border-t border-[var(--border)] bg-[var(--panel)] px-3 py-3 sm:px-6 sm:py-4">
+    <ComposerPrimitive.Root 
+      className="border-t border-[var(--border)] px-3 py-3 sm:px-6 sm:py-4"
+      style={{ backgroundColor: bgColor }}
+    >
       <div className="mx-auto flex max-w-4xl items-end gap-2 sm:gap-3">
         <ComposerPrimitive.Input
           rows={1}
-          autoFocus
           unstable_focusOnScrollToBottom={false}
           unstable_focusOnRunStart={false}
-          className="max-h-[160px] min-h-[2.75rem] flex-1 resize-none overflow-y-auto rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] px-4 py-2.5 text-sm leading-6 shadow-[0_10px_30px_rgba(0,0,0,0.05)] outline-none transition placeholder:text-[var(--muted)] focus:border-black/20 sm:px-5 sm:py-3"
+          className="max-h-[160px] min-h-[2.75rem] flex-1 resize-none overflow-y-auto rounded-[1.5rem] border border-[var(--border)] px-4 py-2.5 text-sm leading-6 shadow-[0_10px_30px_rgba(0,0,0,0.05)] outline-none transition placeholder:text-[var(--muted)] focus:border-black/20 sm:px-5 sm:py-3"
+          style={{ backgroundColor: inputBg }}
           placeholder="Ask about James..."
         />
         {isRunning ? (
