@@ -15,9 +15,10 @@ import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowDown, ArrowUp, RotateCcw, Square } from "lucide-react";
+import { ArrowDown, ArrowUp, Moon, RotateCcw, Square, Sun } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Suggestions } from "./suggestions";
+import { useTheme } from "./theme-provider";
 import type { PortfolioThread } from "@/lib/threads";
 
 type ThreadProps = {
@@ -69,6 +70,7 @@ function Header({ thread }: { thread: PortfolioThread }) {
   const runtime = useThreadRuntime();
   const messages = useThread((state) => state.messages);
   const hasMessages = messages.length > 0;
+  const { theme, toggleTheme } = useTheme();
 
   const handleRestart = () => {
     runtime.reset();
@@ -86,18 +88,28 @@ function Header({ thread }: { thread: PortfolioThread }) {
           {thread.description}
         </p>
       </div>
-      {hasMessages ? (
+      <div className="flex items-center gap-2">
         <button
-          onClick={handleRestart}
+          onClick={toggleTheme}
           className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-white text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)]"
-          aria-label="Restart conversation"
-          title="Restart"
+          aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+          title={theme === "light" ? "Dark mode" : "Light mode"}
         >
-          <RotateCcw size={16} />
+          {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
         </button>
-      ) : (
-        <div className="h-10 w-10 flex-shrink-0 lg:hidden" aria-hidden />
-      )}
+        {hasMessages ? (
+          <button
+            onClick={handleRestart}
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-white text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)]"
+            aria-label="Restart conversation"
+            title="Restart"
+          >
+            <RotateCcw size={16} />
+          </button>
+        ) : (
+          <div className="h-10 w-10 flex-shrink-0 lg:hidden" aria-hidden />
+        )}
+      </div>
     </header>
   );
 }
