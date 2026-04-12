@@ -23,7 +23,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#f7f5ef" id="theme-color-meta" />
+        <meta name="theme-color" content="#000000" media="(max-width: 430px)" />
+        <meta
+          name="theme-color"
+          content="#f7f5ef"
+          media="(min-width: 431px)"
+          id="theme-color-meta"
+        />
       </head>
       <body className="text-[var(--foreground)] antialiased">
         <ThemeProvider>

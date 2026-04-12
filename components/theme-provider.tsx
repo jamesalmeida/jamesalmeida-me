@@ -45,10 +45,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [theme, mounted]);
 
   const toggleTheme = () => {
-    const nextTheme = theme === "light" ? "dark" : "light";
-    localStorage.setItem("jamesalmeida-theme", nextTheme);
-    // Force full page reload for iOS Safari compatibility
-    window.location.reload();
+    setTheme((current) => (current === "light" ? "dark" : "light"));
   };
 
   // Prevent flash by not rendering until mounted

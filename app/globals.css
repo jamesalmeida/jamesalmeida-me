@@ -81,6 +81,20 @@ body {
   }
 }
 
+@media (max-width: 430px) {
+  html {
+    background: #000000;
+  }
+
+  .app-panel.grain-panel {
+    background: #fdfcfb;
+  }
+
+  .dark .app-panel.grain-panel {
+    background: #131313;
+  }
+}
+
 a {
   color: inherit;
 }
