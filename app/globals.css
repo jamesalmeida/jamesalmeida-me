@@ -71,7 +71,7 @@ body {
   box-shadow: none;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 431px) {
   .app-panel {
     height: calc(var(--app-height, 100dvh) - 2rem);
   }
