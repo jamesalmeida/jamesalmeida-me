@@ -42,10 +42,16 @@ export function ThreadList({
           isOpen ? "translate-x-0" : "-translate-x-full"
         } fixed inset-y-0 left-0 z-40 flex w-[21rem] max-w-[85vw] flex-col border-r border-[var(--border)] bg-[var(--panel-strong)] transition-transform duration-300 lg:static lg:max-w-none lg:translate-x-0`}
       >
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4 lg:hidden">
-          <div className="text-sm font-medium">Navigation</div>
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--border)] px-5 py-5">
+          <div>
+            <p className="eyebrow text-xs text-[var(--muted)]">AI portfolio</p>
+            <p className="mt-3 max-w-xs text-sm leading-6 text-[var(--muted)]">
+              A chat-first portfolio covering projects, experience, socials,
+              and the full resume.
+            </p>
+          </div>
           <button
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)]"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] lg:hidden"
             onClick={() => onOpenChange(false)}
             aria-label="Close menu"
           >
@@ -53,66 +59,56 @@ export function ThreadList({
           </button>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5">
-          <div className="border-b border-[var(--border)] pb-5">
-            <p className="eyebrow text-xs text-[var(--muted)]">AI portfolio</p>
-            <p className="mt-3 max-w-xs text-sm leading-6 text-[var(--muted)]">
-              A chat-first portfolio covering projects, experience, socials, and
-              the full resume.
-            </p>
-          </div>
-
-          <nav className="mt-5 space-y-6">
-            {newChatThread ? (
-              <div className="space-y-2">
-                <p className="eyebrow text-[11px] text-[var(--muted)]">Default</p>
-                <ThreadButton
-                  isActive={activeThreadId === newChatThread.id}
-                  onClick={() => onSelectThread(newChatThread.id)}
-                  preview={previews[newChatThread.id]}
-                  thread={newChatThread}
-                />
-              </div>
-            ) : null}
-
+        <nav className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
+          {newChatThread ? (
             <div className="space-y-2">
-              <p className="eyebrow text-[11px] text-[var(--muted)]">Pre-seeded</p>
-              <div className="space-y-2">
-                {seededThreads.map((thread) => (
-                  <ThreadButton
-                    key={thread.id}
-                    isActive={activeThreadId === thread.id}
-                    onClick={() => onSelectThread(thread.id)}
-                    preview={previews[thread.id]}
-                    thread={thread}
-                  />
-                ))}
-              </div>
+              <p className="eyebrow text-[11px] text-[var(--muted)]">Default</p>
+              <ThreadButton
+                isActive={activeThreadId === newChatThread.id}
+                onClick={() => onSelectThread(newChatThread.id)}
+                preview={previews[newChatThread.id]}
+                thread={newChatThread}
+              />
             </div>
-          </nav>
+          ) : null}
 
-          <div className="mt-auto border-t border-[var(--border)] pt-5">
-            <p className="eyebrow text-[11px] text-[var(--muted)] mb-3">Settings</p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsSettingsOpen(true)}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] transition hover:-translate-y-px hover:border-black/20 hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
-                aria-label="Open settings"
-                title="Settings"
-              >
-                <Settings size={16} />
-              </button>
-              <button
-                type="button"
-                onClick={toggleTheme}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] transition hover:-translate-y-px hover:border-black/20 hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
-                aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
-                title={theme === "light" ? "Dark mode" : "Light mode"}
-              >
-                {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
-              </button>
+          <div className="space-y-2">
+            <p className="eyebrow text-[11px] text-[var(--muted)]">Pre-seeded</p>
+            <div className="space-y-2">
+              {seededThreads.map((thread) => (
+                <ThreadButton
+                  key={thread.id}
+                  isActive={activeThreadId === thread.id}
+                  onClick={() => onSelectThread(thread.id)}
+                  preview={previews[thread.id]}
+                  thread={thread}
+                />
+              ))}
             </div>
+          </div>
+        </nav>
+
+        <div className="shrink-0 border-t border-[var(--border)] px-5 py-5">
+          <p className="eyebrow mb-3 text-[11px] text-[var(--muted)]">Settings</p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsSettingsOpen(true)}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] transition hover:-translate-y-px hover:border-black/20 hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
+              aria-label="Open settings"
+              title="Settings"
+            >
+              <Settings size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] transition hover:-translate-y-px hover:border-black/20 hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
+              aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+              title={theme === "light" ? "Dark mode" : "Light mode"}
+            >
+              {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+            </button>
           </div>
         </div>
       </aside>
