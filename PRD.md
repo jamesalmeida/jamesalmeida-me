@@ -1,7 +1,7 @@
 # PRD: jamesalmeida.me — AI Chat Portfolio Site
 
 **Status:** Draft v2
-**Last Updated:** 2026-04-09
+**Last Updated:** 2026-04-14
 **Author:** James + Tersono
 
 ---
@@ -30,7 +30,7 @@ A personal portfolio/website at **jamesalmeida.me** built with **Next.js** and *
 | Styling | **Tailwind CSS v4** |
 | LLM Backend | **API route** (`/api/chat`) — multi-provider (OpenAI + Anthropic) |
 | LLM Providers | `@ai-sdk/openai` + `@ai-sdk/anthropic` (admin-switchable) |
-| Persistence | **localStorage** (visitor chat history) |
+| Persistence | **localStorage** (MVP) → **Convex** (Phase 3 for real-time DB & Admin) |
 | Deployment | **Vercel** (existing repo — overwrite) |
 | Source Control | **GitHub** (existing repo) |
 | Language | **TypeScript** |
@@ -50,6 +50,7 @@ A personal portfolio/website at **jamesalmeida.me** built with **Next.js** and *
 | 6 | **Full-screen chat with thread-list nav** | Thread list sidebar = site navigation. Pre-seeded threads = pages. |
 | 7 | **localStorage for persistence** | All chat history (user threads + pre-seeded thread additions) stored client-side. |
 | 8 | **Pre-seeded threads are interactive** | Visitors can continue chatting in any pre-seeded thread. Base messages from repo, user additions in localStorage. |
+| 9 | **Use Convex for Database** | Pivot from Vercel KV to Convex for Phase 3 to support real-time admin analytics, end-to-end TypeScript, and dynamic user screening toggles. |
 
 ---
 
@@ -269,8 +270,8 @@ jamesalmeida.me/
 - [ ] Tool use — assistant can render structured UI (project cards, timelines)
 - [ ] Dark/light mode toggle
 - [ ] Voice input (built-in assistant-ui dictation)
-- [ ] Server-side persistence (Vercel KV or Assistant Cloud) for cross-device
-- [ ] Visitor analytics — what do people ask most?
+- [ ] Server-side persistence via Convex for cross-device chat history and admin toggles
+- [ ] Real-time visitor analytics dashboard — live-streaming sentiment and chat logs using Convex
 - [ ] Custom model fine-tuning on James' writing style
 - [ ] More pre-seeded threads as content grows
 
