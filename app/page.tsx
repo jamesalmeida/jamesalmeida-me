@@ -1,26 +1,31 @@
 "use client";
 
 import type { UIMessage } from "ai";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Thread } from "@/components/thread";
 import { ThreadList } from "@/components/thread-list";
 import {
   THREADS,
   THREADS_BY_ID,
+  createHistoryThread,
   getThreadMessages,
   getThreadPreview,
+  readHistoryThreads,
   readStoredActiveThread,
   readStoredThreads,
   saveThreadMessages,
-  type StoredThreads,
-  type ThreadId,
+  writeHistoryThreads,
   writeStoredActiveThread,
   writeStoredThreads,
+  type HistoryThread,
+  type PortfolioThread,
+  type StoredThreads,
 } from "@/lib/threads";
 
 export default function Home() {
-  const [activeThreadId, setActiveThreadId] = useState<ThreadId>("new-chat");
+  const [activeThreadId, setActiveThreadId] = useState<string>("new-chat");
   const [storedThreads, setStoredThreads] = useState<StoredThreads>({});
+  const [historyThreads, setHistoryThreads] = useState<HistoryThread[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -28,6 +33,7 @@ export default function Home() {
     const nextStoredThreads = readStoredThreads();
     setStoredThreads(nextStoredThreads);
     setActiveThreadId(readStoredActiveThread());
+    setHistoryThreads(readHistoryThreads());
     setIsHydrated(true);
   }, []);
 
@@ -57,28 +63,66 @@ export default function Home() {
     writeStoredActiveThread(activeThreadId);
   }, [activeThreadId, isHydrated]);
 
-  const activeThread = THREADS_BY_ID[activeThreadId];
+  useEffect(() => {
+    if (!isHydrated) return;
+    writeHistoryThreads(historyThreads);
+  }, [isHydrated, historyThreads]);
+
+  const activeThread = useMemo((): PortfolioThread => {
+    if (THREADS_BY_ID[activeThreadId]) return THREADS_BY_ID[activeThreadId];
+    // Active thread is a history entry — build a synthetic PortfolioThread
+    const history = historyThreads.find((h) => h.id === activeThreadId);
+    if (history) {
+      return {
+        id: history.id,
+        title: history.title,
+        icon: history.icon,
+        description: `Saved on ${new Date(history.createdAt).toLocaleDateString()}`,
+        seeded: false,
+        baseMessages: [],
+      };
+    }
+    return THREADS_BY_ID["new-chat"];
+  }, [activeThreadId, historyThreads]);
+
   const activeMessages = useMemo(
     () => getThreadMessages(activeThreadId, storedThreads),
     [activeThreadId, storedThreads],
   );
 
   const previews = useMemo(
-    () =>
-      Object.fromEntries(
+    () => ({
+      ...Object.fromEntries(
         THREADS.map((thread) => [thread.id, getThreadPreview(thread.id, storedThreads)]),
-      ) as Record<ThreadId, string>,
-    [storedThreads],
+      ),
+      ...Object.fromEntries(
+        historyThreads.map((h) => [h.id, getThreadPreview(h.id, storedThreads, h.title)]),
+      ),
+    }),
+    [storedThreads, historyThreads],
   );
 
-  const handleThreadChange = (threadId: ThreadId) => {
+  const handleThreadChange = (threadId: string) => {
     setActiveThreadId(threadId);
     setIsSidebarOpen(false);
   };
 
-  const handleMessagesChange = (threadId: ThreadId, messages: UIMessage[]) => {
+  const handleMessagesChange = (threadId: string, messages: UIMessage[]) => {
     setStoredThreads((current) => saveThreadMessages(current, threadId, messages));
   };
+
+  const handleRestart = useCallback(
+    (messages: UIMessage[]) => {
+      if (messages.length === 0) return;
+      const history = createHistoryThread(messages, activeThreadId);
+      setStoredThreads((prev) => {
+        const withHistory = saveThreadMessages(prev, history.id, messages);
+        return saveThreadMessages(withHistory, activeThreadId, []);
+      });
+      setHistoryThreads((prev) => [history, ...prev]);
+    },
+    [activeThreadId],
+  );
 
   if (!isHydrated) {
     return (
@@ -95,6 +139,7 @@ export default function Home() {
       <div className="app-panel grain-panel flex overflow-hidden rounded-[2rem] border border-[var(--border)]">
         <ThreadList
           activeThreadId={activeThreadId}
+          historyThreads={historyThreads}
           isOpen={isSidebarOpen}
           onOpenChange={setIsSidebarOpen}
           onSelectThread={handleThreadChange}
@@ -106,6 +151,7 @@ export default function Home() {
             key={activeThreadId}
             initialMessages={activeMessages}
             onMessagesChange={(messages) => handleMessagesChange(activeThreadId, messages)}
+            onRestart={handleRestart}
             thread={activeThread}
           />
         </main>

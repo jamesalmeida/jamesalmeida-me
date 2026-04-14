@@ -24,12 +24,14 @@ import type { PortfolioThread } from "@/lib/threads";
 type ThreadProps = {
   initialMessages: UIMessage[];
   onMessagesChange: (messages: UIMessage[]) => void;
+  onRestart?: (messages: UIMessage[]) => void;
   thread: PortfolioThread;
 };
 
 export function Thread({
   initialMessages,
   onMessagesChange,
+  onRestart,
   thread,
 }: ThreadProps) {
   const runtime = useChatRuntime({
@@ -41,7 +43,7 @@ export function Thread({
     <AssistantRuntimeProvider runtime={runtime}>
       <ThreadPersistence onMessagesChange={onMessagesChange} />
       <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
-        <Header thread={thread} />
+        <Header thread={thread} onRestart={onRestart} />
 
         <div className="relative min-h-0 flex-1">
           <ThreadPrimitive.Viewport className="absolute inset-0 overflow-y-auto px-4 pb-6 pt-6 sm:px-6">
@@ -66,13 +68,30 @@ export function Thread({
   );
 }
 
-function Header({ thread }: { thread: PortfolioThread }) {
+function Header({
+  thread,
+  onRestart,
+}: {
+  thread: PortfolioThread;
+  onRestart?: (messages: UIMessage[]) => void;
+}) {
   const runtime = useThreadRuntime();
   const messages = useThread((state) => state.messages);
   const hasMessages = messages.length > 0;
   const { theme } = useTheme();
 
   const handleRestart = () => {
+    if (onRestart && messages.length > 0) {
+      const formatted: UIMessage[] = messages.map((msg, index) => ({
+        id: msg.id || `msg-${index}`,
+        role: msg.role,
+        parts: msg.content.map((part) => {
+          if (part.type === "text") return { type: "text" as const, text: part.text };
+          return { type: "text" as const, text: "" };
+        }),
+      }));
+      onRestart(formatted);
+    }
     runtime.reset();
   };
 

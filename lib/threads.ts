@@ -9,15 +9,19 @@ type SeedRecord = {
   content: string;
 };
 
-export type ThreadId =
+// Static thread ids — the five built-in threads
+export type StaticThreadId =
   | "new-chat"
   | "projects"
   | "experience"
   | "socials"
   | "resume";
 
+// ThreadId is now open — includes static ids + dynamic history ids ("history-{timestamp}")
+export type ThreadId = string;
+
 export type PortfolioThread = {
-  id: ThreadId;
+  id: string;
   title: string;
   icon: string;
   description: string;
@@ -33,8 +37,17 @@ export type StoredThreadState = {
 
 export type StoredThreads = Record<string, StoredThreadState>;
 
+export interface HistoryThread {
+  id: string;           // "history-{timestamp}"
+  title: string;        // first user message, truncated to ~40 chars
+  icon: string;         // first 2 chars derived from title
+  createdAt: number;
+  sourceThreadId: string; // which thread was restarted
+}
+
 export const THREAD_STORAGE_KEY = "jamesalmeida-threads";
 export const ACTIVE_THREAD_STORAGE_KEY = "jamesalmeida-active-thread";
+export const HISTORY_THREADS_KEY = "jamesalmeida-history-threads";
 
 const toMessage = (
   threadId: string,
@@ -97,9 +110,9 @@ export const THREADS: PortfolioThread[] = [
   },
 ];
 
-export const THREADS_BY_ID = Object.fromEntries(
+export const THREADS_BY_ID: Record<string, PortfolioThread> = Object.fromEntries(
   THREADS.map((thread) => [thread.id, thread]),
-) as Record<ThreadId, PortfolioThread>;
+);
 
 const isTextPart = (part: unknown): part is { type: "text"; text: string } => {
   if (!part || typeof part !== "object") return false;
@@ -121,9 +134,12 @@ const isUIMessage = (value: unknown): value is UIMessage => {
   );
 };
 
-export function isThreadId(value: string): value is ThreadId {
+export function isStaticThreadId(value: string): value is StaticThreadId {
   return value in THREADS_BY_ID;
 }
+
+// Keep the old name as an alias for backward compatibility
+export { isStaticThreadId as isThreadId };
 
 export function readStoredThreads(): StoredThreads {
   if (typeof window === "undefined") return {};
@@ -161,20 +177,70 @@ export function writeStoredThreads(threads: StoredThreads) {
   window.localStorage.setItem(THREAD_STORAGE_KEY, JSON.stringify(threads));
 }
 
-export function readStoredActiveThread(): ThreadId {
+export function readStoredActiveThread(): string {
   if (typeof window === "undefined") return "new-chat";
-
-  const value = window.localStorage.getItem(ACTIVE_THREAD_STORAGE_KEY);
-  return value && isThreadId(value) ? value : "new-chat";
+  return window.localStorage.getItem(ACTIVE_THREAD_STORAGE_KEY) ?? "new-chat";
 }
 
-export function writeStoredActiveThread(threadId: ThreadId) {
+export function writeStoredActiveThread(threadId: string) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(ACTIVE_THREAD_STORAGE_KEY, threadId);
 }
 
+export function readHistoryThreads(): HistoryThread[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(HISTORY_THREADS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (item): item is HistoryThread =>
+        item !== null &&
+        typeof item === "object" &&
+        typeof item.id === "string" &&
+        typeof item.title === "string" &&
+        typeof item.icon === "string" &&
+        typeof item.createdAt === "number" &&
+        typeof item.sourceThreadId === "string",
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function writeHistoryThreads(threads: HistoryThread[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(HISTORY_THREADS_KEY, JSON.stringify(threads));
+}
+
+export function createHistoryThread(
+  messages: UIMessage[],
+  sourceThreadId: string,
+): HistoryThread {
+  const firstUserMsg = messages.find((m) => m.role === "user");
+  const firstText =
+    firstUserMsg?.parts.find(isTextPart)?.text ?? "Chat";
+  const title =
+    firstText.length > 40 ? `${firstText.slice(0, 40).trim()}\u2026` : firstText;
+
+  const words = title.trim().split(/\s+/);
+  const icon =
+    words.length >= 2
+      ? (words[0][0] + words[1][0]).toUpperCase()
+      : title.slice(0, 2).toUpperCase();
+
+  return {
+    id: `history-${Date.now()}`,
+    title,
+    icon,
+    createdAt: Date.now(),
+    sourceThreadId,
+  };
+}
+
 export function getThreadMessages(
-  threadId: ThreadId,
+  threadId: string,
   storedThreads: StoredThreads,
 ): UIMessage[] {
   // Pre-seeded thread content is represented by the suggestion pills (see
@@ -190,12 +256,9 @@ export function getThreadMessages(
 
 export function saveThreadMessages(
   storedThreads: StoredThreads,
-  threadId: ThreadId,
+  threadId: string,
   messages: UIMessage[],
 ): StoredThreads {
-  // Base messages are no longer injected into the runtime, so all rendered
-  // messages are user-originated or assistant replies to user input. Store
-  // them as-is.
   const existing = storedThreads[threadId];
   const nextState: StoredThreadState = {
     createdAt: existing?.createdAt ?? Date.now(),
@@ -210,8 +273,9 @@ export function saveThreadMessages(
 }
 
 export function getThreadPreview(
-  threadId: ThreadId,
+  threadId: string,
   storedThreads: StoredThreads,
+  fallback?: string,
 ): string {
   const stored = storedThreads[threadId]?.userMessages ?? [];
 
@@ -225,5 +289,5 @@ export function getThreadPreview(
     return part.text.length > 72 ? `${part.text.slice(0, 72).trim()}...` : part.text;
   }
 
-  return THREADS_BY_ID[threadId].description;
+  return fallback ?? THREADS_BY_ID[threadId]?.description ?? "";
 }

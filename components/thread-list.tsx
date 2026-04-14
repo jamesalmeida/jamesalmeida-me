@@ -3,7 +3,7 @@
 import { Menu, Moon, Settings, Sun, X } from "lucide-react";
 import { useState } from "react";
 import { ACCENTS, useTheme, type Accent } from "@/components/theme-provider";
-import type { PortfolioThread, ThreadId } from "@/lib/threads";
+import type { HistoryThread, PortfolioThread } from "@/lib/threads";
 
 const ACCENT_SWATCHES: Record<Accent, { label: string; light: string; dark: string }> = {
   grey: { label: "Grey", light: "#2f4858", dark: "#8ba4b5" },
@@ -16,16 +16,18 @@ const ACCENT_SWATCHES: Record<Accent, { label: string; light: string; dark: stri
 };
 
 type ThreadListProps = {
-  activeThreadId: ThreadId;
+  activeThreadId: string;
+  historyThreads: HistoryThread[];
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelectThread: (threadId: ThreadId) => void;
-  previews: Record<ThreadId, string>;
+  onSelectThread: (threadId: string) => void;
+  previews: Record<string, string>;
   threads: PortfolioThread[];
 };
 
 export function ThreadList({
   activeThreadId,
+  historyThreads,
   isOpen,
   onOpenChange,
   onSelectThread,
@@ -97,6 +99,30 @@ export function ThreadList({
               ))}
             </div>
           </div>
+
+          {historyThreads.length > 0 ? (
+            <div className="space-y-2">
+              <p className="eyebrow text-[11px] text-[var(--muted)]">History</p>
+              <div className="space-y-2">
+                {historyThreads.map((history) => (
+                  <ThreadButton
+                    key={history.id}
+                    isActive={activeThreadId === history.id}
+                    onClick={() => onSelectThread(history.id)}
+                    preview={previews[history.id] ?? history.title}
+                    thread={{
+                      id: history.id,
+                      title: history.title,
+                      icon: history.icon,
+                      description: `Saved on ${new Date(history.createdAt).toLocaleDateString()}`,
+                      seeded: false,
+                      baseMessages: [],
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
         </nav>
         <div className="mx-5 border-t border-[var(--border)]" />
 

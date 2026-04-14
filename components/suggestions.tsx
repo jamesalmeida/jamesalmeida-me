@@ -139,7 +139,7 @@ interface SuggestionsProps {
 
 export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
   const composer = useComposerRuntime();
-  const config = THREAD_SUGGESTIONS[threadId];
+  const config = THREAD_SUGGESTIONS[threadId] ?? THREAD_SUGGESTIONS["new-chat"];
 
   const handleClick = (prompt: string) => {
     composer.setText(prompt);
