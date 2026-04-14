@@ -12,6 +12,7 @@ export function createModel(value?: string | null) {
 }
 
 const MODEL_FACTORIES = {
+  "gpt-5.4": () => openai("gpt-5.4"),
   "claude-sonnet-4-5": () => anthropic("claude-sonnet-4-5"),
   "claude-3-5-haiku-latest": () => anthropic("claude-3-5-haiku-latest"),
   "gpt-4o": () => openai("gpt-4o"),

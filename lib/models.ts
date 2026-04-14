@@ -2,6 +2,12 @@ export const MODEL_COOKIE_NAME = "jamesalmeida-model";
 
 export const MODEL_OPTIONS = [
   {
+    id: "gpt-5.4",
+    label: "GPT-5.4",
+    provider: "OpenAI",
+    description: "Latest GPT-5.4 model.",
+  },
+  {
     id: "claude-sonnet-4-5",
     label: "Claude Sonnet 4.5",
     provider: "Anthropic",
@@ -40,7 +46,7 @@ export function isModelId(value: string): value is ModelId {
 
 export function getDefaultModelId(): ModelId {
   const envModel = process.env.DEFAULT_MODEL;
-  return envModel && isModelId(envModel) ? envModel : "claude-sonnet-4-5";
+  return envModel && isModelId(envModel) ? envModel : "gpt-5.4";
 }
 
 export function resolveModelId(value?: string | null): ModelId {
