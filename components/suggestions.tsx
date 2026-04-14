@@ -163,7 +163,7 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
         <div className="flex items-center gap-2">
           <a
             href="mailto:YouCanAlwaysReachJames@gmail.com"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] transition hover:-translate-y-px hover:border-black/30 hover:text-[var(--foreground)]"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] transition hover:-translate-y-px hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
             aria-label="Email James"
             title="Email"
           >
@@ -173,7 +173,7 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
             href="https://linkedin.com/in/jamesworkswell"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] transition hover:-translate-y-px hover:border-black/30 hover:text-[var(--foreground)]"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] transition hover:-translate-y-px hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
             aria-label="James on LinkedIn"
             title="LinkedIn"
           >
@@ -183,7 +183,7 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
             href="https://github.com/jamesalmeida"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] transition hover:-translate-y-px hover:border-black/30 hover:text-[var(--foreground)]"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] transition hover:-translate-y-px hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
             aria-label="James on GitHub"
             title="GitHub"
           >
@@ -196,7 +196,7 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
           <button
             key={suggestion.prompt}
             onClick={() => handleClick(suggestion.prompt)}
-            className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--panel-strong)] p-4 text-left transition duration-200 hover:-translate-y-px hover:border-black/30 hover:bg-[var(--panel-strong)]"
+            className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--panel-strong)] p-4 text-left transition duration-200 hover:-translate-y-px hover:border-[var(--border-strong)] hover:bg-[var(--panel-strong)]"
           >
             <div className="text-sm font-medium">{suggestion.title}</div>
             <div className="mt-2 text-sm leading-6 text-[var(--muted)]">

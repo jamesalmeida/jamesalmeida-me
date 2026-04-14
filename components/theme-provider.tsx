@@ -3,26 +3,53 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
+export type Accent =
+  | "grey"
+  | "orange"
+  | "red"
+  | "blue"
+  | "green"
+  | "yellow"
+  | "purple";
+
+export const ACCENTS: Accent[] = [
+  "grey",
+  "orange",
+  "red",
+  "blue",
+  "green",
+  "yellow",
+  "purple",
+];
+
+const DEFAULT_ACCENT: Accent = "blue";
 
 interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
+  accent: Accent;
+  setAccent: (accent: Accent) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("light");
+  const [accent, setAccentState] = useState<Accent>(DEFAULT_ACCENT);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    // Check localStorage or system preference
-    const stored = localStorage.getItem("jamesalmeida-theme") as Theme | null;
-    if (stored) {
-      setTheme(stored);
+    const storedTheme = localStorage.getItem("jamesalmeida-theme") as Theme | null;
+    if (storedTheme) {
+      setTheme(storedTheme);
     } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
       setTheme("dark");
+    }
+
+    const storedAccent = localStorage.getItem("jamesalmeida-accent") as Accent | null;
+    if (storedAccent && ACCENTS.includes(storedAccent)) {
+      setAccentState(storedAccent);
     }
   }, []);
 
@@ -44,8 +71,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [theme, mounted]);
 
+  useEffect(() => {
+    if (!mounted) return;
+    localStorage.setItem("jamesalmeida-accent", accent);
+    document.documentElement.dataset.accent = accent;
+  }, [accent, mounted]);
+
   const toggleTheme = () => {
     setTheme((current) => (current === "light" ? "dark" : "light"));
+  };
+
+  const setAccent = (next: Accent) => {
+    setAccentState(next);
   };
 
   // Prevent flash by not rendering until mounted
@@ -54,7 +91,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, accent, setAccent }}>
       {children}
     </ThemeContext.Provider>
   );

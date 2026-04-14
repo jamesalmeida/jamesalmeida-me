@@ -98,7 +98,7 @@ function Header({ thread }: { thread: PortfolioThread }) {
       {hasMessages ? (
         <button
           onClick={handleRestart}
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)]"
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
           style={{ backgroundColor: btnBg }}
           aria-label="Restart conversation"
           title="Restart"
@@ -126,7 +126,7 @@ function ScrollToBottomButton() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="absolute bottom-4 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition hover:border-black/20 hover:text-[var(--foreground)]"
+          className="absolute bottom-4 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
           aria-label="Scroll to latest message"
         >
           <ArrowDown size={16} />
@@ -158,7 +158,7 @@ function AssistantMessage() {
 function UserMessage() {
   return (
     <MessagePrimitive.Root className="flex w-full justify-end">
-      <div className="max-w-[85%] rounded-[1.5rem] bg-black px-5 py-4 text-white shadow-[0_16px_40px_rgba(0,0,0,0.14)] sm:max-w-2xl">
+      <div className="max-w-[85%] rounded-[1.5rem] bg-[var(--accent)] px-5 py-4 text-[var(--accent-foreground)] shadow-[0_16px_40px_rgba(0,0,0,0.14)] sm:max-w-2xl">
         <MessagePrimitive.Parts
           components={{
             Text: UserText,
@@ -198,20 +198,20 @@ function Composer() {
           rows={1}
           unstable_focusOnScrollToBottom={false}
           unstable_focusOnRunStart={false}
-          className="max-h-[160px] min-h-[2.75rem] flex-1 resize-none overflow-y-auto rounded-[1.5rem] border border-[var(--border)] px-4 py-2.5 text-sm leading-6 shadow-[0_10px_30px_rgba(0,0,0,0.05)] outline-none transition placeholder:text-[var(--muted)] focus:border-black/20 sm:px-5 sm:py-3"
+          className="max-h-[160px] min-h-[2.75rem] flex-1 resize-none overflow-y-auto rounded-[1.5rem] border border-[var(--border)] px-4 py-2.5 text-sm leading-6 shadow-[0_10px_30px_rgba(0,0,0,0.05)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] sm:px-5 sm:py-3"
           style={{ backgroundColor: inputBg }}
           placeholder="Ask about James..."
         />
         {isRunning ? (
           <ComposerPrimitive.Cancel
-            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-black text-white transition hover:opacity-85"
+            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] transition hover:opacity-85"
             aria-label="Stop generating"
           >
             <Square size={16} fill="currentColor" />
           </ComposerPrimitive.Cancel>
         ) : (
           <ComposerPrimitive.Send
-            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-black text-white transition hover:opacity-85 disabled:opacity-40"
+            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] transition hover:opacity-85 disabled:opacity-40"
             aria-label="Send message"
           >
             <ArrowUp size={18} />

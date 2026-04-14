@@ -2,8 +2,18 @@
 
 import { Menu, Moon, Settings, Sun, X } from "lucide-react";
 import { useState } from "react";
-import { useTheme } from "@/components/theme-provider";
+import { ACCENTS, useTheme, type Accent } from "@/components/theme-provider";
 import type { PortfolioThread, ThreadId } from "@/lib/threads";
+
+const ACCENT_SWATCHES: Record<Accent, { label: string; light: string; dark: string }> = {
+  grey: { label: "Grey", light: "#2f4858", dark: "#8ba4b5" },
+  orange: { label: "Orange", light: "#ea580c", dark: "#fb923c" },
+  red: { label: "Red", light: "#dc2626", dark: "#f87171" },
+  blue: { label: "Blue", light: "#2563eb", dark: "#60a5fa" },
+  green: { label: "Green", light: "#16a34a", dark: "#4ade80" },
+  yellow: { label: "Yellow", light: "#eab308", dark: "#facc15" },
+  purple: { label: "Purple", light: "#7c3aed", dark: "#a78bfa" },
+};
 
 type ThreadListProps = {
   activeThreadId: ThreadId;
@@ -22,7 +32,7 @@ export function ThreadList({
   previews,
   threads,
 }: ThreadListProps) {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, accent, setAccent } = useTheme();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const seededThreads = threads.filter((thread) => thread.seeded);
   const newChatThread = threads.find((thread) => thread.id === "new-chat");
@@ -94,7 +104,7 @@ export function ThreadList({
             <button
               type="button"
               onClick={() => setIsSettingsOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] transition hover:-translate-y-px hover:border-black/20 hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] transition hover:-translate-y-px hover:border-[var(--border-strong)] hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
               aria-label="Open settings"
               title="Settings"
             >
@@ -103,7 +113,7 @@ export function ThreadList({
             <button
               type="button"
               onClick={toggleTheme}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] transition hover:-translate-y-px hover:border-black/20 hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] transition hover:-translate-y-px hover:border-[var(--border-strong)] hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
               aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
               title={theme === "light" ? "Dark mode" : "Light mode"}
             >
@@ -135,16 +145,41 @@ export function ThreadList({
               </h2>
               <button
                 type="button"
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:border-black/20 hover:text-[var(--foreground)]"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
                 onClick={() => setIsSettingsOpen(false)}
                 aria-label="Close settings"
               >
                 <X size={16} />
               </button>
             </div>
-            <p className="mt-4 text-sm leading-6 text-[var(--muted)]">
-              Settings options are coming soon.
-            </p>
+            <div className="mt-6">
+              <p className="eyebrow mb-3 text-[11px] text-[var(--muted)]">
+                Accent color
+              </p>
+              <div className="flex items-center justify-between gap-2">
+                {ACCENTS.map((name) => {
+                  const swatch = ACCENT_SWATCHES[name];
+                  const color = theme === "dark" ? swatch.dark : swatch.light;
+                  const isSelected = accent === name;
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => setAccent(name)}
+                      className={`h-8 w-8 rounded-full border transition hover:-translate-y-px ${
+                        isSelected
+                          ? "border-[var(--foreground)] ring-2 ring-offset-2 ring-[var(--accent)] ring-offset-[var(--panel-strong)]"
+                          : "border-[var(--border)]"
+                      }`}
+                      style={{ backgroundColor: color }}
+                      aria-label={`${swatch.label} accent`}
+                      aria-pressed={isSelected}
+                      title={swatch.label}
+                    />
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       ) : null}
@@ -169,8 +204,8 @@ function ThreadButton({
     <button
       className={`w-full rounded-[1.25rem] border px-4 py-3 text-left transition duration-200 ${
         isActive
-          ? "border-black/20 bg-black text-white shadow-[0_18px_42px_rgba(0,0,0,0.14)]"
-          : "border-[var(--border)] bg-[var(--panel)] hover:-translate-y-px hover:border-black/20 hover:bg-[var(--panel-strong)]"
+          ? "border-[var(--accent)]/30 bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[0_18px_42px_rgba(0,0,0,0.14)]"
+          : "border-[var(--border)] bg-[var(--panel)] hover:-translate-y-px hover:border-[var(--border-strong)] hover:bg-[var(--panel-strong)]"
       }`}
       onClick={onClick}
     >
@@ -178,7 +213,7 @@ function ThreadButton({
         <div
           className={`eyebrow rounded-full border px-2 py-1 text-[10px] ${
             isActive
-              ? "border-white/20 text-white/70"
+              ? "border-[var(--accent-foreground)]/20 text-[var(--accent-foreground)]/70"
               : "border-black/10 text-[var(--muted)]"
           }`}
         >
@@ -188,7 +223,7 @@ function ThreadButton({
           <div className="text-sm font-medium">{thread.title}</div>
           <p
             className={`mt-1 text-sm leading-5 ${
-              isActive ? "text-white/78" : "text-[var(--muted)]"
+              isActive ? "text-[var(--accent-foreground)]/80" : "text-[var(--muted)]"
             }`}
           >
             {preview}
