@@ -34,7 +34,7 @@ type ThreadSuggestions = {
 
 const THREAD_SUGGESTIONS: Record<ThreadId, ThreadSuggestions> = {
   "new-chat": {
-    title: "James Almeida",
+    title: "General Chat",
     subtitle: "Ask me about James.",
     suggestions: [
       {

@@ -52,9 +52,9 @@ export function ThreadList({
           isOpen ? "translate-x-0" : "-translate-x-full"
         } fixed inset-y-0 left-0 z-40 flex w-[21rem] max-w-[85vw] flex-col border-r border-[var(--border)] bg-[var(--panel-strong)] transition-transform duration-300 lg:static lg:max-w-none lg:translate-x-0`}
       >
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--border)] px-5 py-5">
+        <div className="flex shrink-0 items-start justify-between gap-4 px-5 py-5">
           <div>
-            <p className="eyebrow text-xs text-[var(--muted)]">AI portfolio</p>
+            <p className="eyebrow text-xs text-[var(--muted)]">JamesAlmeida.me</p>
             <p className="mt-3 max-w-xs text-sm leading-6 text-[var(--muted)]">
               A chat-first portfolio covering projects, experience, socials,
               and the full resume.
@@ -68,6 +68,7 @@ export function ThreadList({
             <X size={16} />
           </button>
         </div>
+        <div className="mx-5 border-b border-[var(--border)]" />
 
         <nav className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
           {newChatThread ? (
@@ -97,8 +98,9 @@ export function ThreadList({
             </div>
           </div>
         </nav>
+        <div className="mx-5 border-t border-[var(--border)]" />
 
-        <div className="shrink-0 border-t border-[var(--border)] px-5 py-5">
+        <div className="shrink-0 px-5 py-5">
           <p className="eyebrow mb-3 text-[11px] text-[var(--muted)]">Settings</p>
           <div className="flex items-center gap-2">
             <button
