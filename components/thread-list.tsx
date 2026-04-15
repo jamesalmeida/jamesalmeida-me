@@ -288,6 +288,7 @@ function HistoryThreadButton({
 
       {/* Card — swipeable on touch, static on desktop */}
       <motion.div
+        className={isActive ? "bg-[var(--accent)]" : "bg-[var(--panel)]"}
         style={{ x, touchAction: dragEnabled ? "pan-y" : "auto" }}
         drag={dragEnabled ? "x" : false}
         dragConstraints={{ left: -SWIPE_REVEAL, right: 0 }}
