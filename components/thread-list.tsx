@@ -307,13 +307,6 @@ function HistoryThreadButton({
           <div className="flex items-start gap-3">
             <div className="min-w-0">
               <div className="text-sm font-medium">{thread.title}</div>
-              <p
-                className={`mt-1 text-sm leading-5 ${
-                  isActive ? "text-[var(--accent-foreground)]/80" : "text-[var(--muted)]"
-                }`}
-              >
-                {preview}
-              </p>
             </div>
           </div>
         </button>
