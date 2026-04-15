@@ -185,6 +185,15 @@ export default function Home() {
     [activeThreadId, generateTitle],
   );
 
+  const handleRenameThread = useCallback(
+    (newTitle: string) => {
+      setHistoryThreads((prev) =>
+        prev.map((h) => (h.id === activeThreadId ? { ...h, title: newTitle } : h)),
+      );
+    },
+    [activeThreadId],
+  );
+
   if (!isHydrated) {
     return (
       <div className="app-shell flex items-center justify-center px-6">
@@ -212,7 +221,9 @@ export default function Home() {
           <Thread
             key={activeThreadId}
             initialMessages={activeMessages}
+            onDeleteThread={!isStaticThreadId(activeThreadId) ? () => handleDeleteThread(activeThreadId) : undefined}
             onMessagesChange={(messages) => handleMessagesChange(activeThreadId, messages)}
+            onRenameThread={!isStaticThreadId(activeThreadId) ? handleRenameThread : undefined}
             onRestart={handleRestart}
             onRunComplete={handleRunComplete}
             thread={activeThread}
