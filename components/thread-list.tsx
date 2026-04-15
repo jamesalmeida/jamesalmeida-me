@@ -305,15 +305,6 @@ function HistoryThreadButton({
           onClick={handleCardClick}
         >
           <div className="flex items-start gap-3">
-            <div
-              className={`eyebrow rounded-full border px-2 py-1 text-[10px] ${
-                isActive
-                  ? "border-[var(--accent-foreground)]/20 text-[var(--accent-foreground)]/70"
-                  : "border-black/10 text-[var(--muted)]"
-              }`}
-            >
-              {thread.icon}
-            </div>
             <div className="min-w-0">
               <div className="text-sm font-medium">{thread.title}</div>
               <p
@@ -332,7 +323,7 @@ function HistoryThreadButton({
       {!dragEnabled ? (
         <button
           onClick={onDelete}
-          className={`absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-sm transition-opacity hover:text-red-500 ${
+          className={`absolute right-3 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-sm transition-opacity hover:text-red-500 ${
             isHovered ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
           aria-label="Delete thread"
