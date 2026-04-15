@@ -1,7 +1,8 @@
 "use client";
 
-import { Menu, Moon, Settings, Sun, X } from "lucide-react";
-import { useState } from "react";
+import { animate, motion, useMotionValue } from "framer-motion";
+import { Menu, Moon, Settings, Sun, Trash2, X } from "lucide-react";
+import { useState, type MouseEvent } from "react";
 import { ACCENTS, useTheme, type Accent } from "@/components/theme-provider";
 import type { HistoryThread, PortfolioThread } from "@/lib/threads";
 
@@ -19,6 +20,7 @@ type ThreadListProps = {
   activeThreadId: string;
   historyThreads: HistoryThread[];
   isOpen: boolean;
+  onDeleteThread: (threadId: string) => void;
   onOpenChange: (open: boolean) => void;
   onSelectThread: (threadId: string) => void;
   previews: Record<string, string>;
@@ -29,6 +31,7 @@ export function ThreadList({
   activeThreadId,
   historyThreads,
   isOpen,
+  onDeleteThread,
   onOpenChange,
   onSelectThread,
   previews,
@@ -105,10 +108,11 @@ export function ThreadList({
               <p className="eyebrow text-[11px] text-[var(--muted)]">History</p>
               <div className="space-y-2">
                 {historyThreads.map((history) => (
-                  <ThreadButton
+                  <HistoryThreadButton
                     key={history.id}
                     isActive={activeThreadId === history.id}
                     onClick={() => onSelectThread(history.id)}
+                    onDelete={() => onDeleteThread(history.id)}
                     preview={previews[history.id] ?? history.title}
                     thread={{
                       id: history.id,
@@ -212,6 +216,117 @@ export function ThreadList({
         </div>
       ) : null}
     </>
+  );
+}
+
+const SWIPE_REVEAL = 68;
+
+type HistoryThreadButtonProps = {
+  isActive: boolean;
+  onClick: () => void;
+  onDelete: () => void;
+  preview: string;
+  thread: PortfolioThread;
+};
+
+function HistoryThreadButton({
+  isActive,
+  onClick,
+  onDelete,
+  preview,
+  thread,
+}: HistoryThreadButtonProps) {
+  const x = useMotionValue(0);
+
+  const snapOpen = () =>
+    animate(x, -SWIPE_REVEAL, { type: "spring", stiffness: 400, damping: 35 });
+  const snapClosed = () =>
+    animate(x, 0, { type: "spring", stiffness: 400, damping: 35 });
+
+  const handleDragEnd = () => {
+    if (x.get() < -(SWIPE_REVEAL / 2)) {
+      snapOpen();
+    } else {
+      snapClosed();
+    }
+  };
+
+  const handleCardClick = () => {
+    if (x.get() < -8) {
+      snapClosed();
+      return;
+    }
+    onClick();
+  };
+
+  const handleDelete = (e: MouseEvent) => {
+    e.stopPropagation();
+    onDelete();
+  };
+
+  return (
+    <div className="group relative overflow-hidden rounded-[1.25rem]">
+      {/* Red trash zone — sits behind the card, revealed by swipe on touch */}
+      <div className="absolute inset-y-0 right-0 flex w-[68px] items-center justify-center rounded-r-[1.25rem] bg-red-500">
+        <button
+          onClick={handleDelete}
+          className="flex h-full w-full items-center justify-center text-white"
+          aria-label="Delete thread"
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
+
+      {/* Swipeable card */}
+      <motion.div
+        style={{ x }}
+        drag="x"
+        dragConstraints={{ left: -SWIPE_REVEAL, right: 0 }}
+        dragElastic={0.05}
+        dragMomentum={false}
+        onDragEnd={handleDragEnd}
+      >
+        <button
+          className={`w-full rounded-[1.25rem] border px-4 py-3 text-left transition-colors duration-200 ${
+            isActive
+              ? "border-[var(--accent)]/30 bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[0_18px_42px_rgba(0,0,0,0.14)]"
+              : "border-[var(--border)] bg-[var(--panel)] hover:border-[var(--border-strong)] hover:bg-[var(--panel-strong)]"
+          }`}
+          onClick={handleCardClick}
+        >
+          <div className="flex items-start gap-3">
+            <div
+              className={`eyebrow rounded-full border px-2 py-1 text-[10px] ${
+                isActive
+                  ? "border-[var(--accent-foreground)]/20 text-[var(--accent-foreground)]/70"
+                  : "border-black/10 text-[var(--muted)]"
+              }`}
+            >
+              {thread.icon}
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-medium">{thread.title}</div>
+              <p
+                className={`mt-1 text-sm leading-5 ${
+                  isActive ? "text-[var(--accent-foreground)]/80" : "text-[var(--muted)]"
+                }`}
+              >
+                {preview}
+              </p>
+            </div>
+          </div>
+        </button>
+      </motion.div>
+
+      {/* Desktop hover trash — only on hover-capable devices, doesn't slide */}
+      <button
+        onClick={handleDelete}
+        className="absolute right-3 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full text-[var(--muted)] opacity-0 transition-opacity hover:text-red-500 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:none)]:hidden"
+        aria-label="Delete thread"
+      >
+        <Trash2 size={14} />
+      </button>
+    </div>
   );
 }
 

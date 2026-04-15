@@ -129,6 +129,21 @@ export default function Home() {
     [activeThreadId],
   );
 
+  const handleDeleteThread = useCallback(
+    (threadId: string) => {
+      if (activeThreadId === threadId) {
+        setActiveThreadId("new-chat");
+      }
+      setHistoryThreads((prev) => prev.filter((h) => h.id !== threadId));
+      setStoredThreads((prev) => {
+        const next = { ...prev };
+        delete next[threadId];
+        return next;
+      });
+    },
+    [activeThreadId],
+  );
+
   const handleRestart = useCallback(
     (messages: UIMessage[]) => {
       if (messages.length === 0) return;
@@ -159,6 +174,7 @@ export default function Home() {
           activeThreadId={activeThreadId}
           historyThreads={historyThreads}
           isOpen={isSidebarOpen}
+          onDeleteThread={handleDeleteThread}
           onOpenChange={setIsSidebarOpen}
           onSelectThread={handleThreadChange}
           previews={previews}
