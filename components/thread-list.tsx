@@ -2,7 +2,7 @@
 
 import { animate, motion, useMotionValue } from "framer-motion";
 import { Menu, Moon, Settings, Sun, Trash2, X } from "lucide-react";
-import { useState, type MouseEvent } from "react";
+import { useEffect, useState } from "react";
 import { ACCENTS, useTheme, type Accent } from "@/components/theme-provider";
 import type { HistoryThread, PortfolioThread } from "@/lib/threads";
 
@@ -237,6 +237,14 @@ function HistoryThreadButton({
   thread,
 }: HistoryThreadButtonProps) {
   const x = useMotionValue(0);
+  // JS hover state so the trash icon stays visible when the mouse moves onto it
+  const [isHovered, setIsHovered] = useState(false);
+  // Only enable drag on touch devices — avoids accidental drags on desktop
+  const [dragEnabled, setDragEnabled] = useState(false);
+
+  useEffect(() => {
+    setDragEnabled(window.matchMedia("(hover: none)").matches);
+  }, []);
 
   const snapOpen = () =>
     animate(x, -SWIPE_REVEAL, { type: "spring", stiffness: 400, damping: 35 });
@@ -259,28 +267,29 @@ function HistoryThreadButton({
     onClick();
   };
 
-  const handleDelete = (e: MouseEvent) => {
-    e.stopPropagation();
-    onDelete();
-  };
-
   return (
-    <div className="group relative overflow-hidden rounded-[1.25rem]">
-      {/* Red trash zone — sits behind the card, revealed by swipe on touch */}
-      <div className="absolute inset-y-0 right-0 flex w-[68px] items-center justify-center rounded-r-[1.25rem] bg-red-500">
-        <button
-          onClick={handleDelete}
-          className="flex h-full w-full items-center justify-center text-white"
-          aria-label="Delete thread"
-        >
-          <Trash2 size={15} />
-        </button>
-      </div>
+    <div
+      className="relative overflow-hidden rounded-[1.25rem]"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Red trash zone — behind the card, revealed by swiping left on mobile */}
+      {dragEnabled ? (
+        <div className="absolute inset-y-0 right-0 flex w-[68px] items-center justify-center rounded-r-[1.25rem] bg-red-500">
+          <button
+            onClick={onDelete}
+            className="flex h-full w-full items-center justify-center text-white"
+            aria-label="Delete thread"
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
+      ) : null}
 
-      {/* Swipeable card */}
+      {/* Card — swipeable on touch, static on desktop */}
       <motion.div
-        style={{ x }}
-        drag="x"
+        style={{ x, touchAction: dragEnabled ? "pan-y" : "auto" }}
+        drag={dragEnabled ? "x" : false}
         dragConstraints={{ left: -SWIPE_REVEAL, right: 0 }}
         dragElastic={0.05}
         dragMomentum={false}
@@ -318,14 +327,19 @@ function HistoryThreadButton({
         </button>
       </motion.div>
 
-      {/* Desktop hover trash — only on hover-capable devices, doesn't slide */}
-      <button
-        onClick={handleDelete}
-        className="absolute right-3 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full text-[var(--muted)] opacity-0 transition-opacity hover:text-red-500 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:none)]:hidden"
-        aria-label="Delete thread"
-      >
-        <Trash2 size={14} />
-      </button>
+      {/* Desktop trash — top-right corner, JS-driven so it stays visible when mousing onto it */}
+      {!dragEnabled ? (
+        <button
+          onClick={onDelete}
+          className={`absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-[var(--muted)] transition-opacity hover:text-red-500 ${
+            isHovered ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+          aria-label="Delete thread"
+          tabIndex={isHovered ? 0 : -1}
+        >
+          <Trash2 size={14} />
+        </button>
+      ) : null}
     </div>
   );
 }
