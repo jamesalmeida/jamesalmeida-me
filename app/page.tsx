@@ -10,6 +10,7 @@ import {
   createHistoryThread,
   getThreadMessages,
   getThreadPreview,
+  isStaticThreadId,
   readHistoryThreads,
   readStoredActiveThread,
   readStoredThreads,
@@ -111,6 +112,23 @@ export default function Home() {
     setStoredThreads((current) => saveThreadMessages(current, threadId, messages));
   };
 
+  // Auto-fork: after the first complete AI response on a static thread, save the
+  // conversation to history and reset the original thread to stay clean.
+  const handleRunComplete = useCallback(
+    (messages: UIMessage[]) => {
+      if (!isStaticThreadId(activeThreadId)) return;
+      if (messages.length === 0) return;
+      const history = createHistoryThread(messages, activeThreadId);
+      setStoredThreads((prev) => {
+        const withHistory = saveThreadMessages(prev, history.id, messages);
+        return saveThreadMessages(withHistory, activeThreadId, []);
+      });
+      setHistoryThreads((prev) => [history, ...prev]);
+      setActiveThreadId(history.id);
+    },
+    [activeThreadId],
+  );
+
   const handleRestart = useCallback(
     (messages: UIMessage[]) => {
       if (messages.length === 0) return;
@@ -152,6 +170,7 @@ export default function Home() {
             initialMessages={activeMessages}
             onMessagesChange={(messages) => handleMessagesChange(activeThreadId, messages)}
             onRestart={handleRestart}
+            onRunComplete={handleRunComplete}
             thread={activeThread}
           />
         </main>

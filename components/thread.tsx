@@ -25,6 +25,7 @@ type ThreadProps = {
   initialMessages: UIMessage[];
   onMessagesChange: (messages: UIMessage[]) => void;
   onRestart?: (messages: UIMessage[]) => void;
+  onRunComplete?: (messages: UIMessage[]) => void;
   thread: PortfolioThread;
 };
 
@@ -32,6 +33,7 @@ export function Thread({
   initialMessages,
   onMessagesChange,
   onRestart,
+  onRunComplete,
   thread,
 }: ThreadProps) {
   const runtime = useChatRuntime({
@@ -42,6 +44,7 @@ export function Thread({
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <ThreadPersistence onMessagesChange={onMessagesChange} />
+      <RunCompleteDetector onRunComplete={onRunComplete} />
       <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
         <Header thread={thread} onRestart={onRestart} />
 
@@ -66,6 +69,40 @@ export function Thread({
       </ThreadPrimitive.Root>
     </AssistantRuntimeProvider>
   );
+}
+
+// Fires onRunComplete once after the first AI response in this Thread instance.
+// Used to auto-fork static threads into history once the first exchange completes.
+function RunCompleteDetector({
+  onRunComplete,
+}: {
+  onRunComplete?: (messages: UIMessage[]) => void;
+}) {
+  const isRunning = useThread((state) => state.isRunning);
+  const messages = useThread((state) => state.messages);
+  const prevRunning = useRef(false);
+  const hasFired = useRef(false);
+
+  useEffect(() => {
+    const justFinished = prevRunning.current && !isRunning;
+    prevRunning.current = isRunning;
+
+    if (!justFinished || hasFired.current || !onRunComplete) return;
+    if (messages.length === 0) return;
+
+    hasFired.current = true;
+    const formatted: UIMessage[] = messages.map((msg, index) => ({
+      id: msg.id || `msg-${index}`,
+      role: msg.role,
+      parts: msg.content.map((part) => {
+        if (part.type === "text") return { type: "text" as const, text: part.text };
+        return { type: "text" as const, text: "" };
+      }),
+    }));
+    onRunComplete(formatted);
+  }, [isRunning, messages, onRunComplete]);
+
+  return null;
 }
 
 function Header({
