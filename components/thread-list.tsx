@@ -275,7 +275,7 @@ function HistoryThreadButton({
     >
       {/* Red trash zone — behind the card, revealed by swiping left on mobile */}
       {dragEnabled ? (
-        <div className="absolute inset-y-0 right-0 flex w-[68px] items-center justify-center rounded-r-[1.25rem] bg-red-500">
+        <div className="absolute inset-y-0 right-0 flex w-[68px] items-center justify-center bg-red-500">
           <button
             onClick={onDelete}
             className="flex h-full w-full items-center justify-center text-white"
@@ -288,7 +288,7 @@ function HistoryThreadButton({
 
       {/* Card — swipeable on touch, static on desktop */}
       <motion.div
-        className={`relative ${isActive ? "bg-[var(--accent)]" : "bg-[var(--panel)]"}`}
+        className={`relative z-10 ${isActive ? "bg-[var(--accent)]" : "bg-[var(--panel)]"}`}
         style={{ x, touchAction: dragEnabled ? "pan-y" : "auto" }}
         drag={dragEnabled ? "x" : false}
         dragConstraints={{ left: -SWIPE_REVEAL, right: 0 }}
@@ -297,7 +297,7 @@ function HistoryThreadButton({
         onDragEnd={handleDragEnd}
       >
         <button
-          className={`w-full rounded-[1.25rem] border px-4 py-3 text-left transition-colors duration-200 ${
+          className={`w-full rounded-none border px-4 py-3 text-left transition-colors duration-200 ${
             isActive
               ? "border-[var(--accent)]/30 bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[0_18px_42px_rgba(0,0,0,0.14)]"
               : "border-[var(--border)] bg-[var(--panel)] hover:border-[var(--border-strong)] hover:bg-[var(--panel-strong)]"
