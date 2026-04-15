@@ -22,7 +22,7 @@ export const ACCENTS: Accent[] = [
   "purple",
 ];
 
-const DEFAULT_ACCENT: Accent = "blue";
+const DEFAULT_ACCENT: Accent = "grey";
 
 interface ThemeContextType {
   theme: Theme;

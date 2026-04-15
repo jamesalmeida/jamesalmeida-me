@@ -7,6 +7,7 @@ import {
   MessagePrimitive,
   MessagePartPrimitive,
   ThreadPrimitive,
+  useMessage,
   useThread,
   useThreadRuntime,
   useThreadViewport,
@@ -193,6 +194,25 @@ function ScrollToBottomButton() {
 }
 
 function AssistantMessage() {
+  const message = useMessage();
+  const hasText = message.content.some(
+    (p) => p.type === "text" && (p as { type: "text"; text: string }).text.length > 0,
+  );
+
+  if (!hasText) {
+    return (
+      <MessagePrimitive.Root className="flex w-full justify-start">
+        <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel)] px-5 py-4 shadow-[0_16px_40px_rgba(0,0,0,0.06)]">
+          <div className="flex items-center gap-1">
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--muted)] [animation-delay:0ms]" />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--muted)] [animation-delay:150ms]" />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--muted)] [animation-delay:300ms]" />
+          </div>
+        </div>
+      </MessagePrimitive.Root>
+    );
+  }
+
   return (
     <MessagePrimitive.Root className="flex w-full justify-start">
       <div className="min-w-0 max-w-[85%] rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel)] px-5 py-4 shadow-[0_16px_40px_rgba(0,0,0,0.06)] sm:max-w-3xl">
@@ -308,6 +328,7 @@ function ThreadPersistence({
 
   return null;
 }
+
 
 function MarkdownText() {
   return <MarkdownTextPrimitive className="message-markdown" />;
