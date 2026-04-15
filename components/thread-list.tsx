@@ -363,7 +363,7 @@ function ThreadButton({
           className={`eyebrow rounded-full border px-2 py-1 text-[10px] ${
             isActive
               ? "border-[var(--accent-foreground)]/20 text-[var(--accent-foreground)]/70"
-              : "border-black/10 text-[var(--muted)]"
+              : "border-[var(--border)] text-[var(--muted)]"
           }`}
         >
           {thread.icon}
