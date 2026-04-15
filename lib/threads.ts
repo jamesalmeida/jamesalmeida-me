@@ -38,11 +38,12 @@ export type StoredThreadState = {
 export type StoredThreads = Record<string, StoredThreadState>;
 
 export interface HistoryThread {
-  id: string;           // "history-{timestamp}"
-  title: string;        // first user message, truncated to ~40 chars
-  icon: string;         // first 2 chars derived from title
+  id: string;              // "history-{timestamp}"
+  title: string;           // source thread title (e.g. "Experience")
+  icon: string;            // source thread icon (e.g. "XP")
+  description: string;     // first user message, truncated
   createdAt: number;
-  sourceThreadId: string; // which thread was restarted
+  sourceThreadId: string;  // which thread was forked from
 }
 
 export const THREAD_STORAGE_KEY = "jamesalmeida-threads";
@@ -194,16 +195,25 @@ export function readHistoryThreads(): HistoryThread[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (item): item is HistoryThread =>
-        item !== null &&
-        typeof item === "object" &&
-        typeof item.id === "string" &&
-        typeof item.title === "string" &&
-        typeof item.icon === "string" &&
-        typeof item.createdAt === "number" &&
-        typeof item.sourceThreadId === "string",
-    );
+    return parsed
+      .filter(
+        (item): item is Record<string, unknown> =>
+          item !== null &&
+          typeof item === "object" &&
+          typeof item.id === "string" &&
+          typeof item.title === "string" &&
+          typeof item.icon === "string" &&
+          typeof item.createdAt === "number" &&
+          typeof item.sourceThreadId === "string",
+      )
+      .map((item) => ({
+        id: item.id as string,
+        title: item.title as string,
+        icon: item.icon as string,
+        description: typeof item.description === "string" ? item.description : (item.title as string),
+        createdAt: item.createdAt as number,
+        sourceThreadId: item.sourceThreadId as string,
+      }));
   } catch {
     return [];
   }
@@ -221,19 +231,19 @@ export function createHistoryThread(
   const firstUserMsg = messages.find((m) => m.role === "user");
   const firstText =
     firstUserMsg?.parts.find(isTextPart)?.text ?? "Chat";
-  const title =
-    firstText.length > 40 ? `${firstText.slice(0, 40).trim()}\u2026` : firstText;
+  const description =
+    firstText.length > 72 ? `${firstText.slice(0, 72).trim()}\u2026` : firstText;
 
-  const words = title.trim().split(/\s+/);
-  const icon =
-    words.length >= 2
-      ? (words[0][0] + words[1][0]).toUpperCase()
-      : title.slice(0, 2).toUpperCase();
+  // Use the source thread's title and icon so history entries are grouped by thread
+  const sourceThread = THREADS_BY_ID[sourceThreadId];
+  const title = sourceThread?.title ?? "General Chat";
+  const icon = sourceThread?.icon ?? "JA";
 
   return {
     id: `history-${Date.now()}`,
     title,
     icon,
+    description,
     createdAt: Date.now(),
     sourceThreadId,
   };
