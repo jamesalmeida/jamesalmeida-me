@@ -112,6 +112,24 @@ export default function Home() {
     setStoredThreads((current) => saveThreadMessages(current, threadId, messages));
   };
 
+  // Fires a background request to generate a short AI title for a history thread,
+  // then updates the thread in state (which persists via the writeHistoryThreads effect).
+  const generateTitle = useCallback((historyId: string, firstMessage: string) => {
+    fetch("/api/generate-title", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: firstMessage }),
+    })
+      .then((r) => r.json())
+      .then(({ title }: { title: string | null }) => {
+        if (!title) return;
+        setHistoryThreads((prev) =>
+          prev.map((h) => (h.id === historyId ? { ...h, title } : h)),
+        );
+      })
+      .catch(() => {});
+  }, []);
+
   // Auto-fork: after the first complete AI response on a static thread, save the
   // conversation to history and reset the original thread to stay clean.
   const handleRunComplete = useCallback(
@@ -125,8 +143,13 @@ export default function Home() {
       });
       setHistoryThreads((prev) => [history, ...prev]);
       setActiveThreadId(history.id);
+      const firstUserMsg = messages.find((m) => m.role === "user");
+      const firstText = firstUserMsg?.parts.find(
+        (p): p is { type: "text"; text: string } => p.type === "text",
+      )?.text;
+      if (firstText) generateTitle(history.id, firstText);
     },
-    [activeThreadId],
+    [activeThreadId, generateTitle],
   );
 
   const handleDeleteThread = useCallback(
@@ -153,8 +176,13 @@ export default function Home() {
         return saveThreadMessages(withHistory, activeThreadId, []);
       });
       setHistoryThreads((prev) => [history, ...prev]);
+      const firstUserMsg = messages.find((m) => m.role === "user");
+      const firstText = firstUserMsg?.parts.find(
+        (p): p is { type: "text"; text: string } => p.type === "text",
+      )?.text;
+      if (firstText) generateTitle(history.id, firstText);
     },
-    [activeThreadId],
+    [activeThreadId, generateTitle],
   );
 
   if (!isHydrated) {

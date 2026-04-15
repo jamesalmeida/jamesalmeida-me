@@ -344,7 +344,7 @@ function HistoryThreadButton({
       {!dragEnabled ? (
         <button
           onClick={onDelete}
-          className={`absolute right-3 top-3 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-sm transition-opacity hover:text-red-500 ${
+          className={`absolute bottom-3 right-3 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-sm transition-opacity hover:text-red-500 ${
             isHovered ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
           aria-label="Delete thread"
