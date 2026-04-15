@@ -1,6 +1,6 @@
 "use client";
 
-import { animate, motion, useMotionValue } from "framer-motion";
+import { animate, motion, useMotionValue, useTransform } from "framer-motion";
 import { Menu, Moon, Settings, Sun, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ACCENTS, useTheme, type Accent } from "@/components/theme-provider";
@@ -237,6 +237,9 @@ function HistoryThreadButton({
   thread,
 }: HistoryThreadButtonProps) {
   const x = useMotionValue(0);
+  // Fade the red zone in as the card is swiped — invisible at rest so the
+  // semi-transparent panel background doesn't let it bleed through
+  const trashOpacity = useTransform(x, [0, -12], [0, 1]);
   // JS hover state so the trash icon stays visible when the mouse moves onto it
   const [isHovered, setIsHovered] = useState(false);
   // Only enable drag on touch devices — avoids accidental drags on desktop
@@ -269,13 +272,22 @@ function HistoryThreadButton({
 
   return (
     <div
-      className="relative overflow-hidden rounded-[1.25rem]"
+      className={`relative overflow-hidden rounded-[1.25rem] border transition-colors duration-200 ${
+        isActive
+          ? "border-[var(--accent)]/30 shadow-[0_18px_42px_rgba(0,0,0,0.14)]"
+          : isHovered
+            ? "border-[var(--border-strong)]"
+            : "border-[var(--border)]"
+      }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Red trash zone — behind the card, revealed by swiping left on mobile */}
       {dragEnabled ? (
-        <div className="absolute inset-y-0 right-0 flex w-[68px] items-center justify-center bg-red-500">
+        <motion.div
+          className="absolute inset-y-0 right-0 flex w-[68px] items-center justify-center bg-red-500"
+          style={{ opacity: trashOpacity }}
+        >
           <button
             onClick={onDelete}
             className="flex h-full w-full items-center justify-center text-white"
@@ -283,7 +295,7 @@ function HistoryThreadButton({
           >
             <Trash2 size={15} />
           </button>
-        </div>
+        </motion.div>
       ) : null}
 
       {/* Card — swipeable on touch, static on desktop */}
@@ -297,10 +309,10 @@ function HistoryThreadButton({
         onDragEnd={handleDragEnd}
       >
         <button
-          className={`w-full rounded-none border px-4 py-3 text-left transition-colors duration-200 ${
+          className={`w-full rounded-none px-4 py-3 text-left transition-colors duration-200 ${
             isActive
-              ? "border-[var(--accent)]/30 bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[0_18px_42px_rgba(0,0,0,0.14)]"
-              : "border-[var(--border)] bg-[var(--panel)] hover:border-[var(--border-strong)] hover:bg-[var(--panel-strong)]"
+              ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
+              : "bg-[var(--panel)] hover:bg-[var(--panel-strong)]"
           }`}
           onClick={handleCardClick}
         >
