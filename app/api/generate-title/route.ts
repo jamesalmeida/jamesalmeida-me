@@ -19,7 +19,7 @@ export async function POST(req: Request) {
 
   const { text } = await generateText({
     model,
-    maxTokens: 10,
+    maxOutputTokens: 20,
     system:
       "You are a title generator. Given a user message, output 1–3 words that label the topic. No markdown, no hashtags, no quotes, no punctuation, no explanation. Never include \"James\" or \"James Almeida\". Examples: Tech Stack, Career Timeline, Product Work, Sheldn.ai, Consulting, Contact Info, AI Training, Frontend Rebuilds.",
     prompt: `Label this message in 1–3 words: "${message}"`,

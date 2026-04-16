@@ -76,36 +76,30 @@ export function ThreadList({
         <div className="mx-5 border-b border-[var(--border)]" />
 
         <nav className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
-          {newChatThread ? (
-            <div className="space-y-2">
-              <p className="eyebrow text-[11px] text-[var(--muted)]">Default</p>
+          <div className="space-y-2">
+            <p className="eyebrow text-[11px] text-[var(--muted)]">Pinned</p>
+            {newChatThread ? (
               <ThreadButton
                 isActive={activeThreadId === newChatThread.id}
                 onClick={() => onSelectThread(newChatThread.id)}
                 preview={previews[newChatThread.id]}
                 thread={newChatThread}
               />
-            </div>
-          ) : null}
-
-          <div className="space-y-2">
-            <p className="eyebrow text-[11px] text-[var(--muted)]">Pre-seeded</p>
-            <div className="space-y-2">
-              {seededThreads.map((thread) => (
-                <ThreadButton
-                  key={thread.id}
-                  isActive={activeThreadId === thread.id}
-                  onClick={() => onSelectThread(thread.id)}
-                  preview={previews[thread.id]}
-                  thread={thread}
-                />
-              ))}
-            </div>
+            ) : null}
+            {seededThreads.map((thread) => (
+              <ThreadButton
+                key={thread.id}
+                isActive={activeThreadId === thread.id}
+                onClick={() => onSelectThread(thread.id)}
+                preview={previews[thread.id]}
+                thread={thread}
+              />
+            ))}
           </div>
 
           {historyThreads.length > 0 ? (
             <div className="space-y-2">
-              <p className="eyebrow text-[11px] text-[var(--muted)]">History</p>
+              <p className="eyebrow text-[11px] text-[var(--muted)]">Chat History</p>
               <div className="space-y-2">
                 {historyThreads.map((history) => (
                   <HistoryThreadButton
