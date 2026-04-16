@@ -19,12 +19,24 @@ export async function POST(req: Request) {
 
   const { text } = await generateText({
     model,
+    maxTokens: 10,
     system:
-      "You generate short, specific conversation titles. Given a user's message, return a 4–7 word title that captures what they're asking about. Return ONLY the title — no quotes, no punctuation at the end, no explanation.",
-    prompt: message,
+      "You are a title generator. Given a user message, output 1–3 words that label the topic. No markdown, no hashtags, no quotes, no punctuation, no explanation. Never include \"James\" or \"James Almeida\". Examples: Tech Stack, Career Timeline, Product Work, Sheldn.ai, Consulting, Contact Info, AI Training, Frontend Rebuilds.",
+    prompt: `Label this message in 1–3 words: "${message}"`,
   });
 
-  const title = text.trim().replace(/^["']|["']$/g, "").replace(/[.!?]$/, "");
+  let title = text
+    .trim()
+    .replace(/^#+\s*/, "")
+    .replace(/^["']|["']$/g, "")
+    .replace(/[.!?:,]$/g, "");
+  const firstLine = title.split("\n")[0].trim();
+  title = firstLine;
+  if (title.length > 30) {
+    const truncated = title.slice(0, 30);
+    const lastSpace = truncated.lastIndexOf(" ");
+    title = lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated;
+  }
 
   return Response.json({ title: title || null });
 }

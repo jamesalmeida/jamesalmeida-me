@@ -164,12 +164,12 @@ function Header({
   return (
     <>
       <header
-        className="flex items-center border-b border-[var(--border)] px-4 py-4 sm:px-6 lg:justify-between"
+        className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-4 sm:px-6 lg:gap-0 lg:justify-between"
         style={{ backgroundColor: bgColor }}
       >
         <div className="h-10 w-10 flex-shrink-0 lg:hidden" aria-hidden />
         <div className="min-w-0 flex-1 text-center lg:flex-initial lg:text-left">
-          <p className="eyebrow hidden text-xs text-[var(--muted)] lg:block">Active Thread</p>
+          <p className="eyebrow text-xs text-[var(--muted)]">James Almeida</p>
           <h2 className="truncate font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif] text-2xl tracking-[-0.03em]">
             {thread.title}
           </h2>
