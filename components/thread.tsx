@@ -395,7 +395,7 @@ function Composer() {
           unstable_focusOnRunStart={false}
           className="max-h-[160px] min-h-[2.75rem] flex-1 resize-none overflow-y-auto rounded-[1.5rem] border border-[var(--border)] px-4 py-2.5 text-sm leading-6 shadow-[0_10px_30px_rgba(0,0,0,0.05)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] sm:px-5 sm:py-3"
           style={{ backgroundColor: inputBg }}
-          placeholder="Ask about James..."
+          placeholder="Ask me anything..."
         />
         {isRunning ? (
           <ComposerPrimitive.Cancel

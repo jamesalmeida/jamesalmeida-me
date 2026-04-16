@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-A personal portfolio/website at **jamesalmeida.me** built with **Next.js** and **@assistant-ui/react** as the core interaction layer. Instead of a traditional static portfolio, visitors interact with a full-screen AI chat interface with a thread-list sidebar that doubles as site navigation. Pre-seeded threads act as "pages" (Projects, Experience, Socials, Resume) while visitors can also start fresh conversations.
+A personal portfolio/website at **jamesalmeida.me** built with **Next.js** and **@assistant-ui/react** as the core interaction layer. Instead of a traditional static portfolio, visitors interact with a full-screen AI chat interface with a thread-list sidebar that doubles as site navigation. The chat responds in first person as James himself — visitors are talking *with* James, not *about* him. Pre-seeded threads act as "pages" (Projects, Experience, Socials, Resume) while visitors can also start fresh conversations.
 
 ---
 
@@ -43,7 +43,7 @@ A personal portfolio/website at **jamesalmeida.me** built with **Next.js** and *
 | # | Decision | Notes |
 |---|----------|-------|
 | 1 | **Multi-provider LLM with admin toggle** | Start with OpenAI + Anthropic. Admin panel to switch models at runtime. |
-| 2 | **Persona: James' AI assistant** | Speaks on James' behalf, not as James. Knows everything in the context doc. |
+| 2 | **Persona: James (first person)** | Responds as James himself, speaking directly to the visitor. Uses "I/me/my", never refers to James in the third person. Knows everything in the context doc. |
 | 3 | **Single context document** | `/data/context.md` — bio, experience, projects, skills, socials. Loaded into system prompt. Easy to update. |
 | 4 | **Overwrite existing repo** | jamesalmeida.me already on Vercel + GitHub. Replace with new Next.js project. |
 | 5 | **Black & white MVP** | Minimal design. shadcn template out of the box. Polish later. |
@@ -78,8 +78,8 @@ The sidebar thread list serves as both chat history and site navigation:
 │  THREAD LIST     │                              │
 │                  │    (active thread content)   │
 │  💬 New Chat     │                              │
-│   ← default      │    Welcome! I'm James' AI    │
-│                  │    assistant. Ask me anything │
+│   ← default      │    Hey, I'm James. Ask me    │
+│                  │    anything about my work,   │
 │  ─────────────   │    about his work...         │
 │  📁 PRE-SEEDED   │                              │
 │                  │    [Who is James?]            │
@@ -182,14 +182,14 @@ interface StoredThreads {
 ```typescript
 // /lib/system-prompt.ts
 const systemPrompt = `
-You are James Almeida's AI assistant on his personal website.
-You help visitors learn about James' work, experience, and projects.
-You speak warmly and knowledgeably about James, but you are his assistant, not James himself.
+You are James Almeida, speaking directly to a visitor on your personal website.
+Respond in first person as James. Use "I", "me", and "my" — never refer to James in the third person.
+Help the visitor understand your work, experience, projects, and how to get in touch.
 
 ${contextDocument} // loaded from /data/context.md
 
 Guidelines:
-- Be concise but thorough
+- Be concise but thorough — like you're talking to someone in person
 - Share links when relevant
 - If asked something not in your context, say so honestly
 - Keep responses conversational and engaging
@@ -244,18 +244,18 @@ jamesalmeida.me/
 ## 8. Implementation Phases
 
 ### Phase 1: Foundation (MVP)
-- [ ] Scaffold Next.js 15 project with `npx assistant-ui@latest create` (shadcn template)
-- [ ] Configure black & white theme (Tailwind)
-- [ ] Set up `/api/chat` route with OpenAI (default) + Anthropic support
-- [ ] Create `/data/context.md` with James' full context
-- [ ] Build system prompt that injects context
-- [ ] Implement thread list with pre-seeded threads
-- [ ] Create pre-seeded thread data (Projects, Experience, Socials, Resume)
-- [ ] localStorage persistence for all threads
-- [ ] Suggestion pills on empty New Chat
-- [ ] Admin route for model switching
-- [ ] Mobile responsive (thread list → drawer)
-- [ ] Deploy to Vercel (overwrite existing repo)
+- [x] Scaffold Next.js 15 project with `npx assistant-ui@latest create` (shadcn template)
+- [x] Configure black & white theme (Tailwind)
+- [x] Set up `/api/chat` route with OpenAI (default) + Anthropic support
+- [x] Create `/data/context.md` with James' full context
+- [x] Build system prompt that injects context
+- [x] Implement thread list with pre-seeded threads
+- [x] Create pre-seeded thread data (Projects, Experience, Socials, Resume)
+- [x] localStorage persistence for all threads
+- [x] Suggestion pills on empty New Chat
+- [x] Admin route for model switching
+- [x] Mobile responsive (thread list → drawer)
+- [x] Deploy to Vercel (overwrite existing repo)
 
 ### Phase 2: Polish
 - [ ] Rich project cards (rendered inline in chat)

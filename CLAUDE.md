@@ -4,7 +4,7 @@ This file gives you (Claude, Codex, or any other coding agent) the critical cont
 
 ## What This Is
 
-**jamesalmeida.me** — James Almeida's personal portfolio site built as a full-screen AI chat interface. Visitors can chat with an assistant that speaks *about* James (third person) to learn about his work, experience, projects, and how to contact him.
+**jamesalmeida.me** — James Almeida's personal portfolio site built as a full-screen AI chat interface. The chat responds in first person as James himself — visitors are talking *with* James to learn about his work, experience, projects, and how to contact him.
 
 - **Live URL**: https://jamesalmeida.me
 - **Repo**: https://github.com/jamesalmeida/jamesalmeida-me
@@ -109,9 +109,10 @@ DEFAULT_MODEL=claude-sonnet-4-5    # optional override
 ## Key Rules
 
 ### Persona
-- The assistant speaks **about** James in **3rd person** — NOT as James
+- The assistant speaks **as James in 1st person** — visitors are talking *with* James, not *about* him
 - System prompt in `lib/system-prompt.ts` enforces this
-- Example: "James built Sheldn.ai in 2024" ✅ / "I built Sheldn.ai in 2024" ❌
+- Example: "I built Sheldn.ai in 2024" ✅ / "James built Sheldn.ai in 2024" ❌
+- All pre-seeded thread content in `data/threads/*.json` and the context doc at `data/context.md` follow the same first-person voice
 
 ### Persistence
 - Pre-seeded thread messages load from `data/threads/*.json` at runtime

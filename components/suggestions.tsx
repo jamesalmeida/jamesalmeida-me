@@ -35,29 +35,29 @@ type ThreadSuggestions = {
 const THREAD_SUGGESTIONS: Record<ThreadId, ThreadSuggestions> = {
   "new-chat": {
     title: "General Chat",
-    subtitle: "Ask me about James.",
+    subtitle: "Ask me anything.",
     suggestions: [
       {
-        title: "Who is James?",
-        prompt: "Who is James Almeida, and what kind of work does he do?",
+        title: "Who are you?",
+        prompt: "Who are you, and what kind of work do you do?",
       },
       {
         title: "Show me projects",
-        prompt: "Show me the projects that best represent James' work.",
+        prompt: "Show me the projects that best represent your work.",
       },
       {
         title: "What's the tech stack?",
-        prompt: "What technologies and skills does James work with most often?",
+        prompt: "What technologies and skills do you work with most often?",
       },
       {
-        title: "How can I work with him?",
-        prompt: "What kinds of consulting or product work is James a good fit for?",
+        title: "How can I work with you?",
+        prompt: "What kinds of consulting or product work are you a good fit for?",
       },
     ],
   },
   projects: {
     title: "Projects",
-    subtitle: "Explore James' key builds and product work.",
+    subtitle: "Explore my key builds and product work.",
     suggestions: [
       {
         title: "Sheldn.ai",
@@ -79,7 +79,7 @@ const THREAD_SUGGESTIONS: Record<ThreadId, ThreadSuggestions> = {
   },
   experience: {
     title: "Experience",
-    subtitle: "James' career across AI, product, and frontend engineering.",
+    subtitle: "My career across AI, product, and frontend engineering.",
     suggestions: [
       {
         title: "AI Consulting",
@@ -101,7 +101,7 @@ const THREAD_SUGGESTIONS: Record<ThreadId, ThreadSuggestions> = {
   },
   socials: {
     title: "Connect",
-    subtitle: "Get in touch with James.",
+    subtitle: "Get in touch.",
     suggestions: [
       {
         title: "Consulting Inquiry",
@@ -111,7 +111,7 @@ const THREAD_SUGGESTIONS: Record<ThreadId, ThreadSuggestions> = {
   },
   resume: {
     title: "Resume",
-    subtitle: "Download or explore James' experience.",
+    subtitle: "Download or explore my experience.",
     suggestions: [
       {
         title: "Download Resume",
