@@ -1,7 +1,7 @@
 "use client";
 
-import { animate, motion, useMotionValue, useTransform } from "framer-motion";
-import { Menu, Moon, Settings, Sun, Trash2, X } from "lucide-react";
+import { AnimatePresence, animate, motion, useMotionValue, useTransform } from "framer-motion";
+import { ChevronDown, Menu, Moon, Settings, Sun, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ACCENTS, useTheme, type Accent } from "@/components/theme-provider";
 import type { HistoryThread, PortfolioThread } from "@/lib/threads";
@@ -39,6 +39,8 @@ export function ThreadList({
 }: ThreadListProps) {
   const { theme, toggleTheme, accent, setAccent } = useTheme();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPinnedOpen, setIsPinnedOpen] = useState(true);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(true);
   const seededThreads = threads.filter((thread) => thread.seeded);
   const newChatThread = threads.find((thread) => thread.id === "new-chat");
 
@@ -77,48 +79,104 @@ export function ThreadList({
 
         <nav className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
           <div className="space-y-2">
-            <p className="eyebrow text-[11px] text-[var(--muted)]">Pinned</p>
-            {newChatThread ? (
-              <ThreadButton
-                isActive={activeThreadId === newChatThread.id}
-                onClick={() => onSelectThread(newChatThread.id)}
-                preview={previews[newChatThread.id]}
-                thread={newChatThread}
-              />
-            ) : null}
-            {seededThreads.map((thread) => (
-              <ThreadButton
-                key={thread.id}
-                isActive={activeThreadId === thread.id}
-                onClick={() => onSelectThread(thread.id)}
-                preview={previews[thread.id]}
-                thread={thread}
-              />
-            ))}
+            <button
+              type="button"
+              onClick={() => setIsPinnedOpen((v) => !v)}
+              className="flex w-full items-center gap-1 text-[var(--muted)] transition-colors hover:text-[var(--foreground)]"
+              aria-expanded={isPinnedOpen}
+            >
+              <span className="eyebrow text-[11px]">Pinned</span>
+              <motion.span
+                animate={{ rotate: isPinnedOpen ? 0 : -90 }}
+                transition={{ duration: 0.2, ease: "easeInOut" }}
+                className="flex"
+              >
+                <ChevronDown size={12} />
+              </motion.span>
+            </button>
+            <AnimatePresence initial={false}>
+              {isPinnedOpen ? (
+                <motion.div
+                  key="pinned-content"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: "easeInOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-2">
+                    {newChatThread ? (
+                      <ThreadButton
+                        isActive={activeThreadId === newChatThread.id}
+                        onClick={() => onSelectThread(newChatThread.id)}
+                        preview={previews[newChatThread.id]}
+                        thread={newChatThread}
+                      />
+                    ) : null}
+                    {seededThreads.map((thread) => (
+                      <ThreadButton
+                        key={thread.id}
+                        isActive={activeThreadId === thread.id}
+                        onClick={() => onSelectThread(thread.id)}
+                        preview={previews[thread.id]}
+                        thread={thread}
+                      />
+                    ))}
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
           </div>
 
           {historyThreads.length > 0 ? (
             <div className="space-y-2">
-              <p className="eyebrow text-[11px] text-[var(--muted)]">Chat History</p>
-              <div className="space-y-2">
-                {historyThreads.map((history) => (
-                  <HistoryThreadButton
-                    key={history.id}
-                    isActive={activeThreadId === history.id}
-                    onClick={() => onSelectThread(history.id)}
-                    onDelete={() => onDeleteThread(history.id)}
-                    preview={history.description}
-                    thread={{
-                      id: history.id,
-                      title: history.title,
-                      icon: history.icon,
-                      description: history.description,
-                      seeded: false,
-                      baseMessages: [],
-                    }}
-                  />
-                ))}
-              </div>
+              <button
+                type="button"
+                onClick={() => setIsHistoryOpen((v) => !v)}
+                className="flex w-full items-center gap-1 text-[var(--muted)] transition-colors hover:text-[var(--foreground)]"
+                aria-expanded={isHistoryOpen}
+              >
+                <span className="eyebrow text-[11px]">Chat History</span>
+                <motion.span
+                  animate={{ rotate: isHistoryOpen ? 0 : -90 }}
+                  transition={{ duration: 0.2, ease: "easeInOut" }}
+                  className="flex"
+                >
+                  <ChevronDown size={12} />
+                </motion.span>
+              </button>
+              <AnimatePresence initial={false}>
+                {isHistoryOpen ? (
+                  <motion.div
+                    key="history-content"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="space-y-2">
+                      {historyThreads.map((history) => (
+                        <HistoryThreadButton
+                          key={history.id}
+                          isActive={activeThreadId === history.id}
+                          onClick={() => onSelectThread(history.id)}
+                          onDelete={() => onDeleteThread(history.id)}
+                          preview={history.description}
+                          thread={{
+                            id: history.id,
+                            title: history.title,
+                            icon: history.icon,
+                            description: history.description,
+                            seeded: false,
+                            baseMessages: [],
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
             </div>
           ) : null}
         </nav>
