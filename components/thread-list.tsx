@@ -77,8 +77,8 @@ export function ThreadList({
         </div>
         <div className="mx-5 border-b border-[var(--border)]" />
 
-        <nav className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
-          <div className="space-y-2">
+        <nav className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+          <div className="mb-[10px] space-y-2">
             <button
               type="button"
               onClick={() => setIsPinnedOpen((v) => !v)}
