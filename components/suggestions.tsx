@@ -166,6 +166,8 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
             className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] transition hover:-translate-y-px hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
             aria-label="Email James"
             title="Email"
+            data-cuelume-hover="whisper"
+            data-cuelume-press="tick"
           >
             <Mail size={18} />
           </a>
@@ -176,6 +178,8 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
             className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] transition hover:-translate-y-px hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
             aria-label="James on LinkedIn"
             title="LinkedIn"
+            data-cuelume-hover="whisper"
+            data-cuelume-press="tick"
           >
             <LinkedinIcon size={18} />
           </a>
@@ -186,6 +190,8 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
             className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] transition hover:-translate-y-px hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
             aria-label="James on GitHub"
             title="GitHub"
+            data-cuelume-hover="whisper"
+            data-cuelume-press="tick"
           >
             <GithubIcon size={18} />
           </a>
@@ -197,6 +203,7 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
             key={suggestion.prompt}
             onClick={() => handleClick(suggestion.prompt)}
             className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--panel-strong)] p-4 text-left transition duration-200 hover:-translate-y-px hover:border-[var(--border-strong)] hover:bg-[var(--panel-strong)]"
+            data-cuelume-press
           >
             <div className="text-sm font-medium">{suggestion.title}</div>
             <div className="mt-2 text-sm leading-6 text-[var(--muted)]">

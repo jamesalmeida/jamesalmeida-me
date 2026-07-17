@@ -1,7 +1,8 @@
 "use client";
 
+import { play } from "cuelume";
 import { AnimatePresence, animate, motion, useMotionValue, useTransform } from "framer-motion";
-import { ChevronDown, Menu, Moon, Settings, Sun, Trash2, X } from "lucide-react";
+import { ChevronDown, Menu, Moon, Settings, Sun, Trash2, Volume2, VolumeX, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ACCENTS, useTheme, type Accent } from "@/components/theme-provider";
 import type { HistoryThread, PortfolioThread } from "@/lib/threads";
@@ -37,7 +38,7 @@ export function ThreadList({
   previews,
   threads,
 }: ThreadListProps) {
-  const { theme, toggleTheme, accent, setAccent } = useTheme();
+  const { theme, toggleTheme, accent, setAccent, soundsEnabled, toggleSounds } = useTheme();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPinnedOpen, setIsPinnedOpen] = useState(true);
   const [isHistoryOpen, setIsHistoryOpen] = useState(true);
@@ -50,6 +51,7 @@ export function ThreadList({
         className="absolute left-4 top-4 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--foreground)] lg:hidden"
         onClick={() => onOpenChange(!isOpen)}
         aria-label="Open menu"
+        data-cuelume-toggle
       >
         <Menu size={18} />
       </button>
@@ -71,6 +73,7 @@ export function ThreadList({
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] lg:hidden"
             onClick={() => onOpenChange(false)}
             aria-label="Close menu"
+            data-cuelume-press="droplet"
           >
             <X size={16} />
           </button>
@@ -191,6 +194,7 @@ export function ThreadList({
               className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] transition hover:-translate-y-px hover:border-[var(--border-strong)] hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
               aria-label="Open settings"
               title="Settings"
+              data-cuelume-press="tick"
             >
               <Settings size={16} />
             </button>
@@ -200,6 +204,7 @@ export function ThreadList({
               className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] transition hover:-translate-y-px hover:border-[var(--border-strong)] hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
               aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
               title={theme === "light" ? "Dark mode" : "Light mode"}
+              data-cuelume-toggle
             >
               {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
             </button>
@@ -232,6 +237,7 @@ export function ThreadList({
                 className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
                 onClick={() => setIsSettingsOpen(false)}
                 aria-label="Close settings"
+                data-cuelume-press="droplet"
               >
                 <X size={16} />
               </button>
@@ -259,10 +265,30 @@ export function ThreadList({
                       aria-label={`${swatch.label} accent`}
                       aria-pressed={isSelected}
                       title={swatch.label}
+                      data-cuelume-press="sparkle"
                     />
                   );
                 })}
               </div>
+            </div>
+            <div className="mt-6">
+              <p className="eyebrow mb-3 text-[11px] text-[var(--muted)]">
+                Sound
+              </p>
+              <button
+                type="button"
+                onClick={toggleSounds}
+                className="flex w-full items-center justify-between rounded-[1rem] border border-[var(--border)] bg-[var(--panel)] px-4 py-3 text-sm transition hover:border-[var(--border-strong)]"
+                data-cuelume-toggle
+              >
+                <span className="flex items-center gap-2.5 text-[var(--foreground)]">
+                  {soundsEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                  Interaction sounds
+                </span>
+                <span className="text-[var(--muted)]">
+                  {soundsEnabled ? "On" : "Off"}
+                </span>
+              </button>
             </div>
           </div>
         </div>
@@ -341,7 +367,10 @@ function HistoryThreadButton({
           style={{ opacity: trashOpacity }}
         >
           <button
-            onClick={onDelete}
+            onClick={() => {
+              play("whisper");
+              onDelete();
+            }}
             className="flex h-full w-full items-center justify-center text-white"
             aria-label="Delete thread"
           >
@@ -367,6 +396,7 @@ function HistoryThreadButton({
               : "bg-[var(--panel)] hover:bg-[var(--panel-strong)]"
           }`}
           onClick={handleCardClick}
+          data-cuelume-press="tick"
         >
           <div className="flex items-start gap-3">
             <div
@@ -395,7 +425,10 @@ function HistoryThreadButton({
       {/* Desktop trash — top-right corner, JS-driven so it stays visible when mousing onto it */}
       {!dragEnabled ? (
         <button
-          onClick={onDelete}
+          onClick={() => {
+            play("whisper");
+            onDelete();
+          }}
           className={`absolute bottom-3 right-3 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-sm transition-opacity hover:text-red-500 ${
             isHovered ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
@@ -430,6 +463,7 @@ function ThreadButton({
           : "border-[var(--border)] bg-[var(--panel)] hover:-translate-y-px hover:border-[var(--border-strong)] hover:bg-[var(--panel-strong)]"
       }`}
       onClick={onClick}
+      data-cuelume-press="tick"
     >
       <div className="flex items-start gap-3">
         <div

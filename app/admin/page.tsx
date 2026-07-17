@@ -1,5 +1,6 @@
 "use client";
 
+import { play } from "cuelume";
 import { useEffect, useState } from "react";
 import {
   MODEL_COOKIE_NAME,
@@ -48,13 +49,16 @@ export default function AdminPage() {
       const payload = (await response.json()) as { error?: string };
 
       if (!response.ok) {
+        play("error");
         setStatus(payload.error ?? "Unable to update model.");
         return;
       }
 
+      play("success");
       setStatus(`Model saved: ${model}`);
       setPassword("");
     } catch {
+      play("error");
       setStatus("Request failed before the model could be saved.");
     } finally {
       setIsSaving(false);

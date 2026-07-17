@@ -1,5 +1,6 @@
 "use client";
 
+import { bind, play, setEnabled } from "cuelume";
 import { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
@@ -23,12 +24,15 @@ export const ACCENTS: Accent[] = [
 ];
 
 const DEFAULT_ACCENT: Accent = "grey";
+const SOUNDS_STORAGE_KEY = "jamesalmeida-sounds";
 
 interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
   accent: Accent;
   setAccent: (accent: Accent) => void;
+  soundsEnabled: boolean;
+  toggleSounds: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -36,6 +40,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("light");
   const [accent, setAccentState] = useState<Accent>(DEFAULT_ACCENT);
+  const [soundsEnabled, setSoundsEnabled] = useState(true);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -51,6 +56,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (storedAccent && ACCENTS.includes(storedAccent)) {
       setAccentState(storedAccent);
     }
+
+    const storedSounds = localStorage.getItem(SOUNDS_STORAGE_KEY);
+    const enabled = storedSounds !== "off";
+    setSoundsEnabled(enabled);
+    setEnabled(enabled);
+    bind();
   }, []);
 
   useEffect(() => {
@@ -85,13 +96,25 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setAccentState(next);
   };
 
+  const toggleSounds = () => {
+    setSoundsEnabled((current) => {
+      const next = !current;
+      setEnabled(next);
+      localStorage.setItem(SOUNDS_STORAGE_KEY, next ? "on" : "off");
+      if (next) play("tick");
+      return next;
+    });
+  };
+
   // Prevent flash by not rendering until mounted
   if (!mounted) {
     return <>{children}</>;
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, accent, setAccent }}>
+    <ThemeContext.Provider
+      value={{ theme, toggleTheme, accent, setAccent, soundsEnabled, toggleSounds }}
+    >
       {children}
     </ThemeContext.Provider>
   );

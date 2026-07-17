@@ -16,6 +16,7 @@ import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
+import { play } from "cuelume";
 import { ArrowDown, ArrowUp, MoreHorizontal, Pencil, RotateCcw, Square, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Suggestions } from "./suggestions";
@@ -92,9 +93,11 @@ function RunCompleteDetector({
     const justFinished = prevRunning.current && !isRunning;
     prevRunning.current = isRunning;
 
-    if (!justFinished || hasFired.current || !onRunComplete) return;
-    if (messages.length === 0) return;
+    if (!justFinished || messages.length === 0) return;
 
+    play("ready");
+
+    if (hasFired.current || !onRunComplete) return;
     hasFired.current = true;
     const formatted: UIMessage[] = messages.map((msg, index) => ({
       id: msg.id || `msg-${index}`,
@@ -130,6 +133,7 @@ function Header({
   const [renameValue, setRenameValue] = useState("");
 
   const handleRestart = () => {
+    play("tick");
     if (onRestart && messages.length > 0) {
       const formatted: UIMessage[] = messages.map((msg, index) => ({
         id: msg.id || `msg-${index}`,
@@ -152,7 +156,10 @@ function Header({
 
   const saveRename = () => {
     const trimmed = renameValue.trim();
-    if (trimmed && onRenameThread) onRenameThread(trimmed);
+    if (trimmed && onRenameThread) {
+      onRenameThread(trimmed);
+      play("success");
+    }
     setIsRenaming(false);
   };
 
@@ -186,6 +193,7 @@ function Header({
               style={{ backgroundColor: btnBg }}
               aria-label="Thread options"
               title="Options"
+              data-cuelume-toggle
             >
               <MoreHorizontal size={16} />
             </button>
@@ -209,7 +217,11 @@ function Header({
                   </button>
                   <div className="mx-3 border-t border-[var(--border)]" />
                   <button
-                    onClick={() => { setIsMenuOpen(false); onDeleteThread(); }}
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      play("whisper");
+                      onDeleteThread();
+                    }}
                     className="flex w-full items-center gap-2.5 px-4 py-3 text-sm text-red-500 transition hover:bg-[var(--panel)]"
                   >
                     <Trash2 size={14} />
@@ -304,6 +316,7 @@ function ScrollToBottomButton() {
           transition={{ duration: 0.2, ease: "easeOut" }}
           className="absolute bottom-4 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
           aria-label="Scroll to latest message"
+          data-cuelume-press="tick"
         >
           <ArrowDown size={16} />
         </motion.button>
@@ -401,6 +414,7 @@ function Composer() {
           <ComposerPrimitive.Cancel
             className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] transition hover:opacity-85"
             aria-label="Stop generating"
+            data-cuelume-press="tick"
           >
             <Square size={16} fill="currentColor" />
           </ComposerPrimitive.Cancel>
@@ -408,6 +422,7 @@ function Composer() {
           <ComposerPrimitive.Send
             className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] transition hover:opacity-85 disabled:opacity-40"
             aria-label="Send message"
+            data-cuelume-press
           >
             <ArrowUp size={18} />
           </ComposerPrimitive.Send>
