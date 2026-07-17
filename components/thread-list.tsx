@@ -208,6 +208,16 @@ export function ThreadList({
             >
               {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
             </button>
+            <button
+              type="button"
+              onClick={toggleSounds}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] transition hover:-translate-y-px hover:border-[var(--border-strong)] hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
+              aria-label={soundsEnabled ? "Mute interaction sounds" : "Unmute interaction sounds"}
+              title={soundsEnabled ? "Mute sounds" : "Unmute sounds"}
+              data-cuelume-toggle
+            >
+              {soundsEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            </button>
           </div>
         </div>
       </aside>
