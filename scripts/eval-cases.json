@@ -196,7 +196,10 @@
       "context"
     ],
     "mustNotMatch": [
-      "\\d[\\d,.]*\\+? (users|downloads|customers)"
+      "\\d[\\d,.]*\\+? (users|downloads|customers)",
+      "weather",
+      "appointment",
+      "reminder"
     ]
   },
   {
@@ -320,6 +323,15 @@
       "book",
       "call",
       "cal\\.com"
+    ],
+    "mustMatch": [
+      "booking page"
+    ],
+    "mustNotMatch": [
+      "as long as",
+      "\\bminutes?\\b",
+      "don't specify",
+      "it depends"
     ]
   },
   {
