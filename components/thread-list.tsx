@@ -1,6 +1,7 @@
 "use client";
 
 import { play } from "cuelume";
+import Link from "next/link";
 import { AnimatePresence, animate, motion, useMotionValue, useTransform } from "framer-motion";
 import { ChevronDown, Menu, Moon, Settings, Sun, Trash2, Volume2, VolumeX, X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -65,8 +66,25 @@ export function ThreadList({
           <div>
             <p className="eyebrow text-xs text-[var(--muted)]">JamesAlmeida.me</p>
             <p className="mt-3 max-w-xs text-sm leading-6 text-[var(--muted)]">
-              A chat-first portfolio covering projects, experience, socials,
-              and the full resume.
+              AI consulting for small businesses, plus my portfolio, experience, and resume.
+            </p>
+            <p className="mt-3 flex gap-4 text-sm text-[var(--muted)]">
+              <Link
+                href="/consulting"
+                className="transition hover:text-[var(--foreground)]"
+                data-cuelume-hover="whisper"
+                data-cuelume-press="tick"
+              >
+                Consulting
+              </Link>
+              <Link
+                href="/work"
+                className="transition hover:text-[var(--foreground)]"
+                data-cuelume-hover="whisper"
+                data-cuelume-press="tick"
+              >
+                Portfolio
+              </Link>
             </p>
           </div>
           <button

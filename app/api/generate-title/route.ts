@@ -1,28 +1,51 @@
 import { generateText } from "ai";
 import { cookies } from "next/headers";
-import { createModel } from "@/lib/models.server";
+import { resolveAdminModel } from "@/lib/admin-cookie";
 import { MODEL_COOKIE_NAME } from "@/lib/models";
+import { createModel } from "@/lib/models.server";
 
 export const maxDuration = 15;
 export const dynamic = "force-dynamic";
 
-export async function POST(req: Request) {
-  const cookieStore = await cookies();
-  const selectedModelId = cookieStore.get(MODEL_COOKIE_NAME)?.value;
-  const { message } = (await req.json()) as { message: string };
+const MAX_BODY_CHARS = 10 * 1024;
 
-  if (!message) {
+export async function POST(req: Request) {
+  const raw = await req.text();
+  if (raw.length > MAX_BODY_CHARS) {
+    return Response.json({ error: "Payload too large." }, { status: 413 });
+  }
+
+  let body: unknown;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    return Response.json({ error: "Invalid JSON." }, { status: 400 });
+  }
+
+  const message =
+    body && typeof body === "object" && "message" in body
+      ? (body as { message?: unknown }).message
+      : undefined;
+
+  if (typeof message !== "string") {
+    return Response.json({ error: "Message must be a string." }, { status: 400 });
+  }
+
+  const promptMessage = message.slice(0, 500);
+  if (!promptMessage.trim()) {
     return Response.json({ title: null });
   }
 
-  const model = createModel(selectedModelId);
+  const cookieStore = await cookies();
+  const modelId = resolveAdminModel(cookieStore.get(MODEL_COOKIE_NAME)?.value);
+  const model = createModel(modelId);
 
   const { text } = await generateText({
     model,
     maxOutputTokens: 20,
     system:
       "You are a title generator. Given a user message, output 1–3 words that label the topic. No markdown, no hashtags, no quotes, no punctuation, no explanation. Never include \"James\" or \"James Almeida\". Examples: Tech Stack, Career Timeline, Product Work, Sheldn.ai, Consulting, Contact Info, AI Training, Frontend Rebuilds.",
-    prompt: `Label this message in 1–3 words: "${message}"`,
+    prompt: `Label this message in 1–3 words: "${promptMessage}"`,
   });
 
   let title = text

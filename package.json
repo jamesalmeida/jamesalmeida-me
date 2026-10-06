@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "eval": "node scripts/eval-chat.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.15",
