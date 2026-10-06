@@ -10,12 +10,12 @@ const serif =
 export const metadata: Metadata = {
   title: "Portfolio",
   description:
-    "Projects I've shipped, including Konteks, Fineants, Grok Pebble, Sheldn.ai, and Mercury Rx, plus earlier work.",
+    "Projects I've shipped, including Konteks, Grok Pebble, Sheldn.ai, and Mercury Rx, plus earlier work.",
   alternates: { canonical: "/work" },
   openGraph: {
     title: "Portfolio",
     description:
-      "Projects I've shipped, including Konteks, Fineants, Grok Pebble, Sheldn.ai, and Mercury Rx, plus earlier work.",
+      "Projects I've shipped, including Konteks, Grok Pebble, Sheldn.ai, and Mercury Rx, plus earlier work.",
     url: "/work",
   },
 };

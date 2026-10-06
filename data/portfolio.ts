@@ -12,7 +12,7 @@ export type Project = {
 
 export type PublicProject = Omit<Project, "confirmed">;
 
-// PROVISIONAL: project list and copy not yet confirmed by James
+// Approved by James (Oct 5, 2026). Only projects listed here may be shown or discussed publicly.
 const featuredProjects: Project[] = [
   {
     id: "konteks",
@@ -22,17 +22,7 @@ const featuredProjects: Project[] = [
     url: "https://konteks.app",
     tags: ["iOS", "AI"],
     group: "featured",
-    confirmed: false,
-  },
-  {
-    id: "fineants",
-    name: "Fineants",
-    oneLiner:
-      "A private household-finance app that pulls accounts, cards, and bills together through Plaid. Not open for signups.",
-    url: "https://fineants.io",
-    tags: ["Web", "Finance", "Plaid"],
-    group: "featured",
-    confirmed: false,
+    confirmed: true,
   },
   {
     id: "grok-pebble",
@@ -42,7 +32,7 @@ const featuredProjects: Project[] = [
     url: "https://grok-pebble.vercel.app",
     tags: ["Hardware", "Voice", "AI"],
     group: "featured",
-    confirmed: false,
+    confirmed: true,
   },
   {
     id: "sheldn",
@@ -52,7 +42,7 @@ const featuredProjects: Project[] = [
     url: "https://sheldn.ai",
     tags: ["AI", "Hosting"],
     group: "featured",
-    confirmed: false,
+    confirmed: true,
   },
   {
     id: "mercury-rx",
@@ -61,7 +51,7 @@ const featuredProjects: Project[] = [
       "An iOS app that tells you whether Mercury is in retrograde, with optional alerts.",
     tags: ["iOS"],
     group: "featured",
-    confirmed: false,
+    confirmed: true,
   },
 ];
 

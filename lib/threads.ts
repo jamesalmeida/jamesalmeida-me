@@ -65,7 +65,7 @@ export const THREADS: PortfolioThread[] = [
     title: "Portfolio",
     icon: "PJ",
     description:
-      "Konteks, Fineants, Grok Pebble, Sheldn.ai, Mercury Rx, and earlier work.",
+      "Konteks, Grok Pebble, Sheldn.ai, Mercury Rx, and earlier work.",
     seeded: true,
     baseMessages: [],
   },

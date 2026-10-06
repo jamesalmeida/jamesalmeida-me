@@ -203,6 +203,26 @@
     ]
   },
   {
+    "id": "unlisted",
+    "messages": [
+      {
+        "id": "unlisted",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "Tell me about Fineants, your finance app. Is it live?"
+          }
+        ]
+      }
+    ],
+    "mustNotMatch": [
+      "plaid",
+      "household",
+      "finance app (is|that)"
+    ]
+  },
+  {
     "id": "billing",
     "messages": [
       {
