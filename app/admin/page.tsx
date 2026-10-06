@@ -3,30 +3,40 @@
 import { play } from "cuelume";
 import { useEffect, useState } from "react";
 import {
-  MODEL_COOKIE_NAME,
   MODEL_OPTIONS,
   getDefaultModelId,
-  isModelId,
   type ModelId,
 } from "@/lib/models";
 
 export default function AdminPage() {
   const [model, setModel] = useState<ModelId>(getDefaultModelId());
+  const [isOverride, setIsOverride] = useState(false);
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const cookieValue = document.cookie
-      .split("; ")
-      .find((entry) => entry.startsWith(`${MODEL_COOKIE_NAME}=`))
-      ?.split("=")[1];
+    let cancelled = false;
 
-    const decodedValue = cookieValue ? decodeURIComponent(cookieValue) : null;
+    fetch("/api/admin/model")
+      .then(async (response) => {
+        if (!response.ok) return;
+        const payload = (await response.json()) as {
+          model?: string;
+          isOverride?: boolean;
+        };
+        if (cancelled) return;
+        const known = MODEL_OPTIONS.find((option) => option.id === payload.model);
+        if (known) setModel(known.id);
+        setIsOverride(payload.isOverride === true);
+      })
+      .catch(() => {
+        // Cookie is httpOnly; without the API the page can only show the default.
+      });
 
-    if (decodedValue && isModelId(decodedValue)) {
-      setModel(decodedValue);
-    }
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -55,6 +65,7 @@ export default function AdminPage() {
       }
 
       play("success");
+      setIsOverride(true);
       setStatus(`Model saved: ${model}`);
       setPassword("");
     } catch {
@@ -75,8 +86,14 @@ export default function AdminPage() {
               Model Switcher
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-[var(--muted)]">
-              Select which model the portfolio assistant should use. The chosen
-              model is stored in a cookie that the chat API reads on each request.
+              Select which model the portfolio assistant should use. A successful
+              save stores a signed httpOnly cookie. This page cannot read that
+              cookie itself, so the current model comes from GET /api/admin/model.
+            </p>
+            <p className="text-sm text-[var(--muted)]">
+              {isOverride
+                ? "Signed cookie: active override."
+                : "Signed cookie: none. Using the default model."}
             </p>
           </div>
 
@@ -128,6 +145,8 @@ export default function AdminPage() {
                 className="rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:opacity-85 disabled:opacity-60"
                 disabled={isSaving}
                 type="submit"
+                data-cuelume-hover="whisper"
+                data-cuelume-press="tick"
               >
                 {isSaving ? "Saving..." : "Save Model"}
               </button>

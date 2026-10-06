@@ -132,6 +132,16 @@ body {
   height: var(--app-height, 100dvh);
 }
 
+.site-page {
+  position: absolute;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-overflow-scrolling: touch;
+}
+
 .app-panel {
   height: var(--app-height, 100dvh);
 }
@@ -164,8 +174,11 @@ body {
   }
 }
 
-a {
-  color: inherit;
+/* Base layer so Tailwind text-* utilities on links (e.g. CTA buttons) win. */
+@layer base {
+  a {
+    color: inherit;
+  }
 }
 
 button,

@@ -17,11 +17,14 @@ import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
 import { play } from "cuelume";
-import { ArrowDown, ArrowUp, MoreHorizontal, Pencil, RotateCcw, Square, Trash2, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, CalendarCheck, MoreHorizontal, Pencil, RotateCcw, Square, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState, type ComponentPropsWithoutRef } from "react";
+import { SITE } from "@/data/site";
+import { toUIMessages } from "@/lib/message-convert";
+import type { PortfolioThread } from "@/lib/threads";
 import { Suggestions } from "./suggestions";
 import { useTheme } from "./theme-provider";
-import type { PortfolioThread } from "@/lib/threads";
+import { ShowBookingCtaToolUI, ShowPortfolioToolUI } from "./tool-cards";
 
 type ThreadProps = {
   initialMessages: UIMessage[];
@@ -49,13 +52,15 @@ export function Thread({
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
+      <ShowBookingCtaToolUI />
+      <ShowPortfolioToolUI />
       <ThreadPersistence onMessagesChange={onMessagesChange} />
       <RunCompleteDetector onRunComplete={onRunComplete} />
       <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
         <Header thread={thread} onDeleteThread={onDeleteThread} onRenameThread={onRenameThread} onRestart={onRestart} />
 
         <div className="relative min-h-0 flex-1">
-          <ThreadPrimitive.Viewport className="absolute inset-0 overflow-y-auto px-4 pb-6 pt-6 sm:px-6">
+          <AutoScrollViewport>
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
               <ThreadPrimitive.Empty>
                 <Suggestions threadId={thread.id} />
@@ -67,7 +72,7 @@ export function Thread({
                 }}
               />
             </div>
-          </ThreadPrimitive.Viewport>
+          </AutoScrollViewport>
           <ScrollToBottomButton />
         </div>
 
@@ -99,15 +104,7 @@ function RunCompleteDetector({
 
     if (hasFired.current || !onRunComplete) return;
     hasFired.current = true;
-    const formatted: UIMessage[] = messages.map((msg, index) => ({
-      id: msg.id || `msg-${index}`,
-      role: msg.role,
-      parts: msg.content.map((part) => {
-        if (part.type === "text") return { type: "text" as const, text: part.text };
-        return { type: "text" as const, text: "" };
-      }),
-    }));
-    onRunComplete(formatted);
+    onRunComplete(toUIMessages(messages));
   }, [isRunning, messages, onRunComplete]);
 
   return null;
@@ -135,15 +132,7 @@ function Header({
   const handleRestart = () => {
     play("tick");
     if (onRestart && messages.length > 0) {
-      const formatted: UIMessage[] = messages.map((msg, index) => ({
-        id: msg.id || `msg-${index}`,
-        role: msg.role,
-        parts: msg.content.map((part) => {
-          if (part.type === "text") return { type: "text" as const, text: part.text };
-          return { type: "text" as const, text: "" };
-        }),
-      }));
-      onRestart(formatted);
+      onRestart(toUIMessages(messages));
     }
     runtime.reset();
   };
@@ -171,19 +160,34 @@ function Header({
   return (
     <>
       <header
-        className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-4 sm:px-6 lg:gap-0 lg:justify-between"
+        className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3 sm:px-6 sm:py-4 lg:justify-between"
         style={{ backgroundColor: bgColor }}
       >
         <div className="h-10 w-10 flex-shrink-0 lg:hidden" aria-hidden />
         <div className="min-w-0 flex-1 text-center lg:flex-initial lg:text-left">
-          <p className="eyebrow text-xs text-[var(--muted)]">James Almeida</p>
-          <h2 className="truncate font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif] text-2xl tracking-[-0.03em]">
+          <p className="eyebrow text-[10px] text-[var(--muted)] sm:text-xs">James Almeida</p>
+          <h2 className="truncate font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif] text-lg tracking-[-0.03em] sm:text-2xl">
             {thread.title}
           </h2>
           <p className="mt-1 hidden max-w-2xl text-sm leading-6 text-[var(--muted)] lg:block">
             {thread.description}
           </p>
         </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <a
+            href={SITE.bookingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent)] px-2.5 py-2 text-xs font-medium text-[var(--accent-foreground)] transition hover:opacity-90 lg:px-4 lg:text-sm"
+            aria-label={SITE.bookingLabel}
+            data-cuelume-hover="whisper"
+            data-cuelume-press="tick"
+          >
+            <CalendarCheck size={15} />
+            <span className="lg:hidden">{SITE.bookingShortLabel}</span>
+            <span className="hidden lg:inline">{SITE.bookingLabel}</span>
+          </a>
 
         {onDeleteThread ? (
           <div className="relative flex-shrink-0">
@@ -241,9 +245,8 @@ function Header({
           >
             <RotateCcw size={16} />
           </button>
-        ) : (
-          <div className="h-10 w-10 flex-shrink-0 lg:hidden" aria-hidden />
-        )}
+        ) : null}
+        </div>
       </header>
 
       {isRenaming && (
@@ -300,6 +303,20 @@ function Header({
   );
 }
 
+// Only auto-scroll once a conversation exists, so tall empty states (e.g. the
+// Work with me pills + booking card) start at the top instead of the bottom.
+function AutoScrollViewport({ children }: { children: React.ReactNode }) {
+  const hasMessages = useThread((state) => state.messages.length > 0);
+  return (
+    <ThreadPrimitive.Viewport
+      autoScroll={hasMessages}
+      className="absolute inset-0 overflow-y-auto px-4 pb-6 pt-6 sm:px-6"
+    >
+      {children}
+    </ThreadPrimitive.Viewport>
+  );
+}
+
 function ScrollToBottomButton() {
   const isAtBottom = useThreadViewport((state) => state.isAtBottom);
   const scrollToBottom = useThreadViewport((state) => state.scrollToBottom);
@@ -328,10 +345,11 @@ function ScrollToBottomButton() {
 function AssistantMessage() {
   const message = useMessage();
   const hasText = message.content.some(
-    (p) => p.type === "text" && (p as { type: "text"; text: string }).text.length > 0,
+    (part) => part.type === "text" && part.text.length > 0,
   );
+  const hasTool = message.content.some((part) => part.type === "tool-call");
 
-  if (!hasText) {
+  if (!hasText && !hasTool) {
     return (
       <MessagePrimitive.Root className="flex w-full justify-start">
         <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel)] px-5 py-4 shadow-[0_16px_40px_rgba(0,0,0,0.06)]">
@@ -347,7 +365,7 @@ function AssistantMessage() {
 
   return (
     <MessagePrimitive.Root className="flex w-full justify-start">
-      <div className="min-w-0 max-w-[85%] rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel)] px-5 py-4 shadow-[0_16px_40px_rgba(0,0,0,0.06)] sm:max-w-3xl">
+      <div className={`min-w-0 rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel)] px-5 py-4 shadow-[0_16px_40px_rgba(0,0,0,0.06)] ${hasTool ? "w-full max-w-3xl" : "max-w-[85%] sm:max-w-3xl"}`}>
         <MessagePrimitive.Parts
           components={{
             Text: MarkdownText,
@@ -447,25 +465,40 @@ function ThreadPersistence({
 
   useEffect(() => {
     // Convert assistant-ui messages to UIMessage format
-    const uiMessages: UIMessage[] = messages.map((msg, index) => ({
-      id: msg.id || `msg-${index}`,
-      role: msg.role,
-      parts: msg.content.map((part) => {
-        if (part.type === "text") {
-          return { type: "text", text: part.text };
-        }
-        return { type: "text", text: "" };
-      }),
-    }));
-    onMessagesChangeRef.current(uiMessages);
+    onMessagesChangeRef.current(toUIMessages(messages));
   }, [messages]);
 
   return null;
 }
 
 
+function MarkdownAnchor({
+  href,
+  children,
+  node: _node,
+  ...rest
+}: ComponentPropsWithoutRef<"a"> & { node?: unknown }) {
+  const external = typeof href === "string" && /^https?:\/\//i.test(href);
+  return (
+    <a
+      href={href}
+      {...rest}
+      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+    >
+      {children}
+    </a>
+  );
+}
+
+const markdownComponents = { a: MarkdownAnchor };
+
 function MarkdownText() {
-  return <MarkdownTextPrimitive className="message-markdown" />;
+  return (
+    <MarkdownTextPrimitive
+      className="message-markdown"
+      components={markdownComponents}
+    />
+  );
 }
 
 function UserText() {

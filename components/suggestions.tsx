@@ -2,7 +2,11 @@
 
 import { useComposerRuntime } from "@assistant-ui/react";
 import { Mail } from "lucide-react";
-import type { ThreadId } from "@/lib/threads";
+import { getProjects } from "@/data/portfolio";
+import { OFFER, SITE } from "@/data/site";
+import type { StaticThreadId } from "@/lib/threads";
+import { BookingButton } from "./booking-button";
+import { BookingCard } from "./tool-cards";
 
 function GithubIcon({ size = 16 }: { size?: number }) {
   return (
@@ -32,48 +36,73 @@ type ThreadSuggestions = {
   suggestions: Suggestion[];
 };
 
-const THREAD_SUGGESTIONS: Record<ThreadId, ThreadSuggestions> = {
+const featuredSuggestions: Suggestion[] = getProjects("featured").map((project) => ({
+  title: project.name,
+  prompt: `Tell me about ${project.name}.`,
+}));
+
+const THREAD_SUGGESTIONS: Record<StaticThreadId, ThreadSuggestions> = {
   "new-chat": {
     title: "General Chat",
     subtitle: "Ask me anything.",
     suggestions: [
       {
         title: "Who are you?",
-        prompt: "Who are you, and what kind of work do you do?",
+        prompt: "Who are you?",
       },
       {
-        title: "Show me projects",
-        prompt: "Show me the projects that best represent your work.",
+        title: "How can you help my business?",
+        prompt: "What could you automate for a small business like mine?",
       },
       {
-        title: "What's the tech stack?",
-        prompt: "What technologies and skills do you work with most often?",
+        title: "Show me your portfolio",
+        prompt: "Show me your portfolio",
       },
       {
-        title: "How can I work with you?",
-        prompt: "What kinds of consulting or product work are you a good fit for?",
+        title: "What does it cost?",
+        prompt: "What does it cost?",
+      },
+    ],
+  },
+  "work-with-me": {
+    title: "Work with me",
+    subtitle: "Get your team's hours back.",
+    description: `${OFFER.audienceLine} Most often: ${OFFER.audience.map((a, i) => (i === 0 ? a : a.toLowerCase())).join(", ")}.`,
+    suggestions: [
+      {
+        title: "Who do you work with?",
+        prompt: "Who do you work with?",
+      },
+      {
+        title: "How does it work?",
+        prompt: "How does it work?",
+      },
+      {
+        title: "What does it cost?",
+        prompt: "What does it cost?",
+      },
+      {
+        title: "Example: dental office",
+        prompt: "I run a dental office. What could you automate?",
+      },
+      {
+        title: "Example: property manager",
+        prompt: "I manage properties. What could you automate?",
+      },
+      {
+        title: "I'd like to book a call",
+        prompt: "I'd like to book a call",
       },
     ],
   },
   projects: {
-    title: "Projects",
-    subtitle: "Explore my key builds and product work.",
+    title: "Portfolio",
+    subtitle: "Projects I've designed and shipped.",
     suggestions: [
+      ...featuredSuggestions,
       {
-        title: "Sheldn.ai",
-        prompt: "Tell me about Sheldn.ai and what it does.",
-      },
-      {
-        title: "Society6 Artist Studio",
-        prompt: "What was the Society6 Artist Studio rebuild?",
-      },
-      {
-        title: "iROKOtv Rebuild",
-        prompt: "Tell me about the iROKOtv frontend rebuild.",
-      },
-      {
-        title: "Datadog Website",
-        prompt: "What was your role in rebuilding Datadog's website?",
+        title: "Earlier work",
+        prompt: "Tell me about your earlier work.",
       },
     ],
   },
@@ -83,7 +112,7 @@ const THREAD_SUGGESTIONS: Record<ThreadId, ThreadSuggestions> = {
     suggestions: [
       {
         title: "AI Consulting",
-        prompt: "What kind of AI consulting work do you do at General Systems Ventures?",
+        prompt: "What does your AI consulting work look like?",
       },
       {
         title: "xAI Experience",
@@ -100,8 +129,8 @@ const THREAD_SUGGESTIONS: Record<ThreadId, ThreadSuggestions> = {
     ],
   },
   socials: {
-    title: "Connect",
-    subtitle: "Get in touch.",
+    title: "Contact",
+    subtitle: "Book a free intro call or email me.",
     suggestions: [
       {
         title: "Consulting Inquiry",
@@ -127,19 +156,24 @@ const THREAD_SUGGESTIONS: Record<ThreadId, ThreadSuggestions> = {
       },
       {
         title: "Consulting Focus",
-        prompt: "What kind of AI consulting do you specialize in?",
+        prompt: "What kind of businesses do you consult for?",
       },
     ],
   },
 };
 
+const linkButtonClass =
+  "inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel-strong)] px-4 py-2.5 text-sm text-[var(--foreground)] transition hover:-translate-y-px hover:border-[var(--border-strong)]";
+
 interface SuggestionsProps {
-  threadId?: ThreadId;
+  threadId?: string;
 }
 
 export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
   const composer = useComposerRuntime();
-  const config = THREAD_SUGGESTIONS[threadId] ?? THREAD_SUGGESTIONS["new-chat"];
+  const config = Object.hasOwn(THREAD_SUGGESTIONS, threadId)
+    ? THREAD_SUGGESTIONS[threadId as StaticThreadId]
+    : THREAD_SUGGESTIONS["new-chat"];
 
   const handleClick = (prompt: string) => {
     composer.setText(prompt);
@@ -153,65 +187,66 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
         <h2 className="max-w-xl font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif] text-3xl leading-tight tracking-[-0.03em] text-[var(--foreground)] sm:text-4xl">
           {config.subtitle}
         </h2>
-        {config.description && (
+        {config.description ? (
           <p className="max-w-2xl text-sm leading-6 text-[var(--muted)] sm:text-base">
             {config.description}
           </p>
-        )}
+        ) : null}
       </div>
-      {threadId === "socials" && (
-        <div className="flex items-center gap-2">
+      {threadId === "socials" ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <BookingButton />
           <a
-            href="mailto:YouCanAlwaysReachJames@gmail.com"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] transition hover:-translate-y-px hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
-            aria-label="Email James"
-            title="Email"
+            href={`mailto:${SITE.email}`}
+            className={linkButtonClass}
             data-cuelume-hover="whisper"
             data-cuelume-press="tick"
           >
-            <Mail size={18} />
+            <Mail size={16} />
+            Email {SITE.email}
           </a>
           <a
-            href="https://linkedin.com/in/jamesworkswell"
+            href={SITE.linkedin}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] transition hover:-translate-y-px hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
-            aria-label="James on LinkedIn"
-            title="LinkedIn"
+            className={linkButtonClass}
             data-cuelume-hover="whisper"
             data-cuelume-press="tick"
           >
-            <LinkedinIcon size={18} />
+            <LinkedinIcon size={16} />
+            LinkedIn
           </a>
           <a
-            href="https://github.com/jamesalmeida"
+            href={SITE.github}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] transition hover:-translate-y-px hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
-            aria-label="James on GitHub"
-            title="GitHub"
+            className={linkButtonClass}
             data-cuelume-hover="whisper"
             data-cuelume-press="tick"
           >
-            <GithubIcon size={18} />
+            <GithubIcon size={16} />
+            GitHub
           </a>
         </div>
-      )}
+      ) : null}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {config.suggestions.map((suggestion) => (
           <button
             key={suggestion.prompt}
             onClick={() => handleClick(suggestion.prompt)}
             className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--panel-strong)] p-4 text-left transition duration-200 hover:-translate-y-px hover:border-[var(--border-strong)] hover:bg-[var(--panel-strong)]"
-            data-cuelume-press
+            data-cuelume-press="tick"
           >
             <div className="text-sm font-medium">{suggestion.title}</div>
-            <div className="mt-2 text-sm leading-6 text-[var(--muted)]">
-              {suggestion.prompt}
-            </div>
+            {suggestion.prompt !== suggestion.title ? (
+              <div className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                {suggestion.prompt}
+              </div>
+            ) : null}
           </button>
         ))}
       </div>
+      {threadId === "work-with-me" ? <BookingCard /> : null}
     </div>
   );
 }

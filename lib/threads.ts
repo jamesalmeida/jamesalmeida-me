@@ -1,17 +1,9 @@
 import type { UIMessage } from "ai";
-import experienceSeed from "@/data/threads/experience.json";
-import projectsSeed from "@/data/threads/projects.json";
-import resumeSeed from "@/data/threads/resume.json";
-import socialsSeed from "@/data/threads/socials.json";
 
-type SeedRecord = {
-  role: "assistant" | "user" | "system";
-  content: string;
-};
-
-// Static thread ids — the five built-in threads
+// Static thread ids — built-in threads. Keep these ids so stored state survives.
 export type StaticThreadId =
   | "new-chat"
+  | "work-with-me"
   | "projects"
   | "experience"
   | "socials"
@@ -50,40 +42,32 @@ export const THREAD_STORAGE_KEY = "jamesalmeida-threads";
 export const ACTIVE_THREAD_STORAGE_KEY = "jamesalmeida-active-thread";
 export const HISTORY_THREADS_KEY = "jamesalmeida-history-threads";
 
-const toMessage = (
-  threadId: string,
-  message: SeedRecord,
-  index: number,
-): UIMessage => ({
-  id: `seed-${threadId}-${index}`,
-  role: message.role,
-  parts: [
-    {
-      type: "text",
-      text: message.content,
-    },
-  ],
-});
-
-const toSeedMessages = (threadId: string, messages: SeedRecord[]) =>
-  messages.map((message, index) => toMessage(threadId, message, index));
-
 export const THREADS: PortfolioThread[] = [
   {
     id: "new-chat",
     title: "General Chat",
     icon: "JA",
-    description: "Open-ended questions about my work, strengths, and availability.",
+    description: "Ask me anything about my work, my consulting, or my projects.",
     seeded: false,
     baseMessages: [],
   },
   {
-    id: "projects",
-    title: "Projects",
-    icon: "PJ",
-    description: "A guided tour through standout builds, rebuilds, and product work.",
+    id: "work-with-me",
+    title: "Work with me",
+    icon: "AI",
+    description:
+      "AI consulting for small businesses: how it works, price ranges, and booking a free intro call.",
     seeded: true,
-    baseMessages: toSeedMessages("projects", projectsSeed as SeedRecord[]),
+    baseMessages: [],
+  },
+  {
+    id: "projects",
+    title: "Portfolio",
+    icon: "PJ",
+    description:
+      "Konteks, Grok Pebble, Sheldn.ai, Mercury Rx, and earlier work.",
+    seeded: true,
+    baseMessages: [],
   },
   {
     id: "experience",
@@ -91,15 +75,15 @@ export const THREADS: PortfolioThread[] = [
     icon: "XP",
     description: "Career timeline across AI consulting, product engineering, and design-heavy web work.",
     seeded: true,
-    baseMessages: toSeedMessages("experience", experienceSeed as SeedRecord[]),
+    baseMessages: [],
   },
   {
     id: "socials",
-    title: "Socials",
+    title: "Contact",
     icon: "SO",
-    description: "Direct links and contact details.",
+    description: "Book a free intro call or email me.",
     seeded: true,
-    baseMessages: toSeedMessages("socials", socialsSeed as SeedRecord[]),
+    baseMessages: [],
   },
   {
     id: "resume",
@@ -107,7 +91,7 @@ export const THREADS: PortfolioThread[] = [
     icon: "CV",
     description: "Condensed resume highlights plus the PDF download.",
     seeded: true,
-    baseMessages: toSeedMessages("resume", resumeSeed as SeedRecord[]),
+    baseMessages: [],
   },
 ];
 
@@ -121,18 +105,42 @@ const isTextPart = (part: unknown): part is { type: "text"; text: string } => {
   return candidate.type === "text" && typeof candidate.text === "string";
 };
 
-const isUIMessage = (value: unknown): value is UIMessage => {
-  if (!value || typeof value !== "object") return false;
+const isStoredToolPart = (part: unknown): part is UIMessage["parts"][number] => {
+  if (!part || typeof part !== "object") return false;
+  const candidate = part as Record<string, unknown>;
+  return (
+    typeof candidate.type === "string" &&
+    candidate.type.startsWith("tool-") &&
+    typeof candidate.toolCallId === "string" &&
+    candidate.state === "output-available"
+  );
+};
+
+const normalizeStoredMessage = (value: unknown): UIMessage | null => {
+  if (!value || typeof value !== "object") return null;
 
   const candidate = value as Record<string, unknown>;
-  return (
-    typeof candidate.id === "string" &&
-    (candidate.role === "user" ||
-      candidate.role === "assistant" ||
-      candidate.role === "system") &&
-    Array.isArray(candidate.parts) &&
-    candidate.parts.every(isTextPart)
-  );
+  if (typeof candidate.id !== "string") return null;
+  if (
+    candidate.role !== "user" &&
+    candidate.role !== "assistant" &&
+    candidate.role !== "system"
+  ) {
+    return null;
+  }
+  if (!Array.isArray(candidate.parts)) return null;
+
+  const parts = candidate.parts.flatMap((part) => {
+    if (isTextPart(part) || isStoredToolPart(part)) return [part];
+    return [];
+  });
+  if (parts.length === 0) return null;
+
+  return {
+    id: candidate.id,
+    role: candidate.role,
+    parts,
+  };
 };
 
 export function isStaticThreadId(value: string): value is StaticThreadId {
@@ -162,7 +170,10 @@ export function readStoredThreads(): StoredThreads {
             ? candidate.lastVisited
             : createdAt;
         const userMessages = Array.isArray(candidate.userMessages)
-          ? candidate.userMessages.filter(isUIMessage)
+          ? candidate.userMessages.flatMap((message) => {
+              const normalized = normalizeStoredMessage(message);
+              return normalized ? [normalized] : [];
+            })
           : [];
 
         return [[threadId, { createdAt, lastVisited, userMessages }]];
@@ -253,14 +264,8 @@ export function getThreadMessages(
   threadId: string,
   storedThreads: StoredThreads,
 ): UIMessage[] {
-  // Pre-seeded thread content is represented by the suggestion pills (see
-  // components/suggestions.tsx). The JSON base messages are intentionally NOT
-  // loaded into the runtime — they would otherwise render as chat bubbles on
-  // first view, which conflicts with the suggestion-pill landing experience.
-  //
-  // When the user engages a thread (clicks a suggestion or types a message),
-  // the conversation starts fresh from their input, and the system prompt +
-  // context.md provide the AI with enough background to answer correctly.
+  // Pinned threads start empty. Suggestion pills are the landing state.
+  // The system prompt carries the knowledge, so a fresh message is enough.
   return storedThreads[threadId]?.userMessages ?? [];
 }
 
