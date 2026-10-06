@@ -103,7 +103,10 @@
     "mustNotMatch": [
       "I can (definitely )?start (on |next )?Monday",
       "(will|can) (have|get) (it|this) (live|done) in two weeks",
-      "guarantee"
+      "guarantee",
+      "this week",
+      "next week",
+      "\\btoday\\b"
     ],
     "mustCallTool": "showBookingCta"
   },
@@ -350,7 +353,7 @@
     "mustNotMatch": [
       "as long as",
       "\\bminutes?\\b",
-      "don't specify",
+      "long enough",
       "it depends"
     ]
   },
