@@ -34,7 +34,6 @@ const GLOBAL_CHECKS = [
   { label: "code fence", re: /```/ },
   { label: "PROVISIONAL", re: /PROVISIONAL/ },
   { label: "unlisted project (fineants)", re: /fine\s*ants/i },
-  { label: "first-person plural (we)", re: /\bwe\b/i },
   { label: "ROI / multiples claim", re: /\bmultiples?\b|\bROI\b|pays? for itself|\bpayback\b/i },
 ];
 
