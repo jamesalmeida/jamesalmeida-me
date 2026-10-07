@@ -5,11 +5,12 @@ import { rejectBots } from "@/lib/bot-protection";
 import { MODEL_COOKIE_NAME } from "@/lib/models";
 import { createModel } from "@/lib/models.server";
 import { getClientIp, rateLimitedResponse, titleIpLimiter } from "@/lib/rate-limit";
+import { payloadTooLargeResponse, readBodyWithLimit } from "@/lib/request-body";
 
 export const maxDuration = 15;
 export const dynamic = "force-dynamic";
 
-const MAX_BODY_CHARS = 10 * 1024;
+const MAX_BODY_BYTES = 10 * 1024;
 
 export async function POST(req: Request) {
   const limit = titleIpLimiter.check(getClientIp(req.headers));
@@ -18,14 +19,12 @@ export async function POST(req: Request) {
   const botResponse = await rejectBots();
   if (botResponse) return botResponse;
 
-  const raw = await req.text();
-  if (raw.length > MAX_BODY_CHARS) {
-    return Response.json({ error: "Payload too large." }, { status: 413 });
-  }
+  const bodyResult = await readBodyWithLimit(req, MAX_BODY_BYTES);
+  if (!bodyResult.ok) return payloadTooLargeResponse();
 
   let body: unknown;
   try {
-    body = JSON.parse(raw);
+    body = JSON.parse(bodyResult.text);
   } catch {
     return Response.json({ error: "Invalid JSON." }, { status: 400 });
   }
@@ -48,13 +47,20 @@ export async function POST(req: Request) {
   const modelId = resolveAdminModel(cookieStore.get(MODEL_COOKIE_NAME)?.value);
   const model = createModel(modelId);
 
-  const { text } = await generateText({
-    model,
-    maxOutputTokens: 20,
-    system:
-      "You are a title generator. Given a user message, output 1–3 words that label the topic. No markdown, no hashtags, no quotes, no punctuation, no explanation. Never include \"James\" or \"James Almeida\". Examples: Tech Stack, Career Timeline, Product Work, Sheldn.ai, Consulting, Contact Info, AI Training, Frontend Rebuilds.",
-    prompt: `Label this message in 1–3 words: "${promptMessage}"`,
-  });
+  let text: string;
+  try {
+    ({ text } = await generateText({
+      model,
+      maxOutputTokens: 20,
+      system:
+        "You are a title generator. Given a user message, output 1–3 words that label the topic. No markdown, no hashtags, no quotes, no punctuation, no explanation. Never include \"James\" or \"James Almeida\". Examples: Tech Stack, Career Timeline, Product Work, Sheldn.ai, Consulting, Contact Info, AI Training, Frontend Rebuilds.",
+      prompt: `Label this message in 1–3 words: "${promptMessage}"`,
+    }));
+  } catch (error) {
+    // Titles are optional; a provider error should not surface as a 500.
+    console.error("generate-title failed", error);
+    return Response.json({ title: null });
+  }
 
   let title = text
     .trim()

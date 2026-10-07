@@ -151,9 +151,6 @@ export function isStaticThreadId(value: string): value is StaticThreadId {
   return value in THREADS_BY_ID;
 }
 
-// Keep the old name as an alias for backward compatibility
-export { isStaticThreadId as isThreadId };
-
 // localStorage can be missing or throw (privacy modes, disabled storage). Never throw from here.
 function getStorage(): Storage | null {
   if (typeof window === "undefined") return null;
