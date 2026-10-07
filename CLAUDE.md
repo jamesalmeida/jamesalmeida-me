@@ -89,6 +89,8 @@ lib/
   chat-tools.ts                # showBookingCta, showPortfolio
   tool-results.ts              # Tool input schemas + pure output builders (shared)
   sanitize-messages.ts         # Untrusted chat body → last 20 UIMessages
+  rate-limit.ts                # In-memory per-IP / global fixed-window limiter
+  bot-protection.ts            # Vercel BotID checkBotId() wrapper (403 on bots)
   admin-cookie.ts              # HMAC-signed model cookie
   message-convert.ts           # assistant-ui messages → UIMessage (keeps tools)
   threads.ts                   # Thread ids; base messages are empty
@@ -100,6 +102,8 @@ data/
 
 public/
   resume.pdf
+instrumentation-client.ts      # initBotId() for POST /api/chat and /api/generate-title
+next.config.ts                 # wrapped with withBotId
 scripts/
   eval-chat.mjs                # npm run eval
   eval-cases.json
@@ -147,6 +151,14 @@ DEFAULT_MODEL=claude-sonnet-4-5    # optional override
 - Client-sent tool parts are never trusted. `sanitizeMessages` discards their `output`, validates `input` with the schemas in `lib/tool-results.ts` (also used by `lib/chat-tools.ts`), and rebuilds the output with the same pure functions the tools' `execute` uses. Parts are dropped if input is invalid, over 1 KB serialized, has more than 20 ids or ids over 64 chars, or has a malformed `toolCallId`. Max 4 tool parts per message and 8 KB of tool input per request. Assistant text parts are still accepted as sent (2,000-char cap); signing them is not done.
 - `streamText` uses `stopWhen: stepCountIs(3)` and `maxOutputTokens: 800`.
 - `POST /api/generate-title` rejects bodies over 10 KB and truncates the message to 500 characters.
+
+### Abuse protection
+- Both model routes run, in order: rate limit → BotID → body parsing.
+- `lib/rate-limit.ts` keys on the first `x-forwarded-for` IP, then `x-real-ip`, then `"unknown"`. Limits: `/api/chat` 30 per 10 min per IP plus 600 per hour across all visitors; `/api/generate-title` 20 per 10 min per IP. Over the limit returns 429 JSON with `Retry-After` (seconds). The map is capped (expired entries swept, then oldest evicted). State is **per serverless instance** (cold starts reset it, instances don't share it), which is accepted: no external storage.
+- BotID (`botid` package, `basic` check level) is set up in `instrumentation-client.ts` and checked in `lib/bot-protection.ts`. Keep paths and check level in sync. Bots get 403. It returns `isBot: false` in dev. If `checkBotId()` throws (for example, no Vercel OIDC token under a local `next start`), the request is allowed and the error is logged.
+- `components/thread.tsx` turns a 429/403 from `/api/chat` into a short friendly error. Title generation failures stay silent.
+- Spend caps in the OpenAI and Anthropic dashboards are the backstop.
+- Running `npm run eval` against a deployed URL: BotID may 403 requests that come from Node, because they lack the browser's BotID headers. Run it against `npm run dev`.
 
 ### Admin panel
 - Route: `/admin` (noindex). Password is checked on `POST /api/admin/model` with a timing-safe compare against `ADMIN_PASSWORD`. There is no `/api/admin/verify`.

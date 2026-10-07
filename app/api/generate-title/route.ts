@@ -1,8 +1,10 @@
 import { generateText } from "ai";
 import { cookies } from "next/headers";
 import { resolveAdminModel } from "@/lib/admin-cookie";
+import { rejectBots } from "@/lib/bot-protection";
 import { MODEL_COOKIE_NAME } from "@/lib/models";
 import { createModel } from "@/lib/models.server";
+import { getClientIp, rateLimitedResponse, titleIpLimiter } from "@/lib/rate-limit";
 
 export const maxDuration = 15;
 export const dynamic = "force-dynamic";
@@ -10,6 +12,12 @@ export const dynamic = "force-dynamic";
 const MAX_BODY_CHARS = 10 * 1024;
 
 export async function POST(req: Request) {
+  const limit = titleIpLimiter.check(getClientIp(req.headers));
+  if (!limit.ok) return rateLimitedResponse(limit.retryAfterSeconds);
+
+  const botResponse = await rejectBots();
+  if (botResponse) return botResponse;
+
   const raw = await req.text();
   if (raw.length > MAX_BODY_CHARS) {
     return Response.json({ error: "Payload too large." }, { status: 413 });
