@@ -13,9 +13,9 @@ import { SITE } from "@/data/site";
 // Shared by lib/chat-tools.ts (live tool calls) and lib/sanitize-messages.ts
 // (rebuilding tool results from client-sent history). Keep both in sync here.
 
-export const bookingCtaInputSchema = z.object({
-  reason: z.string().optional(),
-});
+// No inputs. z.object strips unknown keys, so stored history that still has
+// the old `reason` field validates and is sent on as `{}`.
+export const bookingCtaInputSchema = z.object({});
 
 export const portfolioInputSchema = z.object({
   ids: z.array(z.string()).optional(),

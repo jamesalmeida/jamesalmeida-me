@@ -45,16 +45,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
-    const storedTheme = localStorage.getItem("jamesalmeida-theme") as Theme | null;
-    if (storedTheme) {
+    const storedTheme = localStorage.getItem("jamesalmeida-theme");
+    if (storedTheme === "light" || storedTheme === "dark") {
       setTheme(storedTheme);
     } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
       setTheme("dark");
     }
 
-    const storedAccent = localStorage.getItem("jamesalmeida-accent") as Accent | null;
-    if (storedAccent && ACCENTS.includes(storedAccent)) {
-      setAccentState(storedAccent);
+    const storedAccent = localStorage.getItem("jamesalmeida-accent");
+    const knownAccent = ACCENTS.find((option) => option === storedAccent);
+    if (knownAccent) {
+      setAccentState(knownAccent);
     }
 
     const storedSounds = localStorage.getItem(SOUNDS_STORAGE_KEY);

@@ -66,7 +66,7 @@ export default function AdminPage() {
 
       play("success");
       setIsOverride(true);
-      setStatus(`Model saved: ${model}`);
+      setStatus(`Model saved for this browser: ${model}`);
       setPassword("");
     } catch {
       play("error");
@@ -86,13 +86,14 @@ export default function AdminPage() {
               Model Switcher
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-[var(--muted)]">
-              Select which model the portfolio assistant should use. A successful
-              save stores a signed httpOnly cookie. This page cannot read that
-              cookie itself, so the current model comes from GET /api/admin/model.
+              Choose which model the assistant uses in this browser only. Saving
+              stores a signed httpOnly cookie for 30 days. Every other visitor
+              keeps the default model (set with DEFAULT_MODEL). This page cannot
+              read the cookie, so the current model comes from GET /api/admin/model.
             </p>
             <p className="text-sm text-[var(--muted)]">
               {isOverride
-                ? "Signed cookie: active override."
+                ? "Signed cookie: active override for this browser."
                 : "Signed cookie: none. Using the default model."}
             </p>
           </div>
@@ -101,7 +102,7 @@ export default function AdminPage() {
             <label className="block space-y-2">
               <span className="text-sm font-medium">Model</span>
               <select
-                className="w-full rounded-[1.25rem] border border-[var(--border)] bg-white px-4 py-3 text-base outline-none transition focus:border-[var(--border-strong)]"
+                className="w-full rounded-[1.25rem] border border-[var(--border)] bg-white px-4 py-3 outline-none transition focus:border-[var(--border-strong)]"
                 onChange={(event) => setModel(event.target.value as ModelId)}
                 value={model}
               >
@@ -132,7 +133,7 @@ export default function AdminPage() {
             <label className="block space-y-2">
               <span className="text-sm font-medium">Admin password</span>
               <input
-                className="w-full rounded-[1.25rem] border border-[var(--border)] bg-white px-4 py-3 text-base outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
+                className="w-full rounded-[1.25rem] border border-[var(--border)] bg-white px-4 py-3 outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="Enter ADMIN_PASSWORD"
                 type="password"

@@ -7,17 +7,12 @@ export const MODEL_OPTIONS = [
     provider: "OpenAI",
     description: "Latest GPT-5.4 model.",
   },
+  // Deprecated by Anthropic; retires 2026-11-30. Replace before then.
   {
     id: "claude-sonnet-4-5",
     label: "Claude Sonnet 4.5",
     provider: "Anthropic",
     description: "Balanced reasoning for most conversations.",
-  },
-  {
-    id: "claude-3-5-haiku-latest",
-    label: "Claude Haiku",
-    provider: "Anthropic",
-    description: "Fast, lighter-weight Claude option.",
   },
   {
     id: "gpt-4o",

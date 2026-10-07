@@ -91,6 +91,7 @@ lib/
   chat-tools.ts                # showBookingCta, showPortfolio
   tool-results.ts              # Tool input schemas + pure output builders (shared)
   sanitize-messages.ts         # Untrusted chat body → last 20 UIMessages
+  request-body.ts              # Body size cap (Content-Length, then UTF-8 bytes)
   rate-limit.ts                # In-memory per-IP / global fixed-window limiter
   bot-protection.ts            # Vercel BotID checkBotId() wrapper (403 on bots)
   admin-cookie.ts              # HMAC-signed model cookie
@@ -123,11 +124,14 @@ eslint.config.mjs              # ESLint 9 flat config (next/core-web-vitals + ne
 Required (set in Vercel dashboard and `.env.local`):
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-...
-OPENAI_API_KEY=sk-proj-...        # optional, only if using OpenAI models
+OPENAI_API_KEY=sk-proj-...        # required: the default model is gpt-5.4
+ANTHROPIC_API_KEY=sk-ant-...       # only needed for Claude models
 ADMIN_PASSWORD=...                 # for admin panel access
-DEFAULT_MODEL=claude-sonnet-4-5    # optional override
+ADMIN_COOKIE_SECRET=...            # optional HMAC key for the admin cookie (falls back to ADMIN_PASSWORD)
+DEFAULT_MODEL=gpt-5.4              # optional override; unknown ids fall back to gpt-5.4
 ```
+
+Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model there before its provider retirement date. A cookie that names a removed id is ignored, and the default is used. `claude-sonnet-4-5` is deprecated by Anthropic and retires 2026-11-30.
 
 ## Key Rules
 
@@ -158,11 +162,12 @@ DEFAULT_MODEL=claude-sonnet-4-5    # optional override
 - The thread options menu (`components/thread.tsx`) follows the ARIA menu-button pattern: `aria-haspopup`/`aria-expanded`/`aria-controls` on the trigger, `role="menu"`/`menuitem`, arrow/Home/End keys, Escape or Tab closes and refocuses the trigger.
 
 ### Chat tools and abuse caps
-- `showBookingCta` renders a booking card from `SITE` (buying intent, contact, timing). `showPortfolio` renders project cards (public fields only).
+- `showBookingCta` renders a booking card from `SITE` (buying intent, contact, timing). It takes no input. Old stored parts with a `reason` field still validate, because the key is stripped. `showPortfolio` renders project cards (public fields only).
 - `POST /api/chat` rejects bodies over 200 KB (413) and bad JSON (400). `sanitizeMessages` drops system roles and unknown parts, keeps the last 20 user/assistant messages, truncates each text part to 2,000 characters, and requires the last message to be from the user.
 - Client-sent tool parts are never trusted. `sanitizeMessages` discards their `output`, validates `input` with the schemas in `lib/tool-results.ts` (also used by `lib/chat-tools.ts`), and rebuilds the output with the same pure functions the tools' `execute` uses. Parts are dropped if input is invalid, over 1 KB serialized, has more than 20 ids or ids over 64 chars, or has a malformed `toolCallId`. Max 4 tool parts per message and 8 KB of tool input per request. Assistant text parts are still accepted as sent (2,000-char cap); signing them is not done.
-- `streamText` uses `stopWhen: stepCountIs(3)` and `maxOutputTokens: 800`.
-- `POST /api/generate-title` rejects bodies over 10 KB and truncates the message to 500 characters.
+- `streamText` uses `stopWhen: stepCountIs(3)` and `maxOutputTokens: 800`. The system prompt is sent as a system message with `providerOptions.anthropic.cacheControl` (ephemeral) when an Anthropic model is selected. The stream sends no message metadata, so the active model is never exposed to visitors.
+- Body limits are in bytes (`lib/request-body.ts`): a `Content-Length` over the limit is rejected before reading, then the UTF-8 length is checked.
+- `POST /api/generate-title` rejects bodies over 10 KB and truncates the message to 500 characters. A provider error returns `{ title: null }` (200).
 
 ### Abuse protection
 - Both model routes run, in order: rate limit → BotID → body parsing.
@@ -173,8 +178,9 @@ DEFAULT_MODEL=claude-sonnet-4-5    # optional override
 - Running `npm run eval` against a deployed URL: BotID may 403 requests that come from Node, because they lack the browser's BotID headers. Run it against `npm run dev`.
 
 ### Admin panel
-- Route: `/admin` (noindex). Password is checked on `POST /api/admin/model` with a timing-safe compare against `ADMIN_PASSWORD`. There is no `/api/admin/verify`.
-- On success the route sets httpOnly cookie `jamesalmeida-model` to `${model}.${base64url HMAC-SHA256}`. Unsigned or unknown cookies are ignored and the default model is used.
+- Route: `/admin` (noindex). Password is checked on `POST /api/admin/model` with a timing-safe compare against `ADMIN_PASSWORD`. There is no `/api/admin/verify`. Bad JSON returns 400. Attempts are throttled to 10 per 15 min per IP (`adminIpLimiter`, 429 with `Retry-After`).
+- On success the route sets httpOnly cookie `jamesalmeida-model` (30 days) to `${model}.${issuedAtSeconds}.${base64url HMAC-SHA256}`. The key is `ADMIN_COOKIE_SECRET` if set, else `ADMIN_PASSWORD`. No cookie is signed or honoured without `ADMIN_PASSWORD`. Unsigned, unknown-model, old-format and expired (older than 30 days) cookies are ignored, and the default model is used.
+- The override only applies to the admin's own browser. Every other visitor gets the default model.
 - The admin page loads the current model from `GET /api/admin/model` because the cookie is not readable in the browser.
 - Chat and title routes both use `resolveAdminModel`.
 
@@ -209,10 +215,11 @@ If `npm run dev` works but `npm run build` fails, fix the build errors **before*
 
 `.github/workflows/ci.yml` runs on every PR and on pushes to `main`, using Node from `.nvmrc`: `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`. The build needs no secrets.
 
-- `npm test` runs `vitest run` on `lib/**/*.test.ts`. The tests cover `sanitizeMessages` (including tool-output rebuilding), thread storage caps, quota eviction and corrupt-JSON reads (`lib/threads.test.ts`, fake `window.localStorage` via `vi.stubGlobal`), the admin cookie (`signModel`, `verifyModelCookie`, `timingSafeEqualString`), and `getKnowledge` / `getSystemPrompt` (no HTML comments or `PROVISIONAL`, all placeholders filled). They need no server and no API keys.
+- `npm test` runs `vitest run` on `lib/**/*.test.ts`. The tests cover `sanitizeMessages` (including tool-output rebuilding), thread storage caps, quota eviction and corrupt-JSON reads (`lib/threads.test.ts`, fake `window.localStorage` via `vi.stubGlobal`), the admin cookie (`signModel`, `verifyModelCookie`, `timingSafeEqualString`, including expiry and `ADMIN_COOKIE_SECRET`), `readBodyWithLimit`, and `getKnowledge` / `getSystemPrompt` (no HTML comments or `PROVISIONAL`, all placeholders filled). They need no server and no API keys.
 - `lib/` files import `server-only`. `vitest.config.mts` aliases it to an empty stub, so tests can import them directly.
 - `npm run lint` runs `eslint .`, not the deprecated `next lint`. Unused vars prefixed with `_` are allowed (for example, `node: _node` to drop a prop).
-- `vite` is a direct dev dependency because `.npmrc` sets `legacy-peer-deps=true`, so npm won't install Vitest's peer dependency on its own. Vitest is on 4.x because 5.x needs Node 22+ and `@types/node` 22+.
+- `@ai-sdk/react` is declared but not imported directly. It stays because it is on the version lock list above and is what `@assistant-ui/react-ai-sdk` 1.1.21 is pinned against.
+- `vite` is a direct dev dependency because `.npmrc` sets `legacy-peer-deps=true`, so npm won't install Vitest's peer dependency on its own. Vitest is on 4.x. `@types/node` is `^24` to match `.nvmrc`. `zod` must stay on v3 at `^3.25.76` or later (the AI SDK peer requirement).
 
 ## Testing Changes
 
