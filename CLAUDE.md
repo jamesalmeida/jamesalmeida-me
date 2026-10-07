@@ -102,6 +102,12 @@ public/
 scripts/
   eval-chat.mjs                # npm run eval
   eval-cases.json
+
+lib/*.test.ts                  # Vitest unit tests (npm test)
+test/server-only-stub.ts       # Vitest alias for `server-only`
+vitest.config.mts              # `@/` and `server-only` aliases
+eslint.config.mjs              # ESLint 9 flat config (next/core-web-vitals + next/typescript)
+.github/workflows/ci.yml       # PRs and pushes to main
 ```
 
 ## Environment Variables
@@ -165,11 +171,20 @@ npm run build
 
 Vercel's build is **stricter** than `next dev`:
 - Full TypeScript type checking
-- Strict ESLint rules
+- ESLint (`eslint.config.mjs`, `next/core-web-vitals` + `next/typescript`). Errors fail the build
 - Static analysis of imports/exports
 - No dynamic `api/rsc` paths
 
 If `npm run dev` works but `npm run build` fails, fix the build errors **before** pushing. Do not rely on Vercel CI to catch type errors.
+
+## CI and Unit Tests
+
+`.github/workflows/ci.yml` runs on every PR and on pushes to `main`, using Node from `.nvmrc`: `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`. The build needs no secrets.
+
+- `npm test` runs `vitest run` on `lib/**/*.test.ts`. The tests cover `sanitizeMessages`, the admin cookie (`signModel`, `verifyModelCookie`, `timingSafeEqualString`), and `getKnowledge` / `getSystemPrompt` (no HTML comments or `PROVISIONAL`, all placeholders filled). They need no server and no API keys.
+- `lib/` files import `server-only`. `vitest.config.mts` aliases it to an empty stub, so tests can import them directly.
+- `npm run lint` runs `eslint .`, not the deprecated `next lint`. Unused vars prefixed with `_` are allowed (for example, `node: _node` to drop a prop).
+- `vite` is a direct dev dependency because `.npmrc` sets `legacy-peer-deps=true`, so npm won't install Vitest's peer dependency on its own. Vitest is on 4.x because 5.x needs Node 22+ and `@types/node` 22+.
 
 ## Testing Changes
 
@@ -179,6 +194,10 @@ npm install
 
 # Type check only
 npm run typecheck
+
+# Lint and unit tests
+npm run lint
+npm test
 
 # Full production build (catches everything Vercel will)
 npm run build
