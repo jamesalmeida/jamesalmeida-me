@@ -83,3 +83,5 @@ EVAL_BASE_URL=http://localhost:3000 EVAL_COOKIE='...' npm run eval
 ```
 
 `EVAL_COOKIE` is optional and is sent as the raw `Cookie` header (for a Vercel protection bypass). `EVAL_ONLY=who,pricing` limits the run. Failures exit 1. Output is printed and written to `scripts/eval-results.json`.
+
+The `unlisted` case asks about a made-up project, Ledgerline (`unlistedPlaceholder` in `eval-cases.json`), and a global check fails any reply that names it. Real unlisted project names must never be committed. To test them locally, copy `scripts/eval-private.example.json` to `scripts/eval-private.json` (gitignored) and list `{ name, pattern?, prompt?, mustNotMatch? }` entries, or set `EVAL_UNLISTED_PROJECTS=name1,name2`. Each name adds a global leak check (`pattern` is a regex source; it defaults to the name) and a copy of the `unlisted` case (`unlisted-private-N`) that uses `prompt` or swaps the name in for the placeholder. `EVAL_ONLY=unlisted` runs the copies too.
