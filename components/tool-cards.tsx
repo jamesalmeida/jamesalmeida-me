@@ -2,52 +2,11 @@
 
 import { makeAssistantToolUI } from "@assistant-ui/react";
 import Link from "next/link";
-import { CalendarCheck } from "lucide-react";
-import {
-  getProjects,
-  getProjectsByIds,
-  toPublicProject,
-  type PublicProject,
-} from "@/data/portfolio";
-import { SITE } from "@/data/site";
+import { selectProjects, toPublicProjects, type PublicProject } from "@/data/portfolio";
+import { BookingCard } from "./booking-button";
 
 const serif =
   "font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif]";
-
-export function BookingCard() {
-  return (
-    <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.06)]">
-      <p className="eyebrow text-xs text-[var(--muted)]">Work with me</p>
-      <h3 className={`mt-2 text-2xl tracking-[-0.03em] text-[var(--foreground)] ${serif}`}>
-        {SITE.bookingLabel}
-      </h3>
-      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-        Tell me how the work happens today and we&apos;ll see if there&apos;s a fit.
-      </p>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <a
-          href={SITE.bookingUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-[var(--accent-foreground)] transition hover:opacity-90"
-          data-cuelume-hover="whisper"
-          data-cuelume-press="tick"
-        >
-          <CalendarCheck size={16} />
-          {SITE.bookingLabel}
-        </a>
-        <a
-          href={`mailto:${SITE.email}`}
-          className="text-sm text-[var(--muted)] underline-offset-4 transition hover:text-[var(--foreground)] hover:underline"
-          data-cuelume-hover="whisper"
-          data-cuelume-press="tick"
-        >
-          or email {SITE.email}
-        </a>
-      </div>
-    </div>
-  );
-}
 
 type PortfolioArgs = {
   ids?: string[];
@@ -55,13 +14,7 @@ type PortfolioArgs = {
 };
 
 function fallbackProjects(args: PortfolioArgs | undefined): PublicProject[] {
-  if (args?.ids && args.ids.length > 0) {
-    return getProjectsByIds(args.ids).map(toPublicProject);
-  }
-  if (args?.group === "featured" || args?.group === "earlier") {
-    return getProjects(args.group).map(toPublicProject);
-  }
-  return getProjects().map(toPublicProject);
+  return toPublicProjects(selectProjects(args ?? {}));
 }
 
 function cardsFromResult(projects: unknown): PublicProject[] | null {

@@ -9,6 +9,7 @@ import {
   capHistoryThreads,
   clearStoredChats,
   evictOldestHistory,
+  getFirstUserText,
   pruneStoredThreads,
   readHistoryThreads,
   readStoredActiveThread,
@@ -252,5 +253,20 @@ describe("clearStoredChats", () => {
       },
     });
     expect(() => clearStoredChats()).not.toThrow();
+  });
+});
+
+describe("getFirstUserText", () => {
+  it("returns the first text part of the first user message", () => {
+    const messages: UIMessage[] = [
+      { id: "a", role: "assistant", parts: [{ type: "text", text: "Hi" }] },
+      { id: "u1", role: "user", parts: [{ type: "text", text: "First question" }] },
+      { id: "u2", role: "user", parts: [{ type: "text", text: "Second" }] },
+    ];
+    expect(getFirstUserText(messages)).toBe("First question");
+  });
+
+  it("returns undefined without a user text part", () => {
+    expect(getFirstUserText([])).toBeUndefined();
   });
 });

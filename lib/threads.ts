@@ -344,13 +344,16 @@ export function writeHistoryThreads(threads: HistoryThread[]) {
   safeSetItem(HISTORY_THREADS_KEY, JSON.stringify(threads));
 }
 
+// Text of the first user message: the history description and the title request.
+export function getFirstUserText(messages: UIMessage[]): string | undefined {
+  return messages.find((m) => m.role === "user")?.parts.find(isTextPart)?.text;
+}
+
 export function createHistoryThread(
   messages: UIMessage[],
   sourceThreadId: string,
 ): HistoryThread {
-  const firstUserMsg = messages.find((m) => m.role === "user");
-  const firstText =
-    firstUserMsg?.parts.find(isTextPart)?.text ?? "Chat";
+  const firstText = getFirstUserText(messages) ?? "Chat";
   const description =
     firstText.length > 72 ? `${firstText.slice(0, 72).trim()}\u2026` : firstText;
 

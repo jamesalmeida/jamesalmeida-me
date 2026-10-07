@@ -7,8 +7,10 @@ import {
   MessagePrimitive,
   MessagePartPrimitive,
   ThreadPrimitive,
+  useComposer,
   useMessage,
   useThread,
+  type ThreadMessage,
   useThreadRuntime,
   useThreadViewport,
 } from "@assistant-ui/react";
@@ -27,6 +29,7 @@ import {
   useState,
   type ComponentPropsWithoutRef,
   type KeyboardEvent,
+  type RefObject,
 } from "react";
 import { SITE } from "@/data/site";
 import { toUIMessages } from "@/lib/message-convert";
@@ -41,10 +44,15 @@ type ThreadProps = {
   onDeleteThread?: () => void;
   onMessagesChange: (messages: UIMessage[]) => void;
   onRenameThread?: (title: string) => void;
+  onReply?: (text: string) => void;
   onRestart?: (messages: UIMessage[]) => void;
   onRunComplete?: (messages: UIMessage[]) => void;
   thread: PortfolioThread;
 };
+
+// Matches the server's per-part cap in lib/sanitize-messages.ts.
+const MAX_MESSAGE_CHARS = 2000;
+const CHAR_COUNTER_FROM = 1800;
 
 const BLOCKED_MESSAGE =
   "You're sending messages too fast. Please wait a minute and try again, or email james@gsv.to.";
@@ -59,26 +67,32 @@ const chatFetch: typeof fetch = async (input, init) => {
   return response;
 };
 
+// Created once: a new transport per render is wasted work.
+const chatTransport = new DefaultChatTransport({ api: "/api/chat", fetch: chatFetch });
+
 export function Thread({
   initialMessages,
   onDeleteThread,
   onMessagesChange,
   onRenameThread,
+  onReply,
   onRestart,
   onRunComplete,
   thread,
 }: ThreadProps) {
   const runtime = useChatRuntime({
     messages: initialMessages,
-    transport: new DefaultChatTransport({ api: "/api/chat", fetch: chatFetch }),
+    transport: chatTransport,
   });
+  // Set by the Stop button. A stopped run still ends with a "complete" status.
+  const cancelledRef = useRef(false);
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <ShowBookingCtaToolUI />
       <ShowPortfolioToolUI />
       <ThreadPersistence onMessagesChange={onMessagesChange} />
-      <RunCompleteDetector onRunComplete={onRunComplete} />
+      <RunCompleteDetector cancelledRef={cancelledRef} onReply={onReply} onRunComplete={onRunComplete} />
       <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
         <Header thread={thread} onDeleteThread={onDeleteThread} onRenameThread={onRenameThread} onRestart={onRestart} />
 
@@ -99,17 +113,30 @@ export function Thread({
           <ScrollToBottomButton />
         </div>
 
-        <Composer />
+        <Composer onCancel={() => { cancelledRef.current = true; }} />
       </ThreadPrimitive.Root>
     </AssistantRuntimeProvider>
   );
 }
 
-// Fires onRunComplete once after the first AI response in this Thread instance.
-// Used to auto-fork static threads into history once the first exchange completes.
+// The last message, if it is an assistant reply that finished without an error or
+// a cancel and has some content (text or a tool card).
+function getCompletedReply(messages: readonly ThreadMessage[], cancelled: boolean) {
+  const last = messages[messages.length - 1];
+  if (cancelled || last?.role !== "assistant" || last.status.type !== "complete") return null;
+  return toUIMessages([last]).length > 0 ? last : null;
+}
+
+// After each run: announces a completed reply (via onReply) and fires onRunComplete
+// once, after the first completed reply in this Thread instance. Used to auto-fork
+// static threads into history, so failed or stopped runs don't fork.
 function RunCompleteDetector({
+  cancelledRef,
+  onReply,
   onRunComplete,
 }: {
+  cancelledRef: RefObject<boolean>;
+  onReply?: (text: string) => void;
   onRunComplete?: (messages: UIMessage[]) => void;
 }) {
   const isRunning = useThread((state) => state.isRunning);
@@ -118,17 +145,28 @@ function RunCompleteDetector({
   const hasFired = useRef(false);
 
   useEffect(() => {
+    const justStarted = !prevRunning.current && isRunning;
     const justFinished = prevRunning.current && !isRunning;
     prevRunning.current = isRunning;
 
+    if (justStarted) cancelledRef.current = false;
     if (!justFinished || messages.length === 0) return;
 
     play("ready");
 
+    const reply = getCompletedReply(messages, cancelledRef.current);
+    if (!reply) return;
+
+    const text = reply.content
+      .flatMap((part) => (part.type === "text" ? [part.text] : []))
+      .join("\n\n")
+      .trim();
+    if (text) onReply?.(text);
+
     if (hasFired.current || !onRunComplete) return;
     hasFired.current = true;
     onRunComplete(toUIMessages(messages));
-  }, [isRunning, messages, onRunComplete]);
+  }, [cancelledRef, isRunning, messages, onReply, onRunComplete]);
 
   return null;
 }
@@ -326,7 +364,7 @@ function Header({
                     role="menuitem"
                     tabIndex={-1}
                     onClick={() => {
-                      setIsMenuOpen(false);
+                      closeMenu(true);
                       play("whisper");
                       onDeleteThread();
                     }}
@@ -507,10 +545,12 @@ function UserMessage() {
   );
 }
 
-function Composer() {
+function Composer({ onCancel }: { onCancel: () => void }) {
   const isRunning = useThread((state) => state.isRunning);
+  const charCount = useComposer((state) => state.text.length);
   const { theme } = useTheme();
   const wasRunningRef = useRef(false);
+  const charCounterId = useId();
 
   useEffect(() => {
     if (isRunning && !wasRunningRef.current) {
@@ -539,9 +579,12 @@ function Composer() {
           className="max-h-[160px] min-h-[2.75rem] flex-1 resize-none overflow-y-auto rounded-[1.5rem] border border-[var(--border)] px-4 py-2.5 text-sm leading-6 shadow-[0_10px_30px_rgba(0,0,0,0.05)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] sm:px-5 sm:py-3"
           style={{ backgroundColor: inputBg }}
           placeholder="Ask me anything..."
+          maxLength={MAX_MESSAGE_CHARS}
+          aria-describedby={charCount >= CHAR_COUNTER_FROM ? charCounterId : undefined}
         />
         {isRunning ? (
           <ComposerPrimitive.Cancel
+            onClick={onCancel}
             className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] transition hover:opacity-85"
             aria-label="Stop generating"
             data-cuelume-press="tick"
@@ -558,6 +601,14 @@ function Composer() {
           </ComposerPrimitive.Send>
         )}
       </div>
+      {charCount >= CHAR_COUNTER_FROM ? (
+        <p
+          id={charCounterId}
+          className="mx-auto mt-1.5 max-w-4xl px-1 text-right text-[11px] leading-4 text-[var(--muted)]"
+        >
+          {charCount.toLocaleString()} / {MAX_MESSAGE_CHARS.toLocaleString()}
+        </p>
+      ) : null}
       <p className="mx-auto mt-2 max-w-4xl px-1 text-center text-[11px] leading-4 text-[var(--muted)]">
         Chats are processed by AI providers (OpenAI and Anthropic) and saved only in this
         browser. Please don&apos;t share sensitive information.{" "}

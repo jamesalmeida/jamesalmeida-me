@@ -1,29 +1,20 @@
 "use client";
 
 import { bind, play, setEnabled } from "cuelume";
+import { MotionConfig } from "framer-motion";
 import { createContext, useContext, useEffect, useState } from "react";
+import {
+  ACCENTS,
+  ACCENT_STORAGE_KEY,
+  DEFAULT_ACCENT,
+  THEME_COLORS,
+  THEME_STORAGE_KEY,
+  type Accent,
+  type Theme,
+} from "@/lib/theme";
 
-type Theme = "light" | "dark";
-export type Accent =
-  | "grey"
-  | "orange"
-  | "red"
-  | "blue"
-  | "green"
-  | "yellow"
-  | "purple";
+export { ACCENTS, type Accent } from "@/lib/theme";
 
-export const ACCENTS: Accent[] = [
-  "grey",
-  "orange",
-  "red",
-  "blue",
-  "green",
-  "yellow",
-  "purple",
-];
-
-const DEFAULT_ACCENT: Accent = "grey";
 const SOUNDS_STORAGE_KEY = "jamesalmeida-sounds";
 
 interface ThemeContextType {
@@ -45,14 +36,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
-    const storedTheme = localStorage.getItem("jamesalmeida-theme");
+    const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
     if (storedTheme === "light" || storedTheme === "dark") {
       setTheme(storedTheme);
     } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
       setTheme("dark");
     }
 
-    const storedAccent = localStorage.getItem("jamesalmeida-accent");
+    const storedAccent = localStorage.getItem(ACCENT_STORAGE_KEY);
     const knownAccent = ACCENTS.find((option) => option === storedAccent);
     if (knownAccent) {
       setAccentState(knownAccent);
@@ -68,7 +59,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!mounted) return;
 
-    localStorage.setItem("jamesalmeida-theme", theme);
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
 
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
@@ -79,13 +70,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // Update iOS Safari theme-color meta tag for status bar / home indicator
     const themeMeta = document.getElementById("theme-color-meta");
     if (themeMeta) {
-      themeMeta.setAttribute("content", theme === "dark" ? "#0a0a0a" : "#f7f5ef");
+      themeMeta.setAttribute("content", THEME_COLORS[theme]);
     }
   }, [theme, mounted]);
 
   useEffect(() => {
     if (!mounted) return;
-    localStorage.setItem("jamesalmeida-accent", accent);
+    localStorage.setItem(ACCENT_STORAGE_KEY, accent);
     document.documentElement.dataset.accent = accent;
   }, [accent, mounted]);
 
@@ -107,17 +98,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  // Prevent flash by not rendering until mounted
-  if (!mounted) {
-    return <>{children}</>;
-  }
-
+  // The theme class is set before paint by the inline script in app/layout.tsx.
+  // reducedMotion="user" turns off framer-motion transforms for prefers-reduced-motion.
   return (
-    <ThemeContext.Provider
-      value={{ theme, toggleTheme, accent, setAccent, soundsEnabled, toggleSounds }}
-    >
-      {children}
-    </ThemeContext.Provider>
+    <MotionConfig reducedMotion="user">
+      {mounted ? (
+        <ThemeContext.Provider
+          value={{ theme, toggleTheme, accent, setAccent, soundsEnabled, toggleSounds }}
+        >
+          {children}
+        </ThemeContext.Provider>
+      ) : (
+        children
+      )}
+    </MotionConfig>
   );
 }
 

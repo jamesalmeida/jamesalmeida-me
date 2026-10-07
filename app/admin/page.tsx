@@ -102,7 +102,7 @@ export default function AdminPage() {
             <label className="block space-y-2">
               <span className="text-sm font-medium">Model</span>
               <select
-                className="w-full rounded-[1.25rem] border border-[var(--border)] bg-white px-4 py-3 outline-none transition focus:border-[var(--border-strong)]"
+                className="w-full rounded-[1.25rem] border border-[var(--border)] bg-[var(--panel-strong)] px-4 py-3 outline-none transition focus:border-[var(--border-strong)]"
                 onChange={(event) => setModel(event.target.value as ModelId)}
                 value={model}
               >
@@ -120,8 +120,8 @@ export default function AdminPage() {
                   key={option.id}
                   className={`rounded-[1.25rem] border p-4 text-sm ${
                     option.id === model
-                      ? "border-black/20 bg-black text-white"
-                      : "border-[var(--border)] bg-white/70 text-[var(--muted)]"
+                      ? "border-[var(--border-strong)] bg-[var(--foreground)] text-[var(--background)]"
+                      : "border-[var(--border)] bg-[var(--panel)] text-[var(--muted)]"
                   }`}
                 >
                   <div className="font-medium">{option.label}</div>
@@ -133,7 +133,7 @@ export default function AdminPage() {
             <label className="block space-y-2">
               <span className="text-sm font-medium">Admin password</span>
               <input
-                className="w-full rounded-[1.25rem] border border-[var(--border)] bg-white px-4 py-3 outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
+                className="w-full rounded-[1.25rem] border border-[var(--border)] bg-[var(--panel-strong)] px-4 py-3 outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="Enter ADMIN_PASSWORD"
                 type="password"
@@ -143,7 +143,7 @@ export default function AdminPage() {
 
             <div className="flex items-center gap-3">
               <button
-                className="rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:opacity-85 disabled:opacity-60"
+                className="rounded-full bg-[var(--foreground)] px-5 py-3 text-sm font-medium text-[var(--background)] transition hover:opacity-85 disabled:opacity-60"
                 disabled={isSaving}
                 type="submit"
                 data-cuelume-hover="whisper"

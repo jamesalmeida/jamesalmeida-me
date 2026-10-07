@@ -1,7 +1,8 @@
 "use client";
 
 import type { UIMessage } from "ai";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { Modal } from "@/components/modal";
 import { Thread } from "@/components/thread";
 import { ThreadList } from "@/components/thread-list";
 import {
@@ -10,6 +11,7 @@ import {
   capHistoryThreads,
   clearStoredChats,
   createHistoryThread,
+  getFirstUserText,
   getThreadMessages,
   getThreadPreview,
   isStaticThreadId,
@@ -38,6 +40,11 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
   // thread (e.g. its unmount flush) are ignored so cleared chats don't come back.
   const [chatGeneration, setChatGeneration] = useState(0);
   const chatGenerationRef = useRef(0);
+  // History thread waiting for the delete confirmation.
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  // Latest finished reply, read out by the polite live region. It lives here, not
+  // in Thread, because the first reply forks the thread and remounts it.
+  const [announcement, setAnnouncement] = useState("");
 
   // Updates state and writes localStorage right away. If storage was full and
   // history threads were evicted, drop them from the sidebar too.
@@ -167,10 +174,7 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
       });
       setHistoryThreads((prev) => capHistoryThreads([history, ...prev]));
       setActiveThreadId(history.id);
-      const firstUserMsg = messages.find((message) => message.role === "user");
-      const firstText = firstUserMsg?.parts.find(
-        (part): part is { type: "text"; text: string } => part.type === "text",
-      )?.text;
+      const firstText = getFirstUserText(messages);
       if (firstText) generateTitle(history.id, firstText);
     },
     [activeThreadId, generateTitle, updateStoredThreads],
@@ -191,6 +195,11 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
     [activeThreadId, updateStoredThreads],
   );
 
+  const confirmDeleteThread = useCallback(() => {
+    if (pendingDeleteId) handleDeleteThread(pendingDeleteId);
+    setPendingDeleteId(null);
+  }, [handleDeleteThread, pendingDeleteId]);
+
   const handleRestart = useCallback(
     (messages: UIMessage[]) => {
       if (messages.length === 0) return;
@@ -200,10 +209,7 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
         return saveThreadMessages(withHistory, activeThreadId, []);
       });
       setHistoryThreads((prev) => capHistoryThreads([history, ...prev]));
-      const firstUserMsg = messages.find((message) => message.role === "user");
-      const firstText = firstUserMsg?.parts.find(
-        (part): part is { type: "text"; text: string } => part.type === "text",
-      )?.text;
+      const firstText = getFirstUserText(messages);
       if (firstText) generateTitle(history.id, firstText);
     },
     [activeThreadId, generateTitle, updateStoredThreads],
@@ -240,7 +246,7 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
           historyThreads={historyThreads}
           isOpen={isSidebarOpen}
           onClearAllChats={handleClearAllChats}
-          onDeleteThread={handleDeleteThread}
+          onDeleteThread={setPendingDeleteId}
           onOpenChange={setIsSidebarOpen}
           onSelectThread={handleThreadChange}
           previews={previews}
@@ -251,15 +257,70 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
           <Thread
             key={`${activeThreadId}:${chatGeneration}`}
             initialMessages={activeMessages}
-            onDeleteThread={!isStaticThreadId(activeThreadId) ? () => handleDeleteThread(activeThreadId) : undefined}
+            onDeleteThread={!isStaticThreadId(activeThreadId) ? () => setPendingDeleteId(activeThreadId) : undefined}
             onMessagesChange={(messages) => handleMessagesChange(activeThreadId, messages, chatGeneration)}
             onRenameThread={!isStaticThreadId(activeThreadId) ? handleRenameThread : undefined}
+            onReply={setAnnouncement}
             onRestart={handleRestart}
             onRunComplete={handleRunComplete}
             thread={activeThread}
           />
+          <div className="sr-only" aria-live="polite" aria-atomic="true">
+            {announcement}
+          </div>
         </main>
       </div>
+      {pendingDeleteId ? (
+        <ConfirmDeleteDialog
+          onCancel={() => setPendingDeleteId(null)}
+          onConfirm={confirmDeleteThread}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function ConfirmDeleteDialog({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const titleId = useId();
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  return (
+    <Modal labelledBy={titleId} onClose={onCancel} initialFocusRef={cancelRef}>
+      <div className="relative w-full max-w-sm rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
+        <h2
+          id={titleId}
+          className="font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif] text-2xl tracking-[-0.02em]"
+        >
+          Delete chat?
+        </h2>
+        <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+          This chat is removed from this browser. This can&apos;t be undone.
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            ref={cancelRef}
+            type="button"
+            onClick={onCancel}
+            className="rounded-full border border-[var(--border)] px-4 py-2 text-sm text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
+            data-cuelume-press="tick"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="rounded-full bg-red-500 px-4 py-2 text-sm text-white transition hover:bg-red-600"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
