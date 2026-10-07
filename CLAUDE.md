@@ -83,6 +83,7 @@ components/
   tool-cards.tsx               # showBookingCta / showPortfolio cards
   suggestions.tsx              # Empty-state pills
   thread-list.tsx              # Sidebar, including links to /consulting and /work
+  modal.tsx                    # Native <dialog> (showModal) wrapper for Rename/Settings
 
 lib/
   system-prompt.ts             # First-person persona + guardrails
@@ -151,6 +152,10 @@ DEFAULT_MODEL=claude-sonnet-4-5    # optional override
 - "Clear all chats" in the Settings modal (with a confirm step) calls `clearStoredChats()` in `lib/threads.ts`, which removes the three chat keys and keeps theme/accent/sound prefs. `ChatApp` bumps a generation counter so the old thread remounts and its unmount flush is ignored.
 - The composer shows a one-line notice linking to `/privacy`. If you change providers, storage, logging, cookies or abuse protection, update `app/privacy/page.tsx` and that notice to match.
 - **Never** persist chats to a database.
+
+### Dialogs and menus
+- Modals use `components/modal.tsx`: a native `<dialog>` opened with `showModal()` (focus trap, Escape, top layer), labelled via `aria-labelledby`, closed on backdrop click, and returning focus to the trigger (or `returnFocusRef`). Mount it only while open. Don't build new modals from `div`s.
+- The thread options menu (`components/thread.tsx`) follows the ARIA menu-button pattern: `aria-haspopup`/`aria-expanded`/`aria-controls` on the trigger, `role="menu"`/`menuitem`, arrow/Home/End keys, Escape or Tab closes and refocuses the trigger.
 
 ### Chat tools and abuse caps
 - `showBookingCta` renders a booking card from `SITE` (buying intent, contact, timing). `showPortfolio` renders project cards (public fields only).
