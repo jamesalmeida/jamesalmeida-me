@@ -19,10 +19,19 @@ import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { play } from "cuelume";
 import { ArrowDown, ArrowUp, CalendarCheck, MoreHorizontal, Pencil, RotateCcw, Square, Trash2, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ComponentPropsWithoutRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ComponentPropsWithoutRef,
+  type KeyboardEvent,
+} from "react";
 import { SITE } from "@/data/site";
 import { toUIMessages } from "@/lib/message-convert";
 import type { PortfolioThread } from "@/lib/threads";
+import { Modal } from "./modal";
 import { Suggestions } from "./suggestions";
 import { useTheme } from "./theme-provider";
 import { ShowBookingCtaToolUI, ShowPortfolioToolUI } from "./tool-cards";
@@ -124,6 +133,10 @@ function RunCompleteDetector({
   return null;
 }
 
+function getMenuItems(menu: HTMLElement | null) {
+  return Array.from(menu?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+}
+
 function Header({
   thread,
   onDeleteThread,
@@ -142,6 +155,63 @@ function Header({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+  const menuId = useId();
+  const menuButtonId = useId();
+  const renameTitleId = useId();
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  // Which item to focus when the menu opens: arrow-up on the trigger picks the last.
+  const focusLastOnOpen = useRef(false);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const items = getMenuItems(menuRef.current);
+    (focusLastOnOpen.current ? items[items.length - 1] : items[0])?.focus();
+    focusLastOnOpen.current = false;
+  }, [isMenuOpen]);
+
+  const closeMenu = (returnFocus: boolean) => {
+    setIsMenuOpen(false);
+    if (returnFocus) menuButtonRef.current?.focus();
+  };
+
+  const handleMenuButtonKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      focusLastOnOpen.current = e.key === "ArrowUp";
+      setIsMenuOpen(true);
+    }
+  };
+
+  const handleMenuKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const items = getMenuItems(menuRef.current);
+    const index = items.indexOf(document.activeElement as HTMLElement);
+    let next: HTMLElement | undefined;
+    switch (e.key) {
+      case "ArrowDown":
+        next = items[(index + 1) % items.length];
+        break;
+      case "ArrowUp":
+        next = items[(index - 1 + items.length) % items.length];
+        break;
+      case "Home":
+        next = items[0];
+        break;
+      case "End":
+        next = items[items.length - 1];
+        break;
+      case "Escape":
+      case "Tab":
+        e.preventDefault();
+        closeMenu(true);
+        return;
+      default:
+        return;
+    }
+    e.preventDefault();
+    next?.focus();
+  };
 
   const handleRestart = () => {
     play("tick");
@@ -206,7 +276,14 @@ function Header({
         {onDeleteThread ? (
           <div className="relative flex-shrink-0">
             <button
+              ref={menuButtonRef}
+              id={menuButtonId}
+              type="button"
               onClick={() => setIsMenuOpen((v) => !v)}
+              onKeyDown={handleMenuButtonKeyDown}
+              aria-haspopup="menu"
+              aria-expanded={isMenuOpen}
+              aria-controls={isMenuOpen ? menuId : undefined}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
               style={{ backgroundColor: btnBg }}
               aria-label="Thread options"
@@ -218,29 +295,42 @@ function Header({
 
             {isMenuOpen && (
               <>
+                {/* Mouse-only click-outside layer; keyboard users close with Escape or Tab. */}
                 <div
                   className="fixed inset-0 z-40"
-                  onClick={() => setIsMenuOpen(false)}
+                  aria-hidden="true"
+                  onClick={() => closeMenu(false)}
                 />
                 <div
+                  ref={menuRef}
+                  id={menuId}
+                  role="menu"
+                  aria-labelledby={menuButtonId}
+                  onKeyDown={handleMenuKeyDown}
                   className="absolute right-0 top-12 z-50 w-44 overflow-hidden rounded-[1rem] border border-[var(--border)] shadow-[0_16px_40px_rgba(0,0,0,0.14)]"
                   style={{ backgroundColor: menuBg }}
                 >
                   <button
+                    type="button"
+                    role="menuitem"
+                    tabIndex={-1}
                     onClick={openRename}
-                    className="flex w-full items-center gap-2.5 px-4 py-3 text-sm text-[var(--foreground)] transition hover:bg-[var(--panel)]"
+                    className="flex w-full items-center gap-2.5 px-4 py-3 text-sm text-[var(--foreground)] transition hover:bg-[var(--panel)] focus-visible:bg-[var(--panel)]"
                   >
                     <Pencil size={14} className="text-[var(--muted)]" />
                     Rename
                   </button>
-                  <div className="mx-3 border-t border-[var(--border)]" />
+                  <div role="separator" className="mx-3 border-t border-[var(--border)]" />
                   <button
+                    type="button"
+                    role="menuitem"
+                    tabIndex={-1}
                     onClick={() => {
                       setIsMenuOpen(false);
                       play("whisper");
                       onDeleteThread();
                     }}
-                    className="flex w-full items-center gap-2.5 px-4 py-3 text-sm text-red-500 transition hover:bg-[var(--panel)]"
+                    className="flex w-full items-center gap-2.5 px-4 py-3 text-sm text-red-500 transition hover:bg-[var(--panel)] focus-visible:bg-[var(--panel)]"
                   >
                     <Trash2 size={14} />
                     Delete
@@ -264,16 +354,25 @@ function Header({
       </header>
 
       {isRenaming && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
-          onClick={() => setIsRenaming(false)}
+        <Modal
+          labelledBy={renameTitleId}
+          onClose={() => setIsRenaming(false)}
+          initialFocusRef={renameInputRef}
+          returnFocusRef={menuButtonRef}
         >
-          <div
+          {/* A form so Enter saves on implicit submit, while focus is still in the input. */}
+          <form
             className="relative w-full max-w-sm rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]"
-            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => {
+              e.preventDefault();
+              saveRename();
+            }}
           >
             <div className="flex items-center justify-between">
-              <h2 className="font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif] text-2xl tracking-[-0.02em]">
+              <h2
+                id={renameTitleId}
+                className="font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif] text-2xl tracking-[-0.02em]"
+              >
                 Rename
               </h2>
               <button
@@ -286,11 +385,11 @@ function Header({
               </button>
             </div>
             <input
-              autoFocus
+              ref={renameInputRef}
               type="text"
+              aria-label="Thread title"
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") saveRename(); if (e.key === "Escape") setIsRenaming(false); }}
               className="mt-5 w-full rounded-[0.75rem] border border-[var(--border)] bg-[var(--panel)] px-4 py-2.5 text-sm outline-none transition focus:border-[var(--border-strong)]"
               placeholder="Thread title"
             />
@@ -303,15 +402,14 @@ function Header({
                 Cancel
               </button>
               <button
-                type="button"
-                onClick={saveRename}
+                type="submit"
                 className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm text-[var(--accent-foreground)] transition hover:opacity-85"
               >
                 Save
               </button>
             </div>
-          </div>
-        </div>
+          </form>
+        </Modal>
       )}
     </>
   );

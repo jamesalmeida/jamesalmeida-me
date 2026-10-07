@@ -4,9 +4,10 @@ import { play } from "cuelume";
 import Link from "next/link";
 import { AnimatePresence, animate, motion, useMotionValue, useTransform } from "framer-motion";
 import { ChevronDown, Menu, Moon, Settings, Sun, Trash2, Volume2, VolumeX, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { ACCENTS, useTheme, type Accent } from "@/components/theme-provider";
 import type { HistoryThread, PortfolioThread } from "@/lib/threads";
+import { Modal } from "./modal";
 
 const ACCENT_SWATCHES: Record<Accent, { label: string; light: string; dark: string }> = {
   grey: { label: "Grey", light: "#2f4858", dark: "#8ba4b5" },
@@ -46,6 +47,7 @@ export function ThreadList({
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   const [isPinnedOpen, setIsPinnedOpen] = useState(true);
   const [isHistoryOpen, setIsHistoryOpen] = useState(true);
+  const settingsTitleId = useId();
   const closeSettings = () => {
     setIsSettingsOpen(false);
     setIsConfirmingClear(false);
@@ -263,16 +265,13 @@ export function ThreadList({
       ) : null}
 
       {isSettingsOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
-          onClick={closeSettings}
-        >
-          <div
-            className="relative w-full max-w-sm rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <Modal labelledBy={settingsTitleId} onClose={closeSettings}>
+          <div className="relative w-full max-w-sm rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
             <div className="flex items-center justify-between">
-              <h2 className="font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif] text-2xl tracking-[-0.02em]">
+              <h2
+                id={settingsTitleId}
+                className="font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif] text-2xl tracking-[-0.02em]"
+              >
                 Settings
               </h2>
               <button
@@ -386,7 +385,7 @@ export function ThreadList({
               </p>
             </div>
           </div>
-        </div>
+        </Modal>
       ) : null}
     </>
   );
