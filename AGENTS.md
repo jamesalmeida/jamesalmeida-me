@@ -6,4 +6,4 @@
 - Voice is first person as James. GSV is only for contracts and billing. Public contact is `james@gsv.to`, LinkedIn, and GitHub. No phone number. Never state the intro-call length.
 - Content lives in `data/knowledge.md`, `data/site.ts` (`SITE` and `OFFER`), and `data/portfolio.ts`. Do not duplicate prices. Do not render `confirmed`. Provisional values use a `// PROVISIONAL:` or `<!-- // PROVISIONAL: ... -->` comment (`rg "PROVISIONAL"`).
 - No secrets in client code. API keys and `ADMIN_PASSWORD` stay in server env. The model override cookie is httpOnly and HMAC-signed.
-- Node 24 (`.nvmrc`). Chat eval: `EVAL_BASE_URL=... EVAL_COOKIE=... npm run eval`. It needs a server and API keys.
+- Node 24 (`.nvmrc`). CI runs `typecheck`, `lint`, `test`, and `build`. Unit tests: `npm test` (Vitest). Chat eval: `EVAL_BASE_URL=... EVAL_COOKIE=... npm run eval`. It needs a server and API keys.
