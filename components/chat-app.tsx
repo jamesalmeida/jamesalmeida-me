@@ -1,16 +1,18 @@
 "use client";
 
 import type { UIMessage } from "ai";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Thread } from "@/components/thread";
 import { ThreadList } from "@/components/thread-list";
 import {
   THREADS,
   THREADS_BY_ID,
+  capHistoryThreads,
   createHistoryThread,
   getThreadMessages,
   getThreadPreview,
   isStaticThreadId,
+  pruneStoredThreads,
   readHistoryThreads,
   readStoredActiveThread,
   readStoredThreads,
@@ -29,9 +31,27 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
   const [historyThreads, setHistoryThreads] = useState<HistoryThread[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  // Latest stored threads, so writes can happen synchronously (e.g. on pagehide).
+  const storedThreadsRef = useRef<StoredThreads>({});
+
+  // Updates state and writes localStorage right away. If storage was full and
+  // history threads were evicted, drop them from the sidebar too.
+  const updateStoredThreads = useCallback(
+    (update: (current: StoredThreads) => StoredThreads) => {
+      const next = update(storedThreadsRef.current);
+      const written = writeStoredThreads(next) ?? next;
+      storedThreadsRef.current = written;
+      setStoredThreads(written);
+      if (written !== next) {
+        setHistoryThreads((prev) => prev.filter((item) => item.id in written));
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     const nextStoredThreads = readStoredThreads();
+    storedThreadsRef.current = nextStoredThreads;
     setStoredThreads(nextStoredThreads);
     const requested = new URLSearchParams(window.location.search).get("thread");
     setActiveThreadId(
@@ -59,18 +79,18 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
 
   useEffect(() => {
     if (!isHydrated) return;
-    writeStoredThreads(storedThreads);
-  }, [isHydrated, storedThreads]);
-
-  useEffect(() => {
-    if (!isHydrated) return;
     writeStoredActiveThread(activeThreadId);
   }, [activeThreadId, isHydrated]);
 
   useEffect(() => {
     if (!isHydrated) return;
     writeHistoryThreads(historyThreads);
-  }, [isHydrated, historyThreads]);
+    // Drop stored messages for history threads that were capped out or deleted.
+    const historyIds = new Set(historyThreads.map((item) => item.id));
+    if (pruneStoredThreads(storedThreadsRef.current, historyIds) !== storedThreadsRef.current) {
+      updateStoredThreads((current) => pruneStoredThreads(current, historyIds));
+    }
+  }, [isHydrated, historyThreads, updateStoredThreads]);
 
   const activeThread = useMemo((): PortfolioThread => {
     if (THREADS_BY_ID[activeThreadId]) return THREADS_BY_ID[activeThreadId];
@@ -111,7 +131,7 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
   };
 
   const handleMessagesChange = (threadId: string, messages: UIMessage[]) => {
-    setStoredThreads((current) => saveThreadMessages(current, threadId, messages));
+    updateStoredThreads((current) => saveThreadMessages(current, threadId, messages));
   };
 
   const generateTitle = useCallback((historyId: string, firstMessage: string) => {
@@ -135,11 +155,11 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
       if (!isStaticThreadId(activeThreadId)) return;
       if (messages.length === 0) return;
       const history = createHistoryThread(messages, activeThreadId);
-      setStoredThreads((prev) => {
+      updateStoredThreads((prev) => {
         const withHistory = saveThreadMessages(prev, history.id, messages);
         return saveThreadMessages(withHistory, activeThreadId, []);
       });
-      setHistoryThreads((prev) => [history, ...prev]);
+      setHistoryThreads((prev) => capHistoryThreads([history, ...prev]));
       setActiveThreadId(history.id);
       const firstUserMsg = messages.find((message) => message.role === "user");
       const firstText = firstUserMsg?.parts.find(
@@ -147,7 +167,7 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
       )?.text;
       if (firstText) generateTitle(history.id, firstText);
     },
-    [activeThreadId, generateTitle],
+    [activeThreadId, generateTitle, updateStoredThreads],
   );
 
   const handleDeleteThread = useCallback(
@@ -156,31 +176,31 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
         setActiveThreadId("new-chat");
       }
       setHistoryThreads((prev) => prev.filter((item) => item.id !== threadId));
-      setStoredThreads((prev) => {
+      updateStoredThreads((prev) => {
         const next = { ...prev };
         delete next[threadId];
         return next;
       });
     },
-    [activeThreadId],
+    [activeThreadId, updateStoredThreads],
   );
 
   const handleRestart = useCallback(
     (messages: UIMessage[]) => {
       if (messages.length === 0) return;
       const history = createHistoryThread(messages, activeThreadId);
-      setStoredThreads((prev) => {
+      updateStoredThreads((prev) => {
         const withHistory = saveThreadMessages(prev, history.id, messages);
         return saveThreadMessages(withHistory, activeThreadId, []);
       });
-      setHistoryThreads((prev) => [history, ...prev]);
+      setHistoryThreads((prev) => capHistoryThreads([history, ...prev]));
       const firstUserMsg = messages.find((message) => message.role === "user");
       const firstText = firstUserMsg?.parts.find(
         (part): part is { type: "text"; text: string } => part.type === "text",
       )?.text;
       if (firstText) generateTitle(history.id, firstText);
     },
-    [activeThreadId, generateTitle],
+    [activeThreadId, generateTitle, updateStoredThreads],
   );
 
   const handleRenameThread = useCallback(
