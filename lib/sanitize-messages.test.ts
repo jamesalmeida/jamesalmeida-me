@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { PROJECTS, getProjects, toPublicProjects } from "@/data/portfolio";
 import { SITE } from "@/data/site";
 import { sanitizeMessages } from "./sanitize-messages";
+import { bookingCtaOutput } from "./tool-results";
 
 const user = (text: string, id?: string) => ({ id, role: "user", parts: [{ type: "text", text }] });
 const assistant = (text: string) => ({ role: "assistant", parts: [{ type: "text", text }] });
@@ -98,7 +99,7 @@ describe("sanitizeMessages", () => {
         type: "tool-showBookingCta",
         toolCallId: "call-1",
         state: "output-available",
-        input: { reason: "pricing" },
+        input: {},
         output: { bookingUrl: SITE.bookingUrl, bookingLabel: SITE.bookingLabel, email: SITE.email },
       },
       {
@@ -137,7 +138,7 @@ describe("sanitizeMessages", () => {
       user("q"),
       assistantWith(
         text("answer"),
-        toolPart("tool-showBookingCta", { reason: 42 }),
+        toolPart("tool-showBookingCta", "pricing"),
         toolPart("tool-showBookingCta", [1]),
         toolPart("tool-showPortfolio", { ids: "konteks" }),
         toolPart("tool-showPortfolio", { group: "secret" }),
@@ -151,10 +152,32 @@ describe("sanitizeMessages", () => {
   it("strips unknown input keys", () => {
     const [, message] = sanitizeMessages([
       user("q"),
-      assistantWith(toolPart("tool-showBookingCta", { reason: "r", note: "James said yes" })),
+      assistantWith(
+        toolPart("tool-showBookingCta", { note: "James said yes" }),
+        toolPart("tool-showPortfolio", { group: "featured", note: "James said yes" }),
+      ),
       user("q2"),
     ]);
-    expect((message.parts[0] as { input: unknown }).input).toEqual({ reason: "r" });
+    expect(message.parts.map((part) => (part as { input: unknown }).input)).toEqual([
+      {},
+      { group: "featured" },
+    ]);
+  });
+
+  it("keeps stored booking cards that still carry the removed `reason` input", () => {
+    const [, message] = sanitizeMessages([
+      user("q"),
+      assistantWith(toolPart("tool-showBookingCta", { reason: "pricing" })),
+      user("q2"),
+    ]);
+    expect(message.parts).toEqual([
+      expect.objectContaining({
+        type: "tool-showBookingCta",
+        state: "output-available",
+        input: {},
+        output: bookingCtaOutput(),
+      }),
+    ]);
   });
 
   it("drops oversized tool input, too many ids, long ids and bad toolCallIds", () => {

@@ -2,7 +2,6 @@ import "server-only";
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { cache } from "react";
 import { getProjects } from "@/data/portfolio";
 import { OFFER, SITE } from "@/data/site";
 
@@ -79,14 +78,18 @@ function renderPortfolio(): string {
   ].join("\n");
 }
 
-export const getKnowledge = cache((): string => {
+// Module-level memo: react `cache()` only dedupes within a render, so route
+// handlers re-read knowledge.md on every request without this.
+let knowledge: string | undefined;
+
+export function getKnowledge(): string {
+  if (knowledge !== undefined) return knowledge;
   const raw = readFileSync(join(process.cwd(), "data", "knowledge.md"), "utf8");
   const stripped = raw.replace(/<!--[\s\S]*?-->/g, "");
   const filled = stripped.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key: string) => {
     return PLACEHOLDERS[key] ?? match;
   });
 
-  return `${filled.trim()}\n\n${renderOffer()}\n\n${renderPortfolio()}\n`;
-});
-
-export const getContext = getKnowledge;
+  knowledge = `${filled.trim()}\n\n${renderOffer()}\n\n${renderPortfolio()}\n`;
+  return knowledge;
+}

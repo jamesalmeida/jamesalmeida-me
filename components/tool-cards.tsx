@@ -140,7 +140,7 @@ function ProjectGrid({ projects }: { projects: PublicProject[] }) {
 }
 
 export const ShowBookingCtaToolUI = makeAssistantToolUI<
-  { reason?: string },
+  Record<string, never>,
   { bookingUrl: string; bookingLabel: string; email: string }
 >({
   toolName: "showBookingCta",
