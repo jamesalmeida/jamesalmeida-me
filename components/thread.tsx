@@ -18,7 +18,7 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
 import { play } from "cuelume";
 import { ArrowDown, ArrowUp, CalendarCheck, MoreHorizontal, Pencil, RotateCcw, Square, Trash2, X } from "lucide-react";
-import { useEffect, useRef, useState, type ComponentPropsWithoutRef } from "react";
+import { useCallback, useEffect, useRef, useState, type ComponentPropsWithoutRef } from "react";
 import { SITE } from "@/data/site";
 import { toUIMessages } from "@/lib/message-convert";
 import type { PortfolioThread } from "@/lib/threads";
@@ -463,23 +463,49 @@ function Composer() {
   );
 }
 
+// Saves messages when no run is streaming (so not on every token), and flushes
+// unsaved messages when the page is hidden or closed and when the thread unmounts.
 function ThreadPersistence({
   onMessagesChange,
 }: {
   onMessagesChange: (messages: UIMessage[]) => void;
 }) {
+  const isRunning = useThread((state) => state.isRunning);
   const messages = useThread((state) => state.messages);
   const onMessagesChangeRef = useRef(onMessagesChange);
+  const latestMessagesRef = useRef(messages);
+  const savedMessagesRef = useRef<typeof messages | null>(null);
 
   // Keep callback ref up to date without triggering effect
   useEffect(() => {
     onMessagesChangeRef.current = onMessagesChange;
   });
 
-  useEffect(() => {
+  const flush = useCallback(() => {
+    const current = latestMessagesRef.current;
+    if (savedMessagesRef.current === current) return;
+    savedMessagesRef.current = current;
     // Convert assistant-ui messages to UIMessage format
-    onMessagesChangeRef.current(toUIMessages(messages));
-  }, [messages]);
+    onMessagesChangeRef.current(toUIMessages(current));
+  }, []);
+
+  useEffect(() => {
+    latestMessagesRef.current = messages;
+    if (!isRunning) flush();
+  }, [isRunning, messages, flush]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      flush();
+    };
+  }, [flush]);
 
   return null;
 }

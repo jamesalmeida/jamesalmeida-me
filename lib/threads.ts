@@ -42,6 +42,10 @@ export const THREAD_STORAGE_KEY = "jamesalmeida-threads";
 export const ACTIVE_THREAD_STORAGE_KEY = "jamesalmeida-active-thread";
 export const HISTORY_THREADS_KEY = "jamesalmeida-history-threads";
 
+// localStorage caps. Older history threads and older messages are dropped.
+export const MAX_HISTORY_THREADS = 50;
+export const MAX_MESSAGES_PER_THREAD = 100;
+
 export const THREADS: PortfolioThread[] = [
   {
     id: "new-chat",
@@ -150,63 +154,159 @@ export function isStaticThreadId(value: string): value is StaticThreadId {
 // Keep the old name as an alias for backward compatibility
 export { isStaticThreadId as isThreadId };
 
-export function readStoredThreads(): StoredThreads {
-  if (typeof window === "undefined") return {};
-
+// localStorage can be missing or throw (privacy modes, disabled storage). Never throw from here.
+function getStorage(): Storage | null {
+  if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(THREAD_STORAGE_KEY);
-    if (!raw) return {};
-
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    return Object.fromEntries(
-      Object.entries(parsed).flatMap(([threadId, value]) => {
-        if (!value || typeof value !== "object") return [];
-
-        const candidate = value as Record<string, unknown>;
-        const createdAt =
-          typeof candidate.createdAt === "number" ? candidate.createdAt : Date.now();
-        const lastVisited =
-          typeof candidate.lastVisited === "number"
-            ? candidate.lastVisited
-            : createdAt;
-        const userMessages = Array.isArray(candidate.userMessages)
-          ? candidate.userMessages.flatMap((message) => {
-              const normalized = normalizeStoredMessage(message);
-              return normalized ? [normalized] : [];
-            })
-          : [];
-
-        return [[threadId, { createdAt, lastVisited, userMessages }]];
-      }),
-    );
+    return window.localStorage ?? null;
   } catch {
-    return {};
+    return null;
   }
 }
 
-export function writeStoredThreads(threads: StoredThreads) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(THREAD_STORAGE_KEY, JSON.stringify(threads));
+function safeGetItem(key: string): string | null {
+  try {
+    return getStorage()?.getItem(key) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function safeParse(raw: string | null): unknown {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function isQuotaExceededError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const { name, code } = error as { name?: unknown; code?: unknown };
+  return (
+    name === "QuotaExceededError" ||
+    name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+    code === 22 ||
+    code === 1014
+  );
+}
+
+type SetResult = "ok" | "quota" | "error";
+
+function safeSetItem(key: string, value: string): SetResult {
+  const storage = getStorage();
+  if (!storage) return "error";
+  try {
+    storage.setItem(key, value);
+    return "ok";
+  } catch (error) {
+    return isQuotaExceededError(error) ? "quota" : "error";
+  }
+}
+
+export function capMessages(messages: UIMessage[]): UIMessage[] {
+  return messages.length > MAX_MESSAGES_PER_THREAD
+    ? messages.slice(-MAX_MESSAGES_PER_THREAD)
+    : messages;
+}
+
+// Keeps the newest MAX_HISTORY_THREADS by createdAt, preserving order.
+// Returns the same array when nothing is dropped.
+export function capHistoryThreads(threads: HistoryThread[]): HistoryThread[] {
+  if (threads.length <= MAX_HISTORY_THREADS) return threads;
+  const keep = new Set(
+    [...threads]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, MAX_HISTORY_THREADS)
+      .map((thread) => thread.id),
+  );
+  return threads.filter((thread) => keep.has(thread.id));
+}
+
+// Drops stored messages for non-static threads that are not in the history list.
+// Returns the same object when nothing is dropped.
+export function pruneStoredThreads(
+  storedThreads: StoredThreads,
+  historyIds: ReadonlySet<string>,
+): StoredThreads {
+  const orphans = Object.keys(storedThreads).filter(
+    (threadId) => !isStaticThreadId(threadId) && !historyIds.has(threadId),
+  );
+  if (orphans.length === 0) return storedThreads;
+  const next = { ...storedThreads };
+  for (const threadId of orphans) delete next[threadId];
+  return next;
+}
+
+// Removes the oldest half (at least one) of the non-static threads by createdAt.
+export function evictOldestHistory(storedThreads: StoredThreads): StoredThreads {
+  const historyIds = Object.keys(storedThreads)
+    .filter((threadId) => !isStaticThreadId(threadId))
+    .sort((a, b) => storedThreads[a].createdAt - storedThreads[b].createdAt);
+  if (historyIds.length === 0) return storedThreads;
+  const next = { ...storedThreads };
+  for (const threadId of historyIds.slice(0, Math.ceil(historyIds.length / 2))) {
+    delete next[threadId];
+  }
+  return next;
+}
+
+export function readStoredThreads(): StoredThreads {
+  const parsed = safeParse(safeGetItem(THREAD_STORAGE_KEY));
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+
+  return Object.fromEntries(
+    Object.entries(parsed as Record<string, unknown>).flatMap(([threadId, value]) => {
+      if (!value || typeof value !== "object") return [];
+
+      const candidate = value as Record<string, unknown>;
+      const createdAt =
+        typeof candidate.createdAt === "number" ? candidate.createdAt : Date.now();
+      const lastVisited =
+        typeof candidate.lastVisited === "number"
+          ? candidate.lastVisited
+          : createdAt;
+      const userMessages = Array.isArray(candidate.userMessages)
+        ? capMessages(
+            candidate.userMessages.flatMap((message) => {
+              const normalized = normalizeStoredMessage(message);
+              return normalized ? [normalized] : [];
+            }),
+          )
+        : [];
+
+      return [[threadId, { createdAt, lastVisited, userMessages }]];
+    }),
+  );
+}
+
+// Writes the threads. On QuotaExceededError, evicts the oldest history threads and
+// retries once. Returns what was written (possibly with history evicted), or null
+// if nothing could be written. Never throws.
+export function writeStoredThreads(threads: StoredThreads): StoredThreads | null {
+  const result = safeSetItem(THREAD_STORAGE_KEY, JSON.stringify(threads));
+  if (result === "ok") return threads;
+  if (result === "error") return null;
+
+  const evicted = evictOldestHistory(threads);
+  if (evicted === threads) return null;
+  return safeSetItem(THREAD_STORAGE_KEY, JSON.stringify(evicted)) === "ok" ? evicted : null;
 }
 
 export function readStoredActiveThread(): string {
-  if (typeof window === "undefined") return "new-chat";
-  return window.localStorage.getItem(ACTIVE_THREAD_STORAGE_KEY) ?? "new-chat";
+  return safeGetItem(ACTIVE_THREAD_STORAGE_KEY) ?? "new-chat";
 }
 
 export function writeStoredActiveThread(threadId: string) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(ACTIVE_THREAD_STORAGE_KEY, threadId);
+  safeSetItem(ACTIVE_THREAD_STORAGE_KEY, threadId);
 }
 
 export function readHistoryThreads(): HistoryThread[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(HISTORY_THREADS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
+  const parsed = safeParse(safeGetItem(HISTORY_THREADS_KEY));
+  if (!Array.isArray(parsed)) return [];
+  return capHistoryThreads(
+    parsed
       .filter(
         (item): item is Record<string, unknown> =>
           item !== null &&
@@ -224,15 +324,13 @@ export function readHistoryThreads(): HistoryThread[] {
         description: typeof item.description === "string" ? item.description : (item.title as string),
         createdAt: item.createdAt as number,
         sourceThreadId: item.sourceThreadId as string,
-      }));
-  } catch {
-    return [];
-  }
+      })),
+  );
 }
 
+// The history list is small (at most MAX_HISTORY_THREADS entries), so a failed write is ignored.
 export function writeHistoryThreads(threads: HistoryThread[]) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(HISTORY_THREADS_KEY, JSON.stringify(threads));
+  safeSetItem(HISTORY_THREADS_KEY, JSON.stringify(threads));
 }
 
 export function createHistoryThread(
@@ -278,7 +376,7 @@ export function saveThreadMessages(
   const nextState: StoredThreadState = {
     createdAt: existing?.createdAt ?? Date.now(),
     lastVisited: Date.now(),
-    userMessages: messages,
+    userMessages: capMessages(messages),
   };
 
   return {
