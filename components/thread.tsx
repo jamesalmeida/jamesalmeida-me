@@ -36,6 +36,19 @@ type ThreadProps = {
   thread: PortfolioThread;
 };
 
+const BLOCKED_MESSAGE =
+  "You're sending messages too fast. Please wait a minute and try again, or email james@gsv.to.";
+
+// The transport shows the raw response body as the error, so replace rate-limit (429)
+// and bot-check (403) responses with a short friendly message.
+const chatFetch: typeof fetch = async (input, init) => {
+  const response = await fetch(input, init);
+  if (response.status === 429 || response.status === 403) {
+    throw new Error(BLOCKED_MESSAGE);
+  }
+  return response;
+};
+
 export function Thread({
   initialMessages,
   onDeleteThread,
@@ -47,7 +60,7 @@ export function Thread({
 }: ThreadProps) {
   const runtime = useChatRuntime({
     messages: initialMessages,
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
+    transport: new DefaultChatTransport({ api: "/api/chat", fetch: chatFetch }),
   });
 
   return (

@@ -1,9 +1,17 @@
 import { convertToModelMessages, stepCountIs, streamText } from "ai";
 import { cookies } from "next/headers";
 import { resolveAdminModel } from "@/lib/admin-cookie";
+import { rejectBots } from "@/lib/bot-protection";
 import { chatTools } from "@/lib/chat-tools";
 import { getModelOption, MODEL_COOKIE_NAME } from "@/lib/models";
 import { createModel } from "@/lib/models.server";
+import {
+  chatGlobalLimiter,
+  chatIpLimiter,
+  checkRateLimits,
+  getClientIp,
+  rateLimitedResponse,
+} from "@/lib/rate-limit";
 import { sanitizeMessages } from "@/lib/sanitize-messages";
 import { getSystemPrompt } from "@/lib/system-prompt";
 
@@ -13,6 +21,15 @@ export const dynamic = "force-dynamic";
 const MAX_BODY_CHARS = 200 * 1024;
 
 export async function POST(req: Request) {
+  const limit = checkRateLimits([
+    [chatIpLimiter, getClientIp(req.headers)],
+    [chatGlobalLimiter, "global"],
+  ]);
+  if (!limit.ok) return rateLimitedResponse(limit.retryAfterSeconds);
+
+  const botResponse = await rejectBots();
+  if (botResponse) return botResponse;
+
   const raw = await req.text();
   if (raw.length > MAX_BODY_CHARS) {
     return Response.json({ error: "Payload too large." }, { status: 413 });

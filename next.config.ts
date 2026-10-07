@@ -1,3 +1,4 @@
+import { withBotId } from "botid/next/config";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -9,4 +10,4 @@ const nextConfig: NextConfig = {
   // Server routes read them via process.env automatically.
 };
 
-export default nextConfig;
+export default withBotId(nextConfig);
