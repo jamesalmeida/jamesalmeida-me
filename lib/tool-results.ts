@@ -1,13 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
-import {
-  getProjects,
-  getProjectsByIds,
-  toPublicProjects,
-  type Project,
-  type PublicProject,
-} from "@/data/portfolio";
+import { selectProjects, toPublicProjects, type PublicProject } from "@/data/portfolio";
 import { SITE } from "@/data/site";
 
 // Shared by lib/chat-tools.ts (live tool calls) and lib/sanitize-messages.ts
@@ -32,16 +26,6 @@ export type BookingCtaOutput = {
 };
 
 export type PortfolioOutput = { projects: PublicProject[] };
-
-export function selectProjects(input: PortfolioInput): Project[] {
-  if (input.ids && input.ids.length > 0) {
-    return getProjectsByIds(input.ids);
-  }
-  if (input.group === "featured" || input.group === "earlier") {
-    return getProjects(input.group);
-  }
-  return getProjects();
-}
 
 export function bookingCtaOutput(): BookingCtaOutput {
   return {

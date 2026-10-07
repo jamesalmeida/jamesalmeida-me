@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SITE } from "@/data/site";
+import { themeInitScript } from "@/lib/theme";
 import "./globals.css";
 
 const personId = `${SITE.url}/#person`;
@@ -74,6 +75,8 @@ export default function RootLayout({
           media="(min-width: 431px)"
           id="theme-color-meta"
         />
+        {/* Sets the theme class and accent before first paint (see lib/theme.ts). */}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="text-[var(--foreground)] antialiased">
         <script

@@ -114,3 +114,18 @@ export function toPublicProject(project: Project): PublicProject {
 export function toPublicProjects(projects: readonly Project[]): PublicProject[] {
   return projects.map(toPublicProject);
 }
+
+// The project set for a showPortfolio call. Pure and client-safe: used by the
+// server tool (lib/tool-results.ts) and the client card fallback.
+export function selectProjects(input: {
+  ids?: readonly string[];
+  group?: "featured" | "earlier" | "all";
+}): Project[] {
+  if (input.ids && input.ids.length > 0) {
+    return getProjectsByIds(input.ids);
+  }
+  if (input.group === "featured" || input.group === "earlier") {
+    return getProjects(input.group);
+  }
+  return getProjects();
+}

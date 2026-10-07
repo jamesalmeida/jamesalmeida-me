@@ -81,6 +81,8 @@ components/
   static-intro.tsx             # SSR fallback while localStorage hydrates
   thread.tsx                   # Chat thread, header booking CTA, tool UIs
   tool-cards.tsx               # showBookingCta / showPortfolio cards
+  booking-button.tsx           # BookingButton, EmailLink, BookingCard (tool card + empty state)
+  theme-provider.tsx           # theme/accent/sound state; MotionConfig reducedMotion="user"
   suggestions.tsx              # Empty-state pills
   thread-list.tsx              # Sidebar, including links to /consulting and /work
   modal.tsx                    # Native <dialog> (showModal) wrapper for Rename/Settings
@@ -96,12 +98,13 @@ lib/
   bot-protection.ts            # Vercel BotID checkBotId() wrapper (403 on bots)
   admin-cookie.ts              # HMAC-signed model cookie
   message-convert.ts           # assistant-ui messages → UIMessage (keeps tools)
-  threads.ts                   # Thread ids; base messages are empty
+  threads.ts                   # Thread ids; base messages are empty; getFirstUserText
+  theme.ts                     # Theme/accent keys + inline pre-paint script (client-safe)
 
 data/
   knowledge.md                 # Bot knowledge. Placeholders {{email}} etc.
   site.ts                      # SITE + OFFER. Client-safe. No secrets.
-  portfolio.ts                 # PROJECTS. `confirmed` is never rendered.
+  portfolio.ts                 # PROJECTS + selectProjects (client-safe). `confirmed` is never rendered.
 
 public/
   resume.pdf
@@ -155,7 +158,15 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 - All localStorage access in `lib/threads.ts` is wrapped in try/catch and never throws. On `QuotaExceededError`, `writeStoredThreads` evicts the oldest half of history threads and retries once; evicted threads are also removed from the sidebar.
 - "Clear all chats" in the Settings modal (with a confirm step) calls `clearStoredChats()` in `lib/threads.ts`, which removes the three chat keys and keeps theme/accent/sound prefs. `ChatApp` bumps a generation counter so the old thread remounts and its unmount flush is ignored.
 - The composer shows a one-line notice linking to `/privacy`. If you change providers, storage, logging, cookies or abuse protection, update `app/privacy/page.tsx` and that notice to match.
+- A seeded thread forks into a history thread (and requests a title) only after its first run ends with a completed assistant message that has content. Errored runs and runs stopped with the Stop button don't fork. The Stop button sets a flag, because a stopped AI SDK run still reports a `complete` status.
+- Deleting a history thread (sidebar or header menu) opens a confirm dialog in `ChatApp`.
 - **Never** persist chats to a database.
+
+### Theme, motion and accessibility
+- `app/layout.tsx` runs `themeInitScript` (`lib/theme.ts`) in `<head>`. It sets the `dark` class, `data-accent` and the theme-color meta before first paint. Keep its rules in line with `ThemeProvider`.
+- `prefers-reduced-motion` is respected: `MotionConfig reducedMotion="user"` in `ThemeProvider`, and a media query in `globals.css` that turns off CSS transitions and animations. Sounds default to on (the owner's choice).
+- `ChatApp` has a visually hidden `aria-live="polite"` region. It announces the text of the latest completed reply once the run ends, not every token. It lives in `ChatApp` because the first reply remounts `Thread`.
+- The composer has `maxLength={2000}`, the same as the server's per-part cap, and shows a character counter from 1,800 characters.
 
 ### Dialogs and menus
 - Modals use `components/modal.tsx`: a native `<dialog>` opened with `showModal()` (focus trap, Escape, top layer), labelled via `aria-labelledby`, closed on backdrop click, and returning focus to the trigger (or `returnFocusRef`). Mount it only while open. Don't build new modals from `div`s.
@@ -215,7 +226,7 @@ If `npm run dev` works but `npm run build` fails, fix the build errors **before*
 
 `.github/workflows/ci.yml` runs on every PR and on pushes to `main`, using Node from `.nvmrc`: `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`. The build needs no secrets.
 
-- `npm test` runs `vitest run` on `lib/**/*.test.ts`. The tests cover `sanitizeMessages` (including tool-output rebuilding), thread storage caps, quota eviction and corrupt-JSON reads (`lib/threads.test.ts`, fake `window.localStorage` via `vi.stubGlobal`), the admin cookie (`signModel`, `verifyModelCookie`, `timingSafeEqualString`, including expiry and `ADMIN_COOKIE_SECRET`), `readBodyWithLimit`, and `getKnowledge` / `getSystemPrompt` (no HTML comments or `PROVISIONAL`, all placeholders filled). They need no server and no API keys.
+- `npm test` runs `vitest run` on `lib/**/*.test.ts`. The tests cover `sanitizeMessages` (including tool-output rebuilding), thread storage caps, quota eviction and corrupt-JSON reads (`lib/threads.test.ts`, fake `window.localStorage` via `vi.stubGlobal`), the admin cookie (`signModel`, `verifyModelCookie`, `timingSafeEqualString`, including expiry and `ADMIN_COOKIE_SECRET`), `readBodyWithLimit`, and `getKnowledge` / `getSystemPrompt` (no HTML comments or `PROVISIONAL`, all placeholders filled), `selectProjects` and `getFirstUserText`. They need no server and no API keys.
 - `lib/` files import `server-only`. `vitest.config.mts` aliases it to an empty stub, so tests can import them directly.
 - `npm run lint` runs `eslint .`, not the deprecated `next lint`. Unused vars prefixed with `_` are allowed (for example, `node: _node` to drop a prop).
 - `@ai-sdk/react` is declared but not imported directly. It stays because it is on the version lock list above and is what `@assistant-ui/react-ai-sdk` 1.1.21 is pinned against.

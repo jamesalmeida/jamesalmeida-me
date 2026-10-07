@@ -5,8 +5,7 @@ import { Mail } from "lucide-react";
 import { getProjects } from "@/data/portfolio";
 import { OFFER, SITE } from "@/data/site";
 import type { StaticThreadId } from "@/lib/threads";
-import { BookingButton } from "./booking-button";
-import { BookingCard } from "./tool-cards";
+import { BookingButton, BookingCard } from "./booking-button";
 
 function GithubIcon({ size = 16 }: { size?: number }) {
   return (

@@ -321,3 +321,16 @@ textarea {
 .dark .message-markdown td {
   border-bottom-color: rgba(245, 245, 245, 0.1);
 }
+
+/* prefers-reduced-motion: no CSS transitions or animations. framer-motion is
+   handled by <MotionConfig reducedMotion="user"> in ThemeProvider. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
