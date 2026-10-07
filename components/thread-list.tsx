@@ -22,6 +22,7 @@ type ThreadListProps = {
   activeThreadId: string;
   historyThreads: HistoryThread[];
   isOpen: boolean;
+  onClearAllChats: () => void;
   onDeleteThread: (threadId: string) => void;
   onOpenChange: (open: boolean) => void;
   onSelectThread: (threadId: string) => void;
@@ -33,6 +34,7 @@ export function ThreadList({
   activeThreadId,
   historyThreads,
   isOpen,
+  onClearAllChats,
   onDeleteThread,
   onOpenChange,
   onSelectThread,
@@ -41,8 +43,13 @@ export function ThreadList({
 }: ThreadListProps) {
   const { theme, toggleTheme, accent, setAccent, soundsEnabled, toggleSounds } = useTheme();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   const [isPinnedOpen, setIsPinnedOpen] = useState(true);
   const [isHistoryOpen, setIsHistoryOpen] = useState(true);
+  const closeSettings = () => {
+    setIsSettingsOpen(false);
+    setIsConfirmingClear(false);
+  };
   const seededThreads = threads.filter((thread) => thread.seeded);
   const newChatThread = threads.find((thread) => thread.id === "new-chat");
 
@@ -84,6 +91,14 @@ export function ThreadList({
                 data-cuelume-press="tick"
               >
                 Portfolio
+              </Link>
+              <Link
+                href="/privacy"
+                className="transition hover:text-[var(--foreground)]"
+                data-cuelume-hover="whisper"
+                data-cuelume-press="tick"
+              >
+                Privacy
               </Link>
             </p>
           </div>
@@ -250,7 +265,7 @@ export function ThreadList({
       {isSettingsOpen ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
-          onClick={() => setIsSettingsOpen(false)}
+          onClick={closeSettings}
         >
           <div
             className="relative w-full max-w-sm rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]"
@@ -263,7 +278,7 @@ export function ThreadList({
               <button
                 type="button"
                 className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
-                onClick={() => setIsSettingsOpen(false)}
+                onClick={closeSettings}
                 aria-label="Close settings"
                 data-cuelume-press="droplet"
               >
@@ -317,6 +332,58 @@ export function ThreadList({
                   {soundsEnabled ? "On" : "Off"}
                 </span>
               </button>
+            </div>
+            <div className="mt-6">
+              <p className="eyebrow mb-3 text-[11px] text-[var(--muted)]">
+                Chats
+              </p>
+              {isConfirmingClear ? (
+                <div className="rounded-[1rem] border border-[var(--border)] bg-[var(--panel)] px-4 py-3 text-sm">
+                  <p className="text-[var(--foreground)]">
+                    Delete every chat saved in this browser? This can&apos;t be undone.
+                  </p>
+                  <div className="mt-3 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmingClear(false)}
+                      className="rounded-full border border-[var(--border)] px-3 py-1.5 text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
+                      data-cuelume-press="tick"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClearAllChats();
+                        closeSettings();
+                      }}
+                      className="rounded-full bg-red-500 px-3 py-1.5 text-white transition hover:bg-red-600"
+                      data-cuelume-press="whisper"
+                    >
+                      Delete all
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmingClear(true)}
+                  className="flex w-full items-center gap-2.5 rounded-[1rem] border border-[var(--border)] bg-[var(--panel)] px-4 py-3 text-sm text-[var(--foreground)] transition hover:border-[var(--border-strong)]"
+                  data-cuelume-press="tick"
+                >
+                  <Trash2 size={16} />
+                  Clear all chats
+                </button>
+              )}
+              <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+                Chats are saved only in this browser.{" "}
+                <Link
+                  href="/privacy"
+                  className="underline underline-offset-2 transition hover:text-[var(--foreground)]"
+                >
+                  Privacy
+                </Link>
+              </p>
             </div>
           </div>
         </div>

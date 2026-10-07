@@ -8,6 +8,7 @@ import {
   THREADS,
   THREADS_BY_ID,
   capHistoryThreads,
+  clearStoredChats,
   createHistoryThread,
   getThreadMessages,
   getThreadPreview,
@@ -33,6 +34,10 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
   const [isHydrated, setIsHydrated] = useState(false);
   // Latest stored threads, so writes can happen synchronously (e.g. on pagehide).
   const storedThreadsRef = useRef<StoredThreads>({});
+  // Bumped by "Clear all chats". Remounts the thread, and saves from the old
+  // thread (e.g. its unmount flush) are ignored so cleared chats don't come back.
+  const [chatGeneration, setChatGeneration] = useState(0);
+  const chatGenerationRef = useRef(0);
 
   // Updates state and writes localStorage right away. If storage was full and
   // history threads were evicted, drop them from the sidebar too.
@@ -130,7 +135,8 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
     setIsSidebarOpen(false);
   };
 
-  const handleMessagesChange = (threadId: string, messages: UIMessage[]) => {
+  const handleMessagesChange = (threadId: string, messages: UIMessage[], generation: number) => {
+    if (generation !== chatGenerationRef.current) return;
     updateStoredThreads((current) => saveThreadMessages(current, threadId, messages));
   };
 
@@ -203,6 +209,16 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
     [activeThreadId, generateTitle, updateStoredThreads],
   );
 
+  const handleClearAllChats = useCallback(() => {
+    chatGenerationRef.current += 1;
+    clearStoredChats();
+    storedThreadsRef.current = {};
+    setStoredThreads({});
+    setHistoryThreads([]);
+    setActiveThreadId("new-chat");
+    setChatGeneration(chatGenerationRef.current);
+  }, []);
+
   const handleRenameThread = useCallback(
     (newTitle: string) => {
       setHistoryThreads((prev) =>
@@ -223,6 +239,7 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
           activeThreadId={activeThreadId}
           historyThreads={historyThreads}
           isOpen={isSidebarOpen}
+          onClearAllChats={handleClearAllChats}
           onDeleteThread={handleDeleteThread}
           onOpenChange={setIsSidebarOpen}
           onSelectThread={handleThreadChange}
@@ -232,10 +249,10 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
         <main className="flex min-w-0 flex-1 flex-col">
           <h1 className="sr-only">James Almeida</h1>
           <Thread
-            key={activeThreadId}
+            key={`${activeThreadId}:${chatGeneration}`}
             initialMessages={activeMessages}
             onDeleteThread={!isStaticThreadId(activeThreadId) ? () => handleDeleteThread(activeThreadId) : undefined}
-            onMessagesChange={(messages) => handleMessagesChange(activeThreadId, messages)}
+            onMessagesChange={(messages) => handleMessagesChange(activeThreadId, messages, chatGeneration)}
             onRenameThread={!isStaticThreadId(activeThreadId) ? handleRenameThread : undefined}
             onRestart={handleRestart}
             onRunComplete={handleRunComplete}

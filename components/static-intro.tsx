@@ -63,6 +63,14 @@ export function StaticIntro() {
             >
               Portfolio
             </Link>
+            <Link
+              href="/privacy"
+              className="text-[var(--foreground)] underline-offset-4 hover:underline"
+              data-cuelume-hover="whisper"
+              data-cuelume-press="tick"
+            >
+              Privacy
+            </Link>
             <a
               href={SITE.resumeUrl}
               className="text-[var(--foreground)] underline-offset-4 hover:underline"

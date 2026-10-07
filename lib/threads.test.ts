@@ -1,11 +1,13 @@
 import type { UIMessage } from "ai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  ACTIVE_THREAD_STORAGE_KEY,
   HISTORY_THREADS_KEY,
   MAX_HISTORY_THREADS,
   MAX_MESSAGES_PER_THREAD,
   THREAD_STORAGE_KEY,
   capHistoryThreads,
+  clearStoredChats,
   evictOldestHistory,
   pruneStoredThreads,
   readHistoryThreads,
@@ -225,5 +227,30 @@ describe("safe reads", () => {
     vi.unstubAllGlobals();
     expect(readStoredThreads()).toEqual({});
     expect(readHistoryThreads()).toEqual([]);
+  });
+});
+
+describe("clearStoredChats", () => {
+  it("removes chat keys and keeps preferences", () => {
+    writeStoredThreads({ "new-chat": stored(1, [message("m1", "user", "hi")]) });
+    writeHistoryThreads([history("h1", 1)]);
+    writeStoredActiveThread("h1");
+    storage.setItem("jamesalmeida-theme", "dark");
+
+    clearStoredChats();
+
+    expect(storage.data.has(THREAD_STORAGE_KEY)).toBe(false);
+    expect(storage.data.has(HISTORY_THREADS_KEY)).toBe(false);
+    expect(storage.data.has(ACTIVE_THREAD_STORAGE_KEY)).toBe(false);
+    expect(storage.data.get("jamesalmeida-theme")).toBe("dark");
+  });
+
+  it("does not throw when localStorage is unavailable", () => {
+    vi.stubGlobal("window", {
+      get localStorage(): Storage {
+        throw new Error("SecurityError");
+      },
+    });
+    expect(() => clearStoredChats()).not.toThrow();
   });
 });
