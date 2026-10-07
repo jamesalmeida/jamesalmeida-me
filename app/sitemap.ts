@@ -6,5 +6,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: SITE.url },
     { url: `${SITE.url}/consulting` },
     { url: `${SITE.url}/work` },
+    { url: `${SITE.url}/privacy` },
   ];
 }

@@ -59,7 +59,7 @@ const runtime = useChatRuntime({
 
 ## Architecture
 
-Routes: `/`, `/consulting`, `/work`, `/admin`, `/api/chat`, `/api/generate-title`, `/api/admin/model`. There is no `/api/admin/verify`.
+Routes: `/`, `/consulting`, `/work`, `/privacy`, `/admin`, `/api/chat`, `/api/generate-title`, `/api/admin/model`. There is no `/api/admin/verify`.
 
 ```
 app/
@@ -70,6 +70,7 @@ app/
   page.tsx                     # Server page; chat hydrates over a static intro
   consulting/page.tsx          # Offer page, rendered from OFFER
   work/page.tsx                # Portfolio page, rendered from PROJECTS
+  privacy/page.tsx             # Plain-language privacy page (keep claims true to the code)
   opengraph-image.tsx          # next/og image
   sitemap.ts / robots.ts
   layout.tsx                   # metadata, JSON-LD
@@ -147,6 +148,8 @@ DEFAULT_MODEL=claude-sonnet-4-5    # optional override
 - `ThreadPersistence` (`components/thread.tsx`) saves only when no run is streaming, and flushes unsaved messages on `pagehide`, `visibilitychange` (hidden) and unmount. `ChatApp.updateStoredThreads` writes localStorage synchronously.
 - Caps: 50 history threads (newest kept) and the last 100 messages per thread. Stored messages for history threads not in the list are pruned.
 - All localStorage access in `lib/threads.ts` is wrapped in try/catch and never throws. On `QuotaExceededError`, `writeStoredThreads` evicts the oldest half of history threads and retries once; evicted threads are also removed from the sidebar.
+- "Clear all chats" in the Settings modal (with a confirm step) calls `clearStoredChats()` in `lib/threads.ts`, which removes the three chat keys and keeps theme/accent/sound prefs. `ChatApp` bumps a generation counter so the old thread remounts and its unmount flush is ignored.
+- The composer shows a one-line notice linking to `/privacy`. If you change providers, storage, logging, cookies or abuse protection, update `app/privacy/page.tsx` and that notice to match.
 - **Never** persist chats to a database.
 
 ### Chat tools and abuse caps
