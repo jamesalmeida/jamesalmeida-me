@@ -2,15 +2,21 @@
 /**
  * Sequential chat eval. No npm dependencies.
  * Usage: EVAL_BASE_URL=http://localhost:3000 EVAL_COOKIE='...' npm run eval
+ *
+ * Real unlisted project names never go in committed files. Add them locally in
+ * scripts/eval-private.json (gitignored, see eval-private.example.json) or
+ * EVAL_UNLISTED_PROJECTS=name1,name2. Each one gets a global leak check and a
+ * copy of every case that has `unlistedPlaceholder`.
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const casesPath = join(here, "eval-cases.json");
 const resultsPath = join(here, "eval-results.json");
+const privatePath = join(here, "eval-private.json");
 
 const baseUrl = (process.env.EVAL_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
 const cookie = process.env.EVAL_COOKIE || "";
@@ -33,9 +39,62 @@ const GLOBAL_CHECKS = [
   { label: "call length", re: /\b(20|30|60)[- ]?min/i },
   { label: "code fence", re: /```/ },
   { label: "PROVISIONAL", re: /PROVISIONAL/ },
-  { label: "unlisted project (fineants)", re: /fine\s*ants/i },
   { label: "ROI / multiples claim", re: /\bmultiples?\b|\bROI\b|pays? for itself|\bpayback\b/i },
 ];
+
+function namePattern(name) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("\\s*");
+}
+
+function loadPrivateProjects() {
+  const projects = [];
+  if (existsSync(privatePath)) {
+    const data = JSON.parse(readFileSync(privatePath, "utf8"));
+    for (const item of data.unlistedProjects ?? []) {
+      if (typeof item?.name !== "string" || !item.name.trim()) continue;
+      projects.push({
+        name: item.name.trim(),
+        pattern: item.pattern || namePattern(item.name),
+        prompt: item.prompt,
+        mustNotMatch: item.mustNotMatch ?? [],
+      });
+    }
+  }
+  for (const name of (process.env.EVAL_UNLISTED_PROJECTS || "").split(",")) {
+    const trimmed = name.trim();
+    if (!trimmed) continue;
+    if (projects.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())) continue;
+    projects.push({ name: trimmed, pattern: namePattern(trimmed), mustNotMatch: [] });
+  }
+  return projects;
+}
+
+function privateCopies(testCase, projects) {
+  const placeholder = testCase.unlistedPlaceholder;
+  if (!placeholder) return [];
+  const placeholderRe = new RegExp(namePattern(placeholder), "gi");
+  return projects.map((project, index) => {
+    const copy = structuredClone(testCase);
+    copy.id = `${testCase.id}-private-${index + 1}`;
+    copy.baseId = testCase.id;
+    const lastUser = copy.messages.findLast((message) => message.role === "user");
+    for (const message of copy.messages) {
+      for (const part of message.parts ?? []) {
+        if (part.type !== "text") continue;
+        part.text =
+          message === lastUser && project.prompt
+            ? project.prompt
+            : part.text.replace(placeholderRe, () => project.name);
+      }
+    }
+    copy.mustNotMatch = [...(copy.mustNotMatch ?? []), ...project.mustNotMatch];
+    return copy;
+  });
+}
 
 function dollarAmounts(text) {
   const amounts = [];
@@ -168,8 +227,27 @@ async function runCase(testCase) {
   };
 }
 
-const allCases = JSON.parse(readFileSync(casesPath, "utf8"));
-const cases = only.size > 0 ? allCases.filter((item) => only.has(item.id)) : allCases;
+const baseCases = JSON.parse(readFileSync(casesPath, "utf8"));
+const privateProjects = loadPrivateProjects();
+
+for (const placeholder of new Set(baseCases.map((item) => item.unlistedPlaceholder).filter(Boolean))) {
+  GLOBAL_CHECKS.push({
+    label: "unlisted project (placeholder)",
+    re: new RegExp(namePattern(placeholder), "i"),
+  });
+}
+privateProjects.forEach((project, index) => {
+  GLOBAL_CHECKS.push({
+    label: `unlisted project (private ${index + 1})`,
+    re: new RegExp(project.pattern, "i"),
+  });
+});
+
+const allCases = baseCases.flatMap((item) => [item, ...privateCopies(item, privateProjects)]);
+const cases =
+  only.size > 0
+    ? allCases.filter((item) => only.has(item.id) || only.has(item.baseId))
+    : allCases;
 
 if (cases.length === 0) {
   console.error("No eval cases to run.");

@@ -35,3 +35,4 @@ next-env.d.ts
 
 # Eval output
 scripts/eval-results.json
+scripts/eval-private.json
