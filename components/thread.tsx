@@ -16,6 +16,7 @@ import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
+import Link from "next/link";
 import { play } from "cuelume";
 import { ArrowDown, ArrowUp, CalendarCheck, MoreHorizontal, Pencil, RotateCcw, Square, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ComponentPropsWithoutRef } from "react";
@@ -459,6 +460,18 @@ function Composer() {
           </ComposerPrimitive.Send>
         )}
       </div>
+      <p className="mx-auto mt-2 max-w-4xl px-1 text-center text-[11px] leading-4 text-[var(--muted)]">
+        Chats are processed by AI providers (OpenAI and Anthropic) and saved only in this
+        browser. Please don&apos;t share sensitive information.{" "}
+        <Link
+          href="/privacy"
+          className="underline underline-offset-2 transition hover:text-[var(--foreground)]"
+          data-cuelume-hover="whisper"
+          data-cuelume-press="tick"
+        >
+          Privacy
+        </Link>
+      </p>
     </ComposerPrimitive.Root>
   );
 }

@@ -291,6 +291,20 @@ export function writeStoredThreads(threads: StoredThreads): StoredThreads | null
   return safeSetItem(THREAD_STORAGE_KEY, JSON.stringify(evicted)) === "ok" ? evicted : null;
 }
 
+// Removes every chat key this site writes (messages, history list, active thread).
+// Theme, accent and sound preferences are kept.
+export function clearStoredChats() {
+  const storage = getStorage();
+  if (!storage) return;
+  for (const key of [THREAD_STORAGE_KEY, HISTORY_THREADS_KEY, ACTIVE_THREAD_STORAGE_KEY]) {
+    try {
+      storage.removeItem(key);
+    } catch {
+      // Ignore; storage may be disabled.
+    }
+  }
+}
+
 export function readStoredActiveThread(): string {
   return safeGetItem(ACTIVE_THREAD_STORAGE_KEY) ?? "new-chat";
 }
