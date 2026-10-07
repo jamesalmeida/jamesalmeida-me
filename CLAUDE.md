@@ -87,6 +87,7 @@ lib/
   system-prompt.ts             # First-person persona + guardrails
   context.ts                   # knowledge.md + generated offer and portfolio
   chat-tools.ts                # showBookingCta, showPortfolio
+  tool-results.ts              # Tool input schemas + pure output builders (shared)
   sanitize-messages.ts         # Untrusted chat body → last 20 UIMessages
   admin-cookie.ts              # HMAC-signed model cookie
   message-convert.ts           # assistant-ui messages → UIMessage (keeps tools)
@@ -143,6 +144,7 @@ DEFAULT_MODEL=claude-sonnet-4-5    # optional override
 ### Chat tools and abuse caps
 - `showBookingCta` renders a booking card from `SITE` (buying intent, contact, timing). `showPortfolio` renders project cards (public fields only).
 - `POST /api/chat` rejects bodies over 200 KB (413) and bad JSON (400). `sanitizeMessages` drops system roles and unknown parts, keeps the last 20 user/assistant messages, truncates each text part to 2,000 characters, and requires the last message to be from the user.
+- Client-sent tool parts are never trusted. `sanitizeMessages` discards their `output`, validates `input` with the schemas in `lib/tool-results.ts` (also used by `lib/chat-tools.ts`), and rebuilds the output with the same pure functions the tools' `execute` uses. Parts are dropped if input is invalid, over 1 KB serialized, has more than 20 ids or ids over 64 chars, or has a malformed `toolCallId`. Max 4 tool parts per message and 8 KB of tool input per request. Assistant text parts are still accepted as sent (2,000-char cap); signing them is not done.
 - `streamText` uses `stopWhen: stepCountIs(3)` and `maxOutputTokens: 800`.
 - `POST /api/generate-title` rejects bodies over 10 KB and truncates the message to 500 characters.
 
@@ -181,7 +183,7 @@ If `npm run dev` works but `npm run build` fails, fix the build errors **before*
 
 `.github/workflows/ci.yml` runs on every PR and on pushes to `main`, using Node from `.nvmrc`: `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`. The build needs no secrets.
 
-- `npm test` runs `vitest run` on `lib/**/*.test.ts`. The tests cover `sanitizeMessages`, the admin cookie (`signModel`, `verifyModelCookie`, `timingSafeEqualString`), and `getKnowledge` / `getSystemPrompt` (no HTML comments or `PROVISIONAL`, all placeholders filled). They need no server and no API keys.
+- `npm test` runs `vitest run` on `lib/**/*.test.ts`. The tests cover `sanitizeMessages` (including tool-output rebuilding), the admin cookie (`signModel`, `verifyModelCookie`, `timingSafeEqualString`), and `getKnowledge` / `getSystemPrompt` (no HTML comments or `PROVISIONAL`, all placeholders filled). They need no server and no API keys.
 - `lib/` files import `server-only`. `vitest.config.mts` aliases it to an empty stub, so tests can import them directly.
 - `npm run lint` runs `eslint .`, not the deprecated `next lint`. Unused vars prefixed with `_` are allowed (for example, `node: _node` to drop a prop).
 - `vite` is a direct dev dependency because `.npmrc` sets `legacy-peer-deps=true`, so npm won't install Vitest's peer dependency on its own. Vitest is on 4.x because 5.x needs Node 22+ and `@types/node` 22+.

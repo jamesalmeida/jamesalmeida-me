@@ -1,30 +1,88 @@
 import "server-only";
 
 import type { UIMessage } from "ai";
+import {
+  bookingCtaInputSchema,
+  bookingCtaOutput,
+  portfolioInputSchema,
+  portfolioOutput,
+} from "@/lib/tool-results";
 
 const MAX_MESSAGES = 20;
 const MAX_TEXT_CHARS = 2_000;
-const ALLOWED_TOOL_TYPES = new Set(["tool-showBookingCta", "tool-showPortfolio"]);
+const MAX_TOOL_PARTS_PER_MESSAGE = 4;
+const MAX_TOOL_INPUT_CHARS = 1_024;
+const MAX_TOTAL_TOOL_INPUT_CHARS = 8 * 1_024;
+const MAX_PORTFOLIO_IDS = 20;
+const MAX_PORTFOLIO_ID_CHARS = 64;
+const TOOL_CALL_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 
-function asPlainObject(value: unknown): Record<string, unknown> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    return {};
-  }
+type ToolBudget = { inputChars: number };
+
+function serializedLength(value: unknown): number {
   try {
-    const cloned = JSON.parse(JSON.stringify(value)) as unknown;
-    if (cloned && typeof cloned === "object" && !Array.isArray(cloned)) {
-      return cloned as Record<string, unknown>;
-    }
+    return JSON.stringify(value)?.length ?? Infinity;
   } catch {
-    return {};
+    return Infinity;
   }
-  return {};
 }
 
-function sanitizeParts(raw: unknown): UIMessage["parts"] {
+// Client-sent tool output is never trusted. The input is validated with the
+// tool's own schema and the output is recomputed exactly as `execute` does.
+function rebuildToolPart(
+  candidate: Record<string, unknown>,
+  budget: ToolBudget,
+): UIMessage["parts"][number] | null {
+  const { type, toolCallId } = candidate;
+  const input = candidate.input ?? {};
+  if (candidate.state !== "output-available") return null;
+  if (typeof toolCallId !== "string" || !TOOL_CALL_ID_PATTERN.test(toolCallId)) return null;
+
+  const inputChars = serializedLength(input);
+  if (inputChars > MAX_TOOL_INPUT_CHARS) return null;
+  if (budget.inputChars + inputChars > MAX_TOTAL_TOOL_INPUT_CHARS) return null;
+
+  if (type === "tool-showBookingCta") {
+    const parsed = bookingCtaInputSchema.safeParse(input);
+    if (!parsed.success) return null;
+    budget.inputChars += inputChars;
+    return {
+      type,
+      toolCallId,
+      state: "output-available",
+      input: parsed.data,
+      output: bookingCtaOutput(),
+    };
+  }
+
+  if (type === "tool-showPortfolio") {
+    const parsed = portfolioInputSchema.safeParse(input);
+    if (!parsed.success) return null;
+    const ids = parsed.data.ids;
+    if (
+      ids &&
+      (ids.length > MAX_PORTFOLIO_IDS || ids.some((id) => id.length > MAX_PORTFOLIO_ID_CHARS))
+    ) {
+      return null;
+    }
+    budget.inputChars += inputChars;
+    return {
+      type,
+      toolCallId,
+      state: "output-available",
+      input: parsed.data,
+      output: portfolioOutput(parsed.data),
+    };
+  }
+
+  return null;
+}
+
+function sanitizeParts(raw: unknown, budget: ToolBudget): UIMessage["parts"] {
   if (!Array.isArray(raw)) return [];
 
   const parts: UIMessage["parts"] = [];
+  let toolParts = 0;
   for (const part of raw) {
     if (!part || typeof part !== "object") continue;
     const candidate = part as Record<string, unknown>;
@@ -36,19 +94,11 @@ function sanitizeParts(raw: unknown): UIMessage["parts"] {
       continue;
     }
 
-    if (
-      typeof candidate.type === "string" &&
-      ALLOWED_TOOL_TYPES.has(candidate.type) &&
-      candidate.state === "output-available" &&
-      typeof candidate.toolCallId === "string"
-    ) {
-      parts.push({
-        type: candidate.type as "tool-showBookingCta",
-        toolCallId: candidate.toolCallId,
-        state: "output-available",
-        input: asPlainObject(candidate.input),
-        output: asPlainObject(candidate.output),
-      });
+    if (toolParts >= MAX_TOOL_PARTS_PER_MESSAGE) continue;
+    const toolPart = rebuildToolPart(candidate, budget);
+    if (toolPart) {
+      parts.push(toolPart);
+      toolParts += 1;
     }
   }
 
@@ -65,8 +115,9 @@ export function sanitizeMessages(raw: unknown): UIMessage[] {
   });
 
   const messages: UIMessage[] = [];
+  const budget: ToolBudget = { inputChars: 0 };
   for (const [index, candidate] of roleKept.slice(-MAX_MESSAGES).entries()) {
-    const parts = sanitizeParts(candidate.parts);
+    const parts = sanitizeParts(candidate.parts, budget);
     if (parts.length === 0) continue;
     const role = candidate.role === "assistant" ? "assistant" : "user";
     messages.push({
