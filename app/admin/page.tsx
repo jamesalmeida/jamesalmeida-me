@@ -101,7 +101,7 @@ export default function AdminPage() {
             <label className="block space-y-2">
               <span className="text-sm font-medium">Model</span>
               <select
-                className="w-full rounded-[1.25rem] border border-[var(--border)] bg-white px-4 py-3 outline-none transition focus:border-[var(--border-strong)]"
+                className="w-full rounded-[1.25rem] border border-[var(--border)] bg-white px-4 py-3 text-base outline-none transition focus:border-[var(--border-strong)]"
                 onChange={(event) => setModel(event.target.value as ModelId)}
                 value={model}
               >
@@ -132,7 +132,7 @@ export default function AdminPage() {
             <label className="block space-y-2">
               <span className="text-sm font-medium">Admin password</span>
               <input
-                className="w-full rounded-[1.25rem] border border-[var(--border)] bg-white px-4 py-3 outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
+                className="w-full rounded-[1.25rem] border border-[var(--border)] bg-white px-4 py-3 text-base outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="Enter ADMIN_PASSWORD"
                 type="password"
