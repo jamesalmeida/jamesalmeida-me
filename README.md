@@ -64,7 +64,7 @@ npm run dev
 ANTHROPIC_API_KEY=sk-ant-...
 OPENAI_API_KEY=sk-proj-...   # only if an OpenAI model is selected
 ADMIN_PASSWORD=...           # required to set the model override
-DEFAULT_MODEL=claude-sonnet-4-5
+DEFAULT_MODEL=claude-sonnet-5-5
 ```
 
 The chat cannot answer without those API keys. `npm run typecheck` and `npm run build` do not need them.
