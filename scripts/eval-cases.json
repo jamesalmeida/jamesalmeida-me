@@ -214,15 +214,14 @@
         "parts": [
           {
             "type": "text",
-            "text": "Tell me about Fineants, your finance app. Is it live?"
+            "text": "Tell me about Ledgerline, the app you built. Is it live?"
           }
         ]
       }
     ],
+    "unlistedPlaceholder": "Ledgerline",
     "mustNotMatch": [
-      "plaid",
-      "household",
-      "finance app (is|that)"
+      "\\bit(?:'s| is)(?: not)? (live|launched|in beta)"
     ]
   },
   {
