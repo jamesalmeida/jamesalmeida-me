@@ -37,10 +37,15 @@ describe("model cookie", () => {
     `${payload}.${createHmac("sha256", key).update(payload).digest("base64url")}`;
 
   it("round-trips a signed model with an issued-at time", () => {
-    const cookie = signModel("claude-sonnet-4-5", now);
-    expect(cookie).toMatch(/^claude-sonnet-4-5\.\d+\.[\w-]+$/);
-    expect(verifyModelCookie(cookie, now)).toBe("claude-sonnet-4-5");
-    expect(resolveAdminModel(signModel("claude-sonnet-4-5"))).toBe("claude-sonnet-4-5");
+    const cookie = signModel("claude-sonnet-5-5", now);
+    expect(cookie).toMatch(/^claude-sonnet-5-5\.\d+\.[\w-]+$/);
+    expect(verifyModelCookie(cookie, now)).toBe("claude-sonnet-5-5");
+    expect(resolveAdminModel(signModel("claude-sonnet-5-5"))).toBe("claude-sonnet-5-5");
+  });
+
+  it("maps a validly signed legacy Sonnet 4.5 cookie to Sonnet 5.5", () => {
+    const legacy = forge("test-password", `claude-sonnet-4-5.${Math.floor(now / 1000)}`);
+    expect(verifyModelCookie(legacy, now)).toBe("claude-sonnet-5-5");
   });
 
   it("handles model ids that contain dots", () => {
@@ -121,5 +126,22 @@ describe("model cookie", () => {
     expect(resolveAdminModel("garbage")).toBe("gpt-5.4");
     vi.stubEnv("DEFAULT_MODEL", "gpt-4o-mini");
     expect(resolveAdminModel(undefined)).toBe("gpt-4o-mini");
+  });
+});
+
+describe("legacy model ids", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("maps a legacy DEFAULT_MODEL to its replacement", () => {
+    vi.stubEnv("ADMIN_PASSWORD", "test-password");
+    vi.stubEnv("DEFAULT_MODEL", "claude-sonnet-4-5");
+    expect(resolveAdminModel(undefined)).toBe("claude-sonnet-5-5");
+  });
+
+  it("falls back to gpt-5.4 for unknown DEFAULT_MODEL values", () => {
+    vi.stubEnv("DEFAULT_MODEL", "not-a-model");
+    expect(resolveAdminModel(undefined)).toBe("gpt-5.4");
   });
 });

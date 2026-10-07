@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { getDefaultModelId, isModelId, type ModelId } from "@/lib/models";
+import { getDefaultModelId, normalizeModelId, type ModelId } from "@/lib/models";
 
 export const MODEL_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 // Tolerate small clock differences between serverless instances.
@@ -53,9 +53,11 @@ export function verifyModelCookie(value?: string | null, now = Date.now()): Mode
 
   const iatDot = payload.lastIndexOf(".");
   if (iatDot <= 0) return null;
-  const model = payload.slice(0, iatDot);
+  // A legacy id (e.g. a retired model) maps to its replacement after the
+  // signature over the original payload checks out.
+  const model = normalizeModelId(payload.slice(0, iatDot));
   const issuedAtRaw = payload.slice(iatDot + 1);
-  if (!isModelId(model) || !/^\d{1,12}$/.test(issuedAtRaw)) return null;
+  if (!model || !/^\d{1,12}$/.test(issuedAtRaw)) return null;
 
   const expected = sign(key, payload);
   const actualBuf = Buffer.from(signature);

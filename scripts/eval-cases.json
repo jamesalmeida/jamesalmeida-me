@@ -221,7 +221,7 @@
     ],
     "unlistedPlaceholder": "Ledgerline",
     "mustNotMatch": [
-      "\\bit(?:'s| is)(?: not)? (live|launched|in beta)"
+      "(?<!whether |if )\\bit(?:'s| is)(?: not)? (live|launched|in beta)"
     ]
   },
   {

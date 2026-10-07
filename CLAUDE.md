@@ -17,7 +17,7 @@ This file gives you (Claude, Codex, or any other coding agent) the critical cont
 - **Framework**: Next.js 15 (App Router)
 - **UI**: React 19, Tailwind v4, `@assistant-ui/react` for chat primitives
 - **AI**: Vercel AI SDK v5 (`ai`, `@ai-sdk/react`, `@ai-sdk/anthropic`, `@ai-sdk/openai`)
-- **Default Model**: `gpt-5.4` unless `DEFAULT_MODEL` is a known id. A signed admin cookie overrides that.
+- **Default Model**: `gpt-5.4` unless `DEFAULT_MODEL` is a known id (production sets `claude-sonnet-5-5`). A signed admin cookie overrides that.
 - **Persistence**: localStorage only (no database)
 - **Node**: 24 (see `.nvmrc`)
 
@@ -134,7 +134,7 @@ ADMIN_COOKIE_SECRET=...            # optional HMAC key for the admin cookie (fal
 DEFAULT_MODEL=gpt-5.4              # optional override; unknown ids fall back to gpt-5.4
 ```
 
-Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model there before its provider retirement date. A cookie that names a removed id is ignored, and the default is used. `claude-sonnet-4-5` is deprecated by Anthropic and retires 2026-11-30.
+Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model there before its provider retirement date. A cookie or `DEFAULT_MODEL` that names a removed id falls back to the default, unless the id is listed in `LEGACY_MODEL_IDS` (`lib/models.ts`), which maps it to its replacement. `claude-sonnet-4-5` (deprecated by Anthropic, retires 2026-11-30) maps to `claude-sonnet-5-5`.
 
 ## Key Rules
 

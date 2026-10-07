@@ -7,12 +7,11 @@ export const MODEL_OPTIONS = [
     provider: "OpenAI",
     description: "Latest GPT-5.4 model.",
   },
-  // Deprecated by Anthropic; retires 2026-11-30. Replace before then.
   {
-    id: "claude-sonnet-4-5",
-    label: "Claude Sonnet 4.5",
+    id: "claude-sonnet-5-5",
+    label: "Claude Sonnet 5.5",
     provider: "Anthropic",
-    description: "Balanced reasoning for most conversations.",
+    description: "Latest Claude Sonnet: balanced speed and reasoning.",
   },
   {
     id: "gpt-4o",
@@ -36,16 +35,28 @@ const MODEL_BY_ID = Object.fromEntries(
 ) as Record<ModelId, ModelOption>;
 
 export function isModelId(value: string): value is ModelId {
-  return value in MODEL_BY_ID;
+  return Object.hasOwn(MODEL_BY_ID, value);
+}
+
+// Retired ids that map to their replacement, so an old DEFAULT_MODEL value or a
+// signed admin cookie keeps working after a model is swapped out.
+export const LEGACY_MODEL_IDS: Record<string, ModelId> = {
+  "claude-sonnet-4-5": "claude-sonnet-5-5",
+};
+
+/** A current model id, a legacy id mapped to its replacement, or null. */
+export function normalizeModelId(value?: string | null): ModelId | null {
+  if (!value) return null;
+  if (isModelId(value)) return value;
+  return Object.hasOwn(LEGACY_MODEL_IDS, value) ? LEGACY_MODEL_IDS[value] : null;
 }
 
 export function getDefaultModelId(): ModelId {
-  const envModel = process.env.DEFAULT_MODEL;
-  return envModel && isModelId(envModel) ? envModel : "gpt-5.4";
+  return normalizeModelId(process.env.DEFAULT_MODEL) ?? "gpt-5.4";
 }
 
 export function resolveModelId(value?: string | null): ModelId {
-  return value && isModelId(value) ? value : getDefaultModelId();
+  return normalizeModelId(value) ?? getDefaultModelId();
 }
 
 export function getModelOption(value?: string | null): ModelOption {
