@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
+import { SITE } from "@/data/site";
 
-export const alt = "James Almeida — AI consultant for small businesses";
+export const alt = SITE.title;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -43,12 +44,23 @@ export default function OpenGraphImage() {
         <div
           style={{
             display: "flex",
-            fontSize: 36,
+            fontSize: 32,
             marginTop: 28,
-            lineHeight: 1.3,
+            lineHeight: 1.35,
+            maxWidth: 980,
           }}
         >
-          AI consultant for small businesses
+          Power user turned builder. 40+ Grok Bot agents — and I build the tools they use.
+        </div>
+        <div
+          style={{
+            display: "flex",
+            fontSize: 22,
+            marginTop: 28,
+            opacity: 0.62,
+          }}
+        >
+          Los Angeles / open to remote
         </div>
       </div>
     ),

@@ -4,7 +4,7 @@ This file gives you (Claude, Codex, or any other coding agent) the critical cont
 
 ## What This Is
 
-**jamesalmeida.me** — James Almeida's portfolio and AI-consulting lead tool. The chat speaks in first person as James. Visitors can also read `/consulting` and `/work` without chatting.
+**jamesalmeida.me** — James Almeida's hiring portfolio first (remote building-with-AI role), AI-consulting lead tool second. The home page is a scrolling site with the chatbot as the centerpiece of proof. The chat speaks in first person as James. Visitors can also read `/consulting` and `/work` without chatting.
 
 - **Production**: https://www.jamesalmeida.me (apex redirects to www)
 - **Repo**: https://github.com/jamesalmeida/jamesalmeida-me
@@ -67,21 +67,24 @@ app/
   api/generate-title/route.ts  # short title for a forked history thread
   api/admin/model/route.ts     # GET current model; POST password + signed cookie
   admin/page.tsx               # Password-gated model switcher (noindex)
-  page.tsx                     # Server page; chat hydrates over a static intro
+  page.tsx                     # Hiring home: hero, embedded chat, Konteks, WIP, about, consulting
   consulting/page.tsx          # Offer page, rendered from OFFER
   work/page.tsx                # Portfolio page, rendered from PROJECTS
   privacy/page.tsx             # Plain-language privacy page (keep claims true to the code)
   opengraph-image.tsx          # next/og image
+  icon.png / icon.svg / favicon.ico / apple-icon.png
   sitemap.ts / robots.ts
-  layout.tsx                   # metadata, JSON-LD
+  layout.tsx                   # metadata, JSON-LD; viewport maximumScale: 1
   globals.css
 
 components/
-  chat-app.tsx                 # Client chat shell
-  static-intro.tsx             # SSR fallback while localStorage hydrates
+  home-page.tsx                # Scrolling hiring home
+  featured-demo.tsx            # Konteks media slot (SITE.konteksDemo)
+  site-nav.tsx                 # Shared nav
+  chat-app.tsx                 # Client chat shell; embedded={true} on the home page
   thread.tsx                   # Chat thread, header booking CTA, tool UIs
   tool-cards.tsx               # showBookingCta / showPortfolio cards
-  booking-button.tsx           # BookingButton, EmailLink, BookingCard (tool card + empty state)
+  booking-button.tsx           # HireButton, BookingButton, EmailLink, BookingCard
   theme-provider.tsx           # theme/accent/sound state; MotionConfig reducedMotion="user"
   suggestions.tsx              # Empty-state pills
   thread-list.tsx              # Sidebar, including links to /consulting and /work
@@ -100,14 +103,16 @@ lib/
   message-convert.ts           # assistant-ui messages → UIMessage (keeps tools)
   threads.ts                   # Thread ids; base messages are empty; getFirstUserText
   theme.ts                     # Theme/accent keys + inline pre-paint script (client-safe)
+  demo-media.ts                # Classify SITE.konteksDemo.src (video / image / placeholder)
 
 data/
   knowledge.md                 # Bot knowledge. Placeholders {{email}} etc.
-  site.ts                      # SITE + OFFER. Client-safe. No secrets.
+  site.ts                      # SITE + OFFER. Client-safe. No secrets. Includes konteksDemo.
   portfolio.ts                 # PROJECTS + selectProjects (client-safe). `confirmed` is never rendered.
 
 public/
   resume.pdf
+  media/                       # Drop the Konteks demo clip here (see below)
 instrumentation-client.ts      # initBotId() for POST /api/chat and /api/generate-title
 next.config.ts                 # wrapped with withBotId
 scripts/
@@ -142,12 +147,28 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 - The assistant and the pages speak **as James in first person** ("I" / "my")
 - Example: "I built Sheldn.ai" ✅ / "James built Sheldn.ai" ❌
 - General Systems Ventures / GSV is only for contracts and billing (and, on the resume, where the consulting is contracted). Never "we" as the company. "We'll see" between the visitor and James is fine.
-- Public contact is only `james@gsv.to`, LinkedIn, and GitHub. No phone number. Never state how long the intro call is. The CTA label is "Book a free intro call".
+- Public contact is `james@gsv.to`, X `@james_almeida`, GitHub, LinkedIn, and the Cal booking link. No phone number. Never state how long the intro call is. Hiring CTAs: "Hire me / Get in touch" (mailto) and "Book a call" (`SITE.bookingUrl`, keep the URL unchanged). The consulting page can still use "Book a free intro call".
+- Personal apps (Konteks and the works in progress) are roughly built and **not** publicly shipped. Never say they are shipped, in production, or launched. Never say "one-person AI lab". Company work at Society6, iROKOtv, and Datadog is the exception.
 
 ### Content
 - `data/site.ts` exports `SITE` and `OFFER`. Pages and the bot both use `OFFER`. Do not copy prices into page copy.
 - `data/portfolio.ts` exports `PROJECTS`. Never render `confirmed`.
-- `data/knowledge.md` is the swappable bio. `lib/context.ts` strips HTML comments, fills `{{email}}`, `{{bookingUrl}}`, `{{linkedin}}`, `{{github}}`, `{{resumeUrl}}` from `SITE`, then appends offer and portfolio markdown.
+- `data/knowledge.md` is the swappable bio. `lib/context.ts` strips HTML comments, fills `{{email}}`, `{{bookingUrl}}`, `{{linkedin}}`, `{{github}}`, `{{resumeUrl}}`, `{{x}}`, `{{xHandle}}` from `SITE`, then appends offer and portfolio markdown.
+
+### Konteks demo clip
+
+`SITE.konteksDemo` in `data/site.ts` drives the featured media slot:
+
+```ts
+konteksDemo: {
+  src: null, // or "/media/konteks-demo.mp4"
+  poster: undefined, // optional still, e.g. "/media/konteks-demo.jpg"
+}
+```
+
+1. Put the file in `public/media/` (path becomes `/media/<filename>`).
+2. Set `src` to that path. Use `.mp4` or `.webm` for video (`autoplay muted loop playsInline`); `.gif`, `.png`, `.jpg`, `.jpeg`, `.webp` for an image.
+3. Leave `src: null` for a placeholder — never a broken embed.
 - Provisional business decisions are one value plus a `// PROVISIONAL:` comment in `.ts`, or `<!-- // PROVISIONAL: ... -->` in `.md`. Find them with `rg "PROVISIONAL"`. Comments are stripped before the model sees the knowledge, so that word must not reach the prompt.
 
 ### Persistence

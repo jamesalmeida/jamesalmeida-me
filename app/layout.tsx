@@ -47,6 +47,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: SITE.title,
     description: SITE.description,
+    creator: SITE.xHandle,
   },
   alternates: {
     canonical: "/",
