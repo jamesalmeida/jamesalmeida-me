@@ -10,7 +10,7 @@ const serif =
 
 type PortfolioArgs = {
   ids?: string[];
-  group?: "featured" | "earlier" | "all";
+  group?: "featured" | "wip" | "earlier" | "all";
 };
 
 function fallbackProjects(args: PortfolioArgs | undefined): PublicProject[] {
@@ -36,7 +36,8 @@ function cardsFromResult(projects: unknown): PublicProject[] | null {
       tags: Array.isArray(candidate.tags)
         ? candidate.tags.filter((tag): tag is string => typeof tag === "string")
         : [],
-      group: candidate.group === "earlier" ? "earlier" : "featured",
+      group:
+        candidate.group === "earlier" || candidate.group === "wip" ? candidate.group : "featured",
     });
   }
   return cards;
@@ -52,6 +53,11 @@ function ProjectGrid({ projects }: { projects: PublicProject[] }) {
             className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.06)]"
           >
             <h3 className={`text-lg tracking-[-0.02em] ${serif}`}>{project.name}</h3>
+            {project.status ? (
+              <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-[var(--muted)]">
+                {project.status}
+              </p>
+            ) : null}
             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{project.oneLiner}</p>
             {project.tags.length > 0 ? (
               <div className="mt-3 flex flex-wrap gap-1.5">

@@ -6,7 +6,7 @@ export type Project = {
   status?: string;
   url?: string;
   tags: string[];
-  group: "featured" | "earlier";
+  group: "featured" | "wip" | "earlier";
   confirmed: boolean;
 };
 
@@ -18,20 +18,42 @@ const featuredProjects: Project[] = [
     id: "konteks",
     name: "Konteks",
     oneLiner:
-      "An iOS homescreen app that shows an AI-curated feed of context cards about what's going on in your life.",
+      "An iOS app where my Grok Bots send Live Activities to my iPhone — a live layer of context about what's going on.",
+    status: "Work in progress",
     url: "https://konteks.app",
     tags: ["iOS", "AI"],
     group: "featured",
     confirmed: true,
   },
+];
+
+const wipProjects: Project[] = [
   {
     id: "grok-pebble",
     name: "Grok Pebble",
-    oneLiner:
-      "A kid-friendly Grok voice 'pebble' device with a parent web dashboard.",
+    oneLiner: "An ESP32 desk companion for Grok.",
+    status: "Work in progress",
     url: "https://grok-pebble.vercel.app",
-    tags: ["Hardware", "Voice", "AI"],
-    group: "featured",
+    tags: ["Hardware", "ESP32", "AI"],
+    group: "wip",
+    confirmed: true,
+  },
+  {
+    id: "tesla-infotainment",
+    name: "Tesla infotainment",
+    oneLiner: "A web app for Tesla infotainment.",
+    status: "Work in progress",
+    tags: ["Tesla", "Web"],
+    group: "wip",
+    confirmed: true,
+  },
+  {
+    id: "dgx-spark",
+    name: "DGX Spark cluster",
+    oneLiner: "A two-node NVIDIA DGX Spark cluster for running local models.",
+    status: "Work in progress",
+    tags: ["Hardware", "ML"],
+    group: "wip",
     confirmed: true,
   },
   {
@@ -39,9 +61,10 @@ const featuredProjects: Project[] = [
     name: "Sheldn.ai",
     oneLiner:
       "Managed OpenClaw hosting: your own AI assistant on WhatsApp, Telegram, or Discord without running a server yourself.",
+    status: "Work in progress",
     url: "https://sheldn.ai",
     tags: ["AI", "Hosting"],
-    group: "featured",
+    group: "wip",
     confirmed: true,
   },
   {
@@ -49,8 +72,9 @@ const featuredProjects: Project[] = [
     name: "Mercury Rx",
     oneLiner:
       "An iOS app that tells you whether Mercury is in retrograde, with optional alerts.",
+    status: "Work in progress",
     tags: ["iOS"],
-    group: "featured",
+    group: "wip",
     confirmed: true,
   },
 ];
@@ -83,7 +107,11 @@ const earlierProjects: Project[] = [
   },
 ];
 
-export const PROJECTS: Project[] = [...featuredProjects, ...earlierProjects];
+export const PROJECTS: Project[] = [
+  ...featuredProjects,
+  ...wipProjects,
+  ...earlierProjects,
+];
 
 export function getProjects(group?: Project["group"]): Project[] {
   if (!group) return PROJECTS;
@@ -119,12 +147,12 @@ export function toPublicProjects(projects: readonly Project[]): PublicProject[] 
 // server tool (lib/tool-results.ts) and the client card fallback.
 export function selectProjects(input: {
   ids?: readonly string[];
-  group?: "featured" | "earlier" | "all";
+  group?: "featured" | "wip" | "earlier" | "all";
 }): Project[] {
   if (input.ids && input.ids.length > 0) {
     return getProjectsByIds(input.ids);
   }
-  if (input.group === "featured" || input.group === "earlier") {
+  if (input.group === "featured" || input.group === "wip" || input.group === "earlier") {
     return getProjects(input.group);
   }
   return getProjects();

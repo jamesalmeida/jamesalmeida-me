@@ -27,9 +27,34 @@ describe("getKnowledge / getSystemPrompt", () => {
 
   it("fills every placeholder from SITE", () => {
     expect(prompt).not.toMatch(/\{\{[^}]*\}\}/);
-    for (const value of [SITE.email, SITE.bookingUrl, SITE.linkedin, SITE.github, SITE.resumeUrl]) {
+    for (const value of [
+      SITE.email,
+      SITE.bookingUrl,
+      SITE.linkedin,
+      SITE.github,
+      SITE.resumeUrl,
+      SITE.x,
+      SITE.xHandle,
+    ]) {
       expect(knowledge).toContain(value);
     }
+  });
+
+  it("positions hiring first and describes the agent setup", () => {
+    expect(knowledge).toMatch(/hiring portfolio first/i);
+    expect(knowledge).toContain("Chief of Staff");
+    expect(knowledge).toMatch(/iCloud/i);
+    expect(knowledge).toMatch(/pull requests/i);
+  });
+
+  it("does not brand James with the banned lab phrase", () => {
+    expect(knowledge.toLowerCase()).not.toContain("one-person ai lab");
+  });
+
+  it("treats personal apps as works in progress", () => {
+    expect(knowledge).toMatch(/works in progress/i);
+    expect(knowledge).toMatch(/not publicly shipped/i);
+    expect(prompt).toMatch(/not shipped, not in production, and not launched/i);
   });
 
   it("includes the published offer price ranges", () => {
