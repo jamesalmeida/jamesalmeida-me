@@ -1,6 +1,6 @@
 # jamesalmeida.me
 
-Portfolio and AI-consulting lead tool. Visitors can chat with James in first person, or read the consulting offer and portfolio as normal pages.
+Hiring portfolio first (remote building-with-AI role), AI-consulting lead tool second. The home page is a scrolling site with the chatbot as the centerpiece of proof. Visitors can chat with James in first person, or read `/consulting` and `/work` as normal pages.
 
 **Production:** [www.jamesalmeida.me](https://www.jamesalmeida.me) (the apex host redirects to www).
 
@@ -21,9 +21,9 @@ Deployed on Vercel as project `jamesalmeida-portfolio`, team GSV (slug `gsv-2`).
 
 | Path | What it is |
 |---|---|
-| `/` | Chat. Server HTML includes a static intro until the client hydrates. `/?thread=work-with-me` opens that thread. |
+| `/` | Hiring home: hero, embedded chat, Konteks demo, works in progress, about/contact, consulting last. `/?thread=work-with-me#chat` opens that thread and scrolls to the chat. |
 | `/consulting` | Offer page, rendered from `OFFER` |
-| `/work` | Portfolio, rendered from `PROJECTS` |
+| `/work` | Work page, rendered from `PROJECTS` |
 | `/admin` | Password-gated model switcher. Not indexed. |
 | `/api/chat` | Streaming chat |
 | `/api/generate-title` | Short title for a saved chat |
@@ -33,14 +33,20 @@ There is no `/api/admin/verify`.
 
 ## Voice and contact
 
-The site speaks as James ("I", "my"). General Systems Ventures is only how contracts and billing are handled. Public contact is `james@gsv.to`, [LinkedIn](https://linkedin.com/in/jamesworkswell), and [GitHub](https://github.com/jamesalmeida). Do not add a phone number, and do not state how long the intro call is.
+The site speaks as James ("I", "my"). General Systems Ventures is only how contracts and billing are handled. Public contact is `james@gsv.to`, [X](https://x.com/james_almeida), [GitHub](https://github.com/jamesalmeida), and [LinkedIn](https://linkedin.com/in/jamesworkswell). Do not add a phone number, and do not state how long the intro call is. Personal apps are works in progress — not shipped, not in production.
 
 ## Where content lives
 
-- `data/site.ts` — `SITE` and `OFFER` (audience, steps, price ranges, defaults, examples, FAQ). Pages must render prices from here.
+- `data/site.ts` — `SITE` and `OFFER` (audience, steps, price ranges, defaults, examples, FAQ). Pages must render prices from here. Hero/bio/contact and `konteksDemo` live here too.
 - `data/portfolio.ts` — projects. The `confirmed` flag is never shown.
 - `data/knowledge.md` — bio the bot reads. Placeholders such as `{{email}}` are filled from `SITE`.
 - Provisional decisions are a single value with a `// PROVISIONAL:` comment (TypeScript) or `<!-- // PROVISIONAL: ... -->` (Markdown). List them with `rg "PROVISIONAL"`.
+
+### Swap the Konteks demo clip
+
+1. Drop an `.mp4`, `.webm`, `.gif`, `.png`, `.jpg`, or `.webp` in `public/media/`.
+2. In `data/site.ts`, set `SITE.konteksDemo.src` to that path (for example `"/media/konteks-demo.mp4"`). Optional `poster` for video.
+3. Leave `src: null` to keep the placeholder. mp4/webm autoplay muted loop `playsInline`; images render as an `<img>`.
 
 `lib/context.ts` strips those HTML comments, fills the placeholders, and appends the offer and portfolio before they go into the system prompt.
 

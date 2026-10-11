@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="JA">
+  <rect width="32" height="32" rx="7" fill="#111111"/>
+  <text
+    x="16"
+    y="21.4"
+    text-anchor="middle"
+    font-family="Georgia, 'Iowan Old Style', 'Palatino Linotype', serif"
+    font-size="13"
+    font-weight="700"
+    fill="#f7f5ef"
+  >JA</text>
+</svg>
