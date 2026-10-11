@@ -13,7 +13,7 @@ export const bookingCtaInputSchema = z.object({});
 
 export const portfolioInputSchema = z.object({
   ids: z.array(z.string()).optional(),
-  group: z.enum(["featured", "earlier", "all"]).optional(),
+  group: z.enum(["featured", "wip", "earlier", "all"]).optional(),
 });
 
 export type BookingCtaInput = z.infer<typeof bookingCtaInputSchema>;

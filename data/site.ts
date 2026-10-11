@@ -1,17 +1,30 @@
 export const SITE = {
   name: "James Almeida",
   url: "https://www.jamesalmeida.me",
-  title: "James Almeida — AI consultant for small businesses",
+  title: "James Almeida — building with AI",
   description:
-    "I help small businesses (dental offices, property managers, law offices, agencies) find where their team's hours go, automate the biggest time sinks, and keep those automations running.",
+    "Power user turned builder. I run 40+ coordinated Grok Bot agents across my household, finances, and code, and I build the tools they use. Los Angeles, open to remote.",
+  heroLine:
+    "I'm a power user turned builder. I run 40+ coordinated Grok Bot agents across my household, finances, and code — and I build the tools they use.",
+  bio: "I'm James Almeida, a software engineer in Los Angeles, open to remote. I run 40+ coordinated Grok Bot agents across my household, finances, and code, and I build the tools they use. Before that I trained models at xAI and did product engineering at Leaf Group (Society6), iROKOtv, and Datadog. I'm looking for a remote building-with-AI role. I also consult with small businesses on automation.",
+  locationLine: "Los Angeles / open to remote",
   email: "james@gsv.to", // PROVISIONAL: public contact email (only email shown on the site)
   bookingUrl: "https://cal.com/james-almeida/free-discovery-call", // PROVISIONAL: existing 30-min Cal event until a dedicated intro event exists
   bookingLabel: "Book a free intro call", // PROVISIONAL: CTA label
   bookingShortLabel: "Book a call",
+  hireLabel: "Hire me / Get in touch",
   callLengthMinutes: undefined as number | undefined, // PROVISIONAL: intro-call length undecided. Do not render or state it anywhere while undefined
   linkedin: "https://linkedin.com/in/jamesworkswell",
   github: "https://github.com/jamesalmeida",
+  x: "https://x.com/james_almeida",
+  xHandle: "@james_almeida",
   resumeUrl: "/resume.pdf",
+  // Drop a file in public/media and set src to its path (mp4/webm autoplay; gif/png/jpg/webp as an image).
+  // null shows a placeholder — never a broken embed.
+  konteksDemo: {
+    src: null as string | null,
+    poster: undefined as string | undefined,
+  },
   company: {
     name: "General Systems Ventures",
     short: "GSV",

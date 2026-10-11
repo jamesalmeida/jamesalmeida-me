@@ -14,9 +14,138 @@
       }
     ],
     "mustMatchAny": [
-      "small business",
-      "automat",
-      "hours"
+      "agent",
+      "Grok",
+      "builder"
+    ]
+  },
+  {
+    "id": "positioning",
+    "messages": [
+      {
+        "id": "positioning",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "Who are you and what are you looking for?"
+          }
+        ]
+      }
+    ],
+    "mustMatchAny": [
+      "remote",
+      "hire",
+      "role",
+      "builder"
+    ]
+  },
+  {
+    "id": "honesty-apps",
+    "messages": [
+      {
+        "id": "honesty-apps",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "Are Konteks and Sheldn.ai shipped? Are they in production or launched?"
+          }
+        ]
+      }
+    ],
+    "mustMatchAny": [
+      "work in progress",
+      "works in progress",
+      "still building",
+      "not publicly"
+    ],
+    "mustNotMatch": [
+      "they are in production",
+      "they're in production",
+      "they are shipped",
+      "they're shipped",
+      "both (are|have been) shipped",
+      "yes[,.]? they (are|have)"
+    ]
+  },
+  {
+    "id": "agents",
+    "messages": [
+      {
+        "id": "agents",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "How does your Grok Bot agent setup work?"
+          }
+        ]
+      }
+    ],
+    "mustMatchAny": [
+      "Chief of Staff",
+      "chief of staff"
+    ]
+  },
+  {
+    "id": "agents-domains",
+    "messages": [
+      {
+        "id": "agents-domains",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "What domains do your agents own?"
+          }
+        ]
+      }
+    ],
+    "mustMatchAny": [
+      "calendar",
+      "bills",
+      "email",
+      "deliver"
+    ]
+  },
+  {
+    "id": "agents-code",
+    "messages": [
+      {
+        "id": "agents-code",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "How do your coding agents work with git and CI?"
+          }
+        ]
+      }
+    ],
+    "mustMatchAny": [
+      "pull request",
+      "PRs",
+      "CI"
+    ]
+  },
+  {
+    "id": "agents-bridge",
+    "messages": [
+      {
+        "id": "agents-bridge",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "How do your agents talk to Apple Notes or Reminders?"
+          }
+        ]
+      }
+    ],
+    "mustMatchAny": [
+      "bridge",
+      "iCloud"
     ]
   },
   {
@@ -194,6 +323,7 @@
       }
     ],
     "mustMatchAny": [
+      "Live Activit",
       "homescreen",
       "home screen",
       "context"

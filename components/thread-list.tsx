@@ -75,9 +75,18 @@ export function ThreadList({
           <div>
             <p className="eyebrow text-xs text-[var(--muted)]">JamesAlmeida.me</p>
             <p className="mt-3 max-w-xs text-sm leading-6 text-[var(--muted)]">
-              AI consulting for small businesses, plus my portfolio, experience, and resume.
+              Building with AI: agent setup, works in progress, and how to hire me. Consulting is
+              further down.
             </p>
-            <p className="mt-3 flex gap-4 text-sm text-[var(--muted)]">
+            <p className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-[var(--muted)]">
+              <Link
+                href="/work"
+                className="transition hover:text-[var(--foreground)]"
+                data-cuelume-hover="whisper"
+                data-cuelume-press="tick"
+              >
+                Work
+              </Link>
               <Link
                 href="/consulting"
                 className="transition hover:text-[var(--foreground)]"
@@ -85,14 +94,6 @@ export function ThreadList({
                 data-cuelume-press="tick"
               >
                 Consulting
-              </Link>
-              <Link
-                href="/work"
-                className="transition hover:text-[var(--foreground)]"
-                data-cuelume-hover="whisper"
-                data-cuelume-press="tick"
-              >
-                Portfolio
               </Link>
               <Link
                 href="/privacy"

@@ -5,12 +5,20 @@ import { Mail } from "lucide-react";
 import { getProjects } from "@/data/portfolio";
 import { OFFER, SITE } from "@/data/site";
 import type { StaticThreadId } from "@/lib/threads";
-import { BookingButton, BookingCard } from "./booking-button";
+import { BookingButton, BookingCard, HireButton } from "./booking-button";
 
 function GithubIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+    </svg>
+  );
+}
+
+function XIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M18.244 2H21.5l-7.5 8.57L22.5 22h-6.56l-5.14-6.71L5.2 22H1.92l8.02-9.16L1.5 2h6.72l4.64 6.15L18.244 2zm-1.15 18h1.8L7.01 3.91H5.08L17.094 20z" />
     </svg>
   );
 }
@@ -35,7 +43,10 @@ type ThreadSuggestions = {
   suggestions: Suggestion[];
 };
 
-const featuredSuggestions: Suggestion[] = getProjects("featured").map((project) => ({
+const featuredSuggestions: Suggestion[] = [
+  ...getProjects("featured"),
+  ...getProjects("wip"),
+].map((project) => ({
   title: project.name,
   prompt: `Tell me about ${project.name}.`,
 }));
@@ -44,22 +55,23 @@ const THREAD_SUGGESTIONS: Record<StaticThreadId, ThreadSuggestions> = {
   "new-chat": {
     title: "General Chat",
     subtitle: "Ask me anything.",
+    description: SITE.heroLine,
     suggestions: [
       {
         title: "Who are you?",
         prompt: "Who are you?",
       },
       {
-        title: "How can you help my business?",
-        prompt: "What could you automate for a small business like mine?",
+        title: "How do your agents work?",
+        prompt: "How does your Grok Bot agent setup work?",
       },
       {
         title: "Show me your portfolio",
         prompt: "Show me your portfolio",
       },
       {
-        title: "What does it cost?",
-        prompt: "What does it cost?",
+        title: "How can I hire you?",
+        prompt: "I'd like to hire you for a remote building-with-AI role. How should I get in touch?",
       },
     ],
   },
@@ -96,7 +108,7 @@ const THREAD_SUGGESTIONS: Record<StaticThreadId, ThreadSuggestions> = {
   },
   projects: {
     title: "Portfolio",
-    subtitle: "Projects I've designed and shipped.",
+    subtitle: "Works in progress and earlier product work.",
     suggestions: [
       ...featuredSuggestions,
       {
@@ -129,10 +141,14 @@ const THREAD_SUGGESTIONS: Record<StaticThreadId, ThreadSuggestions> = {
   },
   socials: {
     title: "Contact",
-    subtitle: "Book a free intro call or email me.",
+    subtitle: "Hire me, book a call, or email.",
     suggestions: [
       {
-        title: "Consulting Inquiry",
+        title: "Hiring",
+        prompt: "I'd like to hire you for a remote building-with-AI role. How should I get in touch?",
+      },
+      {
+        title: "Consulting",
         prompt: "I have a project I'd like to discuss. How should I reach out?",
       },
     ],
@@ -194,7 +210,8 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
       </div>
       {threadId === "socials" ? (
         <div className="flex flex-wrap items-center gap-2">
-          <BookingButton />
+          <HireButton />
+          <BookingButton label={SITE.bookingShortLabel} />
           <a
             href={`mailto:${SITE.email}`}
             className={linkButtonClass}
@@ -205,15 +222,15 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
             Email {SITE.email}
           </a>
           <a
-            href={SITE.linkedin}
+            href={SITE.x}
             target="_blank"
             rel="noopener noreferrer"
             className={linkButtonClass}
             data-cuelume-hover="whisper"
             data-cuelume-press="tick"
           >
-            <LinkedinIcon size={16} />
-            LinkedIn
+            <XIcon size={16} />
+            {SITE.xHandle}
           </a>
           <a
             href={SITE.github}
@@ -225,6 +242,17 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
           >
             <GithubIcon size={16} />
             GitHub
+          </a>
+          <a
+            href={SITE.linkedin}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkButtonClass}
+            data-cuelume-hover="whisper"
+            data-cuelume-press="tick"
+          >
+            <LinkedinIcon size={16} />
+            LinkedIn
           </a>
         </div>
       ) : null}

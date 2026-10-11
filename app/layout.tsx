@@ -14,9 +14,9 @@ const jsonLd = {
       "@id": personId,
       name: SITE.name,
       url: SITE.url,
-      jobTitle: "AI Consultant & Software Engineer",
+      jobTitle: "Software Engineer",
       email: `mailto:${SITE.email}`,
-      sameAs: [SITE.linkedin, SITE.github],
+      sameAs: [SITE.linkedin, SITE.github, SITE.x],
     },
     {
       "@type": "ProfessionalService",

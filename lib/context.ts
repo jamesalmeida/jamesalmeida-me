@@ -11,6 +11,8 @@ const PLACEHOLDERS: Record<string, string> = {
   linkedin: SITE.linkedin,
   github: SITE.github,
   resumeUrl: SITE.resumeUrl,
+  x: SITE.x,
+  xHandle: SITE.xHandle,
 };
 
 function renderOffer(): string {
@@ -59,11 +61,12 @@ function renderOffer(): string {
 }
 
 function renderPortfolio(): string {
-  const format = (group: "featured" | "earlier") =>
+  const format = (group: "featured" | "wip" | "earlier") =>
     getProjects(group)
       .map((project) => {
         const link = project.url ? ` (${project.url})` : "";
-        return `- **${project.name}.** ${project.oneLiner}${link}`;
+        const status = project.status ? ` Status: ${project.status}.` : "";
+        return `- **${project.name}.** ${project.oneLiner}${status}${link}`;
       })
       .join("\n");
 
@@ -72,6 +75,9 @@ function renderPortfolio(): string {
     "",
     "### Featured",
     format("featured"),
+    "",
+    "### Works in progress",
+    format("wip"),
     "",
     "### Earlier work",
     format("earlier"),

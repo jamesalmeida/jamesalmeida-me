@@ -1,4 +1,4 @@
-import { CalendarCheck } from "lucide-react";
+import { CalendarCheck, Mail } from "lucide-react";
 import { SITE } from "@/data/site";
 
 export function BookingButton({
@@ -14,6 +14,51 @@ export function BookingButton({
       target="_blank"
       rel="noopener noreferrer"
       className={`inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-[var(--accent-foreground)] transition hover:opacity-90 ${className}`}
+      data-cuelume-hover="whisper"
+      data-cuelume-press="tick"
+    >
+      <CalendarCheck size={16} />
+      {label}
+    </a>
+  );
+}
+
+const outlineButtonClass =
+  "inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel-strong)] px-4 py-2.5 text-sm font-medium text-[var(--foreground)] transition hover:-translate-y-px hover:border-[var(--border-strong)]";
+
+export function HireButton({
+  label = SITE.hireLabel,
+  className = "",
+}: {
+  label?: string;
+  className?: string;
+}) {
+  return (
+    <a
+      href={`mailto:${SITE.email}`}
+      className={`inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-[var(--accent-foreground)] transition hover:opacity-90 ${className}`}
+      data-cuelume-hover="whisper"
+      data-cuelume-press="tick"
+    >
+      <Mail size={16} />
+      {label}
+    </a>
+  );
+}
+
+export function BookingOutlineButton({
+  label = SITE.bookingShortLabel,
+  className = "",
+}: {
+  label?: string;
+  className?: string;
+}) {
+  return (
+    <a
+      href={SITE.bookingUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`${outlineButtonClass} ${className}`}
       data-cuelume-hover="whisper"
       data-cuelume-press="tick"
     >
