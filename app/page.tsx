@@ -1,6 +1,5 @@
-import { ChatApp } from "@/components/chat-app";
-import { StaticIntro } from "@/components/static-intro";
+import { HomePage } from "@/components/home-page";
 
 export default function Home() {
-  return <ChatApp fallback={<StaticIntro />} />;
+  return <HomePage />;
 }

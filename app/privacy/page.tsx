@@ -101,7 +101,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
 
 export default function PrivacyPage() {
   return (
-    <SitePageShell secondaryHref="/consulting" secondaryLabel="Consulting">
+    <SitePageShell current="privacy">
       <article className="space-y-10 pb-16">
         <header className="space-y-3">
           <p className="eyebrow text-xs text-[var(--muted)]">Privacy</p>

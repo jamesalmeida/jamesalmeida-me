@@ -28,7 +28,13 @@ import {
   type StoredThreads,
 } from "@/lib/threads";
 
-export function ChatApp({ fallback }: { fallback: ReactNode }) {
+export function ChatApp({
+  fallback,
+  embedded = false,
+}: {
+  fallback: ReactNode;
+  embedded?: boolean;
+}) {
   const [activeThreadId, setActiveThreadId] = useState<string>("new-chat");
   const [storedThreads, setStoredThreads] = useState<StoredThreads>({});
   const [historyThreads, setHistoryThreads] = useState<HistoryThread[]>([]);
@@ -93,6 +99,13 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
     if (!isHydrated) return;
     writeStoredActiveThread(activeThreadId);
   }, [activeThreadId, isHydrated]);
+
+  useEffect(() => {
+    if (!isHydrated || !embedded) return;
+    if (new URLSearchParams(window.location.search).get("thread")) {
+      document.getElementById("chat")?.scrollIntoView({ block: "start" });
+    }
+  }, [isHydrated, embedded]);
 
   useEffect(() => {
     if (!isHydrated) return;
@@ -235,14 +248,32 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
   );
 
   if (!isHydrated) {
-    return fallback;
+    if (!embedded) return fallback;
+    return (
+      <div className="chat-embed relative overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel)]">
+        {fallback}
+      </div>
+    );
   }
 
   return (
-    <div className="app-shell relative overflow-hidden px-3 sm:px-4 min-[431px]:py-4">
-      <div className="app-panel grain-panel flex overflow-hidden rounded-[2rem] border border-[var(--border)]">
+    <div
+      className={
+        embedded
+          ? "chat-embed relative overflow-hidden"
+          : "app-shell relative overflow-hidden px-3 sm:px-4 min-[431px]:py-4"
+      }
+    >
+      <div
+        className={
+          embedded
+            ? "relative flex h-full overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel)] shadow-[0_16px_40px_rgba(0,0,0,0.06)]"
+            : "app-panel grain-panel flex overflow-hidden rounded-[2rem] border border-[var(--border)]"
+        }
+      >
         <ThreadList
           activeThreadId={activeThreadId}
+          contained={embedded}
           historyThreads={historyThreads}
           isOpen={isSidebarOpen}
           onClearAllChats={handleClearAllChats}

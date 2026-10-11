@@ -64,7 +64,7 @@ export default function WorkPage() {
   const earlier = getProjects("earlier");
 
   return (
-    <SitePageShell secondaryHref="/consulting" secondaryLabel="Consulting">
+    <SitePageShell current="work">
       <article className="space-y-12 pb-16">
         <header className="space-y-3">
           <p className="eyebrow text-xs text-[var(--muted)]">Work</p>
