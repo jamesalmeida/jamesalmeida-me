@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 
 export default function ConsultingPage() {
   return (
-    <SitePageShell secondaryHref="/work" secondaryLabel="Portfolio">
+    <SitePageShell current="consulting">
       <article className="space-y-12 pb-16">
         <header className="space-y-4">
           <p className="eyebrow text-xs text-[var(--muted)]">Consulting</p>
@@ -152,7 +152,7 @@ export default function ConsultingPage() {
           </div>
           <p>
             <Link
-              href="/?thread=work-with-me"
+              href="/?thread=work-with-me#chat"
               className="text-sm text-[var(--foreground)] underline-offset-4 hover:underline"
               data-cuelume-hover="whisper"
               data-cuelume-press="tick"

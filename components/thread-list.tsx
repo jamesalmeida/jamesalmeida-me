@@ -21,6 +21,7 @@ const ACCENT_SWATCHES: Record<Accent, { label: string; light: string; dark: stri
 
 type ThreadListProps = {
   activeThreadId: string;
+  contained?: boolean;
   historyThreads: HistoryThread[];
   isOpen: boolean;
   onClearAllChats: () => void;
@@ -33,6 +34,7 @@ type ThreadListProps = {
 
 export function ThreadList({
   activeThreadId,
+  contained = false,
   historyThreads,
   isOpen,
   onClearAllChats,
@@ -65,11 +67,19 @@ export function ThreadList({
       >
         <Menu size={18} />
       </button>
+      {contained && isOpen ? (
+        <button
+          type="button"
+          className="absolute inset-0 z-30 bg-black/20 lg:hidden"
+          onClick={() => onOpenChange(false)}
+          aria-label="Close menu"
+        />
+      ) : null}
 
       <aside
         className={`${
           isOpen ? "translate-x-0" : "-translate-x-full"
-        } fixed inset-y-0 left-0 z-40 flex w-[21rem] max-w-[85vw] flex-col border-r border-[var(--border)] bg-[var(--panel-strong)] transition-transform duration-300 lg:static lg:max-w-none lg:translate-x-0`}
+        } ${contained ? "absolute max-w-[85%]" : "fixed max-w-[85vw]"} inset-y-0 left-0 z-40 flex w-[21rem] flex-col border-r border-[var(--border)] bg-[var(--panel-strong)] transition-transform duration-300 lg:static lg:max-w-none lg:translate-x-0`}
       >
         <div className="flex shrink-0 items-start justify-between gap-4 px-5 py-5">
           <div>
