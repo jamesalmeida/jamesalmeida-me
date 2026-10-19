@@ -5,7 +5,6 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNod
 import { Modal } from "@/components/modal";
 import { Thread } from "@/components/thread";
 import { ThreadList } from "@/components/thread-list";
-import { SITE } from "@/data/site";
 import {
   THREADS,
   THREADS_BY_ID,
@@ -254,7 +253,6 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
           threads={THREADS}
         />
         <main className="flex min-w-0 flex-1 flex-col">
-          <h1 className="sr-only">{SITE.name}</h1>
           <Thread
             key={`${activeThreadId}:${chatGeneration}`}
             initialMessages={activeMessages}

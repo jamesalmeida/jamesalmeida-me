@@ -194,6 +194,11 @@ textarea {
   box-shadow: var(--shadow);
 }
 
+/* Empty on purpose. A later change can set a background image here. */
+[data-slot="hero-background"] {
+  background: transparent;
+}
+
 .eyebrow {
   font-family:
     "Menlo",

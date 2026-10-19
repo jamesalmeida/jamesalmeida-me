@@ -1,12 +1,13 @@
 export const SITE = {
   name: "James Almeida",
   url: "https://www.jamesalmeida.me",
-  title: "James Almeida — building with AI",
+  title: "James Almeida — AI consulting and software engineering",
   description:
-    "Power user turned builder. I run 40+ coordinated Grok Bot agents across my household, finances, and code, and I build the tools they use. Los Angeles, open to remote.",
+    "Power user turned builder. I help small and mid-size teams get their first AI system working, and I consult on automation. I run 40+ coordinated Grok Bot agents. Also open to remote building-with-AI roles.",
+  heroHeadline: "Hi, I'm James. What do you want AI to do for your business?",
   heroLine:
-    "I'm a power user turned builder. I run 40+ coordinated Grok Bot agents across my household, finances, and code — and I build the tools they use.",
-  bio: "I'm James Almeida, a software engineer in Los Angeles, open to remote. I run 40+ coordinated Grok Bot agents across my household, finances, and code, and I build the tools they use. Before that I trained models at xAI and did product engineering at Leaf Group (Society6), iROKOtv, and Datadog. I'm looking for a remote building-with-AI role. I also consult with small businesses on automation.",
+    "I help small and mid-size teams get their first AI system working. Also open to remote building-with-AI roles.",
+  bio: "I'm James Almeida, a power user turned builder. I help small and mid-size teams get their first AI system working, and I consult on automation. I run 40+ coordinated Grok Bot agents. I trained models at xAI and did product engineering at Leaf Group (Society6), iROKOtv, and Datadog. Contracts go through my S-Corp, General Systems Ventures. I'm also open to remote building-with-AI roles.",
   locationLine: "Los Angeles / open to remote",
   email: "james@gsv.to", // PROVISIONAL: public contact email (only email shown on the site)
   bookingUrl: "https://cal.com/james-almeida/free-discovery-call", // PROVISIONAL: existing 30-min Cal event until a dedicated intro event exists
@@ -33,13 +34,27 @@ export const SITE = {
   },
 } as const;
 
+export const CONSULTING_OFFER_HEADLINE = "Start with one task";
+
+export const WEEK_SYSTEMS_TITLE = "Systems running my week";
+
+// The only routines the week-systems card and the bot may name.
+export const WEEK_SYSTEMS = [
+  "A 6am heads-up",
+  "An 8:30am desk brief",
+  "Triage across five inboxes",
+  "Bill tracking",
+  "Calendar with leave-now pings that include drive time",
+  "A chief-of-staff agent coordinating 40+ agents",
+] as const;
+
 const AUDIT_CREDIT =
   "The audit fee is credited toward your first build if you go ahead within 30 days."; // PROVISIONAL: audit-credit policy (30 days)
 
 export const OFFER = {
   audience: ["Dental offices", "Property managers", "Law offices", "Agencies"],
   audienceLine:
-    "For small businesses whose teams lose hours to repetitive admin work.",
+    "For small and mid-size teams that lose hours to repetitive admin work.",
   steps: [
     {
       id: "audit",

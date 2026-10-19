@@ -8,11 +8,11 @@ const serif =
   "font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif]";
 
 export const metadata: Metadata = {
-  title: "AI consulting for small businesses",
+  title: "AI consulting",
   description: SITE.description,
   alternates: { canonical: "/consulting" },
   openGraph: {
-    title: "AI consulting for small businesses",
+    title: "AI consulting",
     description: SITE.description,
     url: "/consulting",
   },
@@ -25,7 +25,7 @@ export default function ConsultingPage() {
         <header className="space-y-4">
           <p className="eyebrow text-xs text-[var(--muted)]">Consulting</p>
           <h1 className={`max-w-xl text-4xl tracking-[-0.04em] sm:text-5xl ${serif}`}>
-            AI consulting for small businesses
+            AI consulting for small and mid-size teams
           </h1>
           <p className="max-w-2xl text-base leading-7 text-[var(--muted)]">
             {SITE.description}
@@ -124,7 +124,7 @@ export default function ConsultingPage() {
           </ul>
         </section>
 
-        <section className="space-y-4">
+        <section id="faq" className="scroll-mt-8 space-y-4">
           <h2 className={`text-3xl tracking-[-0.03em] ${serif}`}>FAQ</h2>
           <div className="space-y-3">
             {OFFER.faq.map((item) => (

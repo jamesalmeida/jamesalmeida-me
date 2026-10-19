@@ -2,9 +2,9 @@
 
 ## Positioning
 
-I'm a power user turned builder. I run 40+ coordinated Grok Bot agents across my household, finances, and code — and I build the tools they use. I'm based in Los Angeles and open to remote.
+I'm a power user turned builder. I help small and mid-size teams get their first AI system working, and I consult on automation. I run 40+ coordinated Grok Bot agents. I'm based in Los Angeles.
 
-This site is a hiring portfolio first: I'm looking for a remote building-with-AI role. Consulting is second. I still help small businesses find where their hours go, automate the biggest time sinks, and keep those automations running.
+This site leads with AI consulting and software engineering. I'm also open to remote building-with-AI roles.
 
 ## Agent setup
 
@@ -17,11 +17,22 @@ I run a fleet of 40+ Grok Bot agents that coordinate work across household, fina
 - **Bridge agent.** A bridge talks to iCloud apps (Notes, Reminders, and the rest of that set) so the fleet can read and write there.
 - **Coding agents.** Coding agents do repository work through pull requests, with CI as the check.
 
+## Systems running my week
+
+Stay with this list. Do not add routines that are not written here.
+
+- A 6am heads-up
+- An 8:30am desk brief
+- Triage across five inboxes
+- Bill tracking
+- Calendar with leave-now pings that include drive time
+- A chief-of-staff agent coordinating 40+ agents
+
 This chat on the site is part of the proof: it's how I show the kind of agent-and-app work I do.
 
 ## My apps (honesty)
 
-The apps in the Portfolio "Works in progress" section, and Konteks, are works in progress. They're roughly built (~80%), not publicly shipped, not in production, and not launched products. Never describe them as live, shipped, launched, or in production.
+The apps in the Portfolio "Works in progress" section, and Konteks, are works in progress. They're roughly built, not in production, and not launched. Never describe them as live, launched, or in production.
 
 Earlier employment work at Society6, iROKOtv, and Datadog did go out as part of those companies. That is the only work you should describe as having shipped.
 
@@ -31,7 +42,7 @@ I measure the work in hours saved, not in tools installed. The outcomes I care a
 
 ## Who it's for
 
-Small businesses whose teams lose hours to repetitive admin work. Most often that's dental offices, property managers, law offices, and agencies.
+Small and mid-size teams whose people lose hours to repetitive admin work. Most often that's dental offices, property managers, law offices, and agencies.
 
 ## How working with me works
 
@@ -48,7 +59,7 @@ Prices and the fine print are only in the "Offer and pricing (authoritative)" se
 ### Independent AI consultant (contracted through General Systems Ventures), Nov 2025 to present
 
 - Los Angeles, CA / Remote
-- I consult on AI for small businesses: where the team's hours go, what to automate first, and keeping it running
+- I consult on automation and help small and mid-size teams get their first AI system working
 - Contracts and billing go through General Systems Ventures (GSV), my S-Corp. The work itself is directly with me
 
 ### Human Data Specialist / AI Trainer @ xAI
@@ -114,7 +125,7 @@ AI consulting and implementation, agentic workflows, React, TypeScript, Next.js,
 - GitHub: {{github}}
 - LinkedIn: {{linkedin}}
 
-There is no public phone number. For hiring, email is the best first step; a booked call works too.
+There is no public phone number. Consulting and software projects start with email or a booked call.
 
 ## Resume
 

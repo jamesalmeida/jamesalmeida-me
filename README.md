@@ -1,6 +1,6 @@
 # jamesalmeida.me
 
-Hiring portfolio first (remote building-with-AI role), AI-consulting lead tool second. The home page is a full-screen chat: visitors talk to James in first person, and the chat funnels them toward hiring him or working with him. `/consulting` and `/work` are normal pages for anyone who'd rather read.
+AI consulting and software engineering first, with one secondary line: also open to remote building-with-AI roles. The home page is a full-screen chat: visitors talk to James in first person, and the chat funnels them toward working with him. `/consulting` and `/work` are normal pages for anyone who'd rather read.
 
 **Production:** [www.jamesalmeida.me](https://www.jamesalmeida.me) (the apex host redirects to www).
 
@@ -46,13 +46,13 @@ The site speaks as James ("I", "my"). General Systems Ventures is only how contr
 
 1. Drop an `.mp4`, `.webm`, `.gif`, `.png`, `.jpg`, or `.webp` in `public/media/`.
 2. In `data/site.ts`, set `SITE.konteksDemo.src` to that path (for example `"/media/konteks-demo.mp4"`). Optional `poster` for video.
-3. Leave `src: null` to keep the placeholder. The media shows in the General Chat empty state and on the Konteks project card. mp4/webm autoplay muted loop `playsInline`; images render as an `<img>`.
+3. Leave `src: null` to keep the placeholder. The media shows on the Konteks project card inside the chat. mp4/webm autoplay muted loop `playsInline`; images render as an `<img>`.
 
 `lib/context.ts` strips those HTML comments, fills the placeholders, and appends the offer and portfolio before they go into the system prompt.
 
 ## Chat tools
 
-Buying intent shows a booking card (`showBookingCta`). Asking about projects shows portfolio cards (`showPortfolio`). Both are defined in `lib/chat-tools.ts` and rendered in `components/tool-cards.tsx`.
+The offer shows a "start with one task" card (`showConsultingOffer`). The systems running the week show their own card (`showWeekSystems`). Buying intent, after one qualifying question, shows a booking card (`showBookingCta`). Asking about projects shows portfolio cards (`showPortfolio`). Tools are defined in `lib/chat-tools.ts` and rendered in `components/tool-cards.tsx`.
 
 `/api/chat` rejects bodies over 200 KB, drops system messages and unknown parts, keeps the last 20 messages, and truncates each text part to 2,000 characters. Title generation rejects bodies over 10 KB.
 

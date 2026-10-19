@@ -3,7 +3,13 @@
 import { makeAssistantToolUI } from "@assistant-ui/react";
 import Link from "next/link";
 import { selectProjects, toPublicProjects, type PublicProject } from "@/data/portfolio";
-import { BookingCard } from "./booking-button";
+import {
+  CONSULTING_OFFER_HEADLINE,
+  OFFER,
+  WEEK_SYSTEMS,
+  WEEK_SYSTEMS_TITLE,
+} from "@/data/site";
+import { BookingButton, BookingCard, EmailLink } from "./booking-button";
 import { KONTEKS_PROJECT_ID, KonteksDemoMedia } from "./featured-demo";
 
 const serif =
@@ -99,6 +105,71 @@ function ProjectGrid({ projects }: { projects: PublicProject[] }) {
     </div>
   );
 }
+
+export function ConsultingOfferCard() {
+  return (
+    <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.06)]">
+      <p className="eyebrow text-xs text-[var(--muted)]">Consulting</p>
+      <h3 className={`mt-2 text-2xl tracking-[-0.03em] text-[var(--foreground)] ${serif}`}>
+        {CONSULTING_OFFER_HEADLINE}
+      </h3>
+      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{OFFER.audienceLine}</p>
+      <ol className="mt-4 space-y-3">
+        {OFFER.steps.map((step, index) => (
+          <li key={step.id}>
+            <p className="text-sm font-medium text-[var(--foreground)]">
+              {index + 1}. {step.name}{" "}
+              <span className="font-normal text-[var(--muted)]">
+                {step.priceRange} ({step.priceNote})
+              </span>
+            </p>
+            <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{step.summary}</p>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-4 text-sm leading-6 text-[var(--muted)]">{OFFER.defaults.eachStepOptional}</p>
+      <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{OFFER.defaults.introCall}</p>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <BookingButton />
+        <EmailLink />
+      </div>
+    </div>
+  );
+}
+
+export function WeekSystemsCard() {
+  return (
+    <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.06)]">
+      <p className="eyebrow text-xs text-[var(--muted)]">Agents</p>
+      <h3 className={`mt-2 text-2xl tracking-[-0.03em] text-[var(--foreground)] ${serif}`}>
+        {WEEK_SYSTEMS_TITLE}
+      </h3>
+      <ul className="mt-3 space-y-2">
+        {WEEK_SYSTEMS.map((system) => (
+          <li key={system} className="text-sm leading-6 text-[var(--foreground)]">
+            {system}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export const ShowConsultingOfferToolUI = makeAssistantToolUI<
+  Record<string, never>,
+  { headline: string }
+>({
+  toolName: "showConsultingOffer",
+  render: () => <ConsultingOfferCard />,
+});
+
+export const ShowWeekSystemsToolUI = makeAssistantToolUI<
+  Record<string, never>,
+  { title: string; systems: string[] }
+>({
+  toolName: "showWeekSystems",
+  render: () => <WeekSystemsCard />,
+});
 
 export const ShowBookingCtaToolUI = makeAssistantToolUI<
   Record<string, never>,

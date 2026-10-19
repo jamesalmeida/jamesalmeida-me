@@ -1,6 +1,6 @@
 "use client";
 
-import { useComposerRuntime } from "@assistant-ui/react";
+import { useComposerRuntime, useThread } from "@assistant-ui/react";
 import { Mail } from "lucide-react";
 import { getProjects } from "@/data/portfolio";
 import { OFFER, SITE } from "@/data/site";
@@ -70,7 +70,7 @@ const THREAD_SUGGESTIONS: Record<StaticThreadId, ThreadSuggestions> = {
       },
       {
         title: "How can I hire you?",
-        prompt: "I'd like to hire you for a remote building-with-AI role. How should I get in touch?",
+        prompt: "How can I hire you for consulting or a software project?",
       },
       {
         title: "I have a project",
@@ -149,7 +149,7 @@ const THREAD_SUGGESTIONS: Record<StaticThreadId, ThreadSuggestions> = {
     suggestions: [
       {
         title: "Hiring",
-        prompt: "I'd like to hire you for a remote building-with-AI role. How should I get in touch?",
+        prompt: "How can I hire you for consulting or a software project?",
       },
       {
         title: "Consulting",
@@ -180,6 +180,62 @@ const THREAD_SUGGESTIONS: Record<StaticThreadId, ThreadSuggestions> = {
     ],
   },
 };
+
+export const FOLLOW_UP_CHIPS = [
+  {
+    title: "How can I hire you?",
+    prompt: "How can I hire you for consulting or a software project?",
+  },
+  {
+    title: "I have a project",
+    prompt: "I have a project.",
+  },
+  {
+    title: "Systems running your week",
+    prompt: "Show me the systems running your week.",
+  },
+  {
+    title: "Works in progress",
+    prompt: "Show me your works in progress.",
+  },
+] as const;
+
+export function FollowUpChips() {
+  const composer = useComposerRuntime();
+  const isRunning = useThread((state) => state.isRunning);
+  const messages = useThread((state) => state.messages);
+  const last = messages[messages.length - 1];
+  const show =
+    !isRunning &&
+    last?.role === "assistant" &&
+    last.status.type !== "running" &&
+    last.status.type !== "requires-action";
+
+  if (!show) return null;
+
+  return (
+    <div
+      role="group"
+      aria-label="Follow-up suggestions"
+      className="flex flex-wrap gap-2 pr-16"
+    >
+      {FOLLOW_UP_CHIPS.map((chip) => (
+        <button
+          key={chip.title}
+          type="button"
+          onClick={() => {
+            composer.setText(chip.prompt);
+            composer.send();
+          }}
+          className="rounded-full border border-[var(--border)] bg-[var(--panel-strong)] px-3 py-2 text-left text-sm text-[var(--foreground)] transition hover:-translate-y-px hover:border-[var(--border-strong)]"
+          data-cuelume-press="tick"
+        >
+          {chip.title}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 const linkButtonClass =
   "inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel-strong)] px-4 py-2.5 text-sm text-[var(--foreground)] transition hover:-translate-y-px hover:border-[var(--border-strong)]";

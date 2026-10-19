@@ -4,7 +4,7 @@ This file gives you (Claude, Codex, or any other coding agent) the critical cont
 
 ## What This Is
 
-**jamesalmeida.me** — James Almeida's hiring portfolio first (remote building-with-AI role), AI-consulting lead tool second. The home page `/` is a full-screen chat app: the chat is the whole site, and it funnels visitors toward hiring James or working with him (AI consulting, software projects). The chat speaks in first person as James. Visitors can also read `/consulting` and `/work` without chatting.
+**jamesalmeida.me** — James Almeida's AI consulting and software engineering site first. One secondary line: he is also open to remote building-with-AI roles. The home page `/` is a full-screen chat app: the chat is the whole site, and it funnels visitors toward working with James. The chat speaks in first person as James. Visitors can also read `/consulting` and `/work` without chatting.
 
 - **Production**: https://www.jamesalmeida.me (apex redirects to www)
 - **Repo**: https://github.com/jamesalmeida/jamesalmeida-me
@@ -148,7 +148,7 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 - Example: "I built Sheldn.ai" ✅ / "James built Sheldn.ai" ❌
 - General Systems Ventures / GSV is only for contracts and billing (and, on the resume, where the consulting is contracted). Never "we" as the company. "We'll see" between the visitor and James is fine.
 - Public contact is `james@gsv.to`, X `@james_almeida`, GitHub, LinkedIn, and the Cal booking link. No phone number. Never state how long the intro call is. Hiring CTAs: "Hire me / Get in touch" (mailto) and "Book a call" (`SITE.bookingUrl`, keep the URL unchanged). The consulting page can still use "Book a free intro call".
-- Personal apps (Konteks and the works in progress) are roughly built and **not** publicly shipped. Never say they are shipped, in production, or launched. Never say "one-person AI lab". Company work at Society6, iROKOtv, and Datadog is the exception.
+- Personal apps (Konteks and the works in progress) are works in progress. Never say they are shipped, in production, or launched. Never say "one-person AI lab". Company work at Society6, iROKOtv, and Datadog is the exception.
 
 ### Content
 - `data/site.ts` exports `SITE` and `OFFER`. Pages and the bot both use `OFFER`. Do not copy prices into page copy.
@@ -161,13 +161,13 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 
 - `ChatApp` fills the viewport (`.app-shell` / `.app-panel`, height `var(--app-height, 100dvh)`; `body` is fixed with `overflow: hidden`). The document never scrolls. Only the message viewport and the sidebar scroll.
 - Before hydration, `StaticIntro` renders in the same frame (no layout shift) with the real h1 and crawlable copy from `SITE`. No prices.
-- Portfolio content lives inside the chat, never as page sections: the General Chat empty state shows the Konteks card (`FeaturedDemo`), the starter prompts (including hiring and a consulting/software project), and the works in progress as chips that send "Tell me about X". The chat header always shows Hire me (mailto) and Book a call (icon-only under `sm`). The `showPortfolio` card shows the Konteks demo media on the Konteks project.
+- Portfolio content lives inside the chat, never as page sections. Before the first message, General Chat is a centered hero: headline, one line, and one input. Hire me (mailto) and Book a call stay in the header (icon-only under `sm`). After the first send, the input docks at the bottom and follow-up chips appear under answers. Konteks media shows on the `showPortfolio` card, not on the hero. Other threads still use their empty-state suggestions.
 - `/?thread=<static id>` opens that thread (used by `/consulting` for `work-with-me`).
 - `/work`, `/consulting` and `/privacy` are normal scrolling pages (`.site-page`) and link back to `/`.
 
 ### Konteks demo clip
 
-`SITE.konteksDemo` in `data/site.ts` drives the Konteks media (the General Chat empty-state card and the Konteks project card):
+`SITE.konteksDemo` in `data/site.ts` drives the Konteks media on the Konteks project card:
 
 ```ts
 konteksDemo: {
