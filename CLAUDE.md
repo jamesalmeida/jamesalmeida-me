@@ -4,7 +4,7 @@ This file gives you (Claude, Codex, or any other coding agent) the critical cont
 
 ## What This Is
 
-**jamesalmeida.me** — James Almeida's hiring portfolio first (remote building-with-AI role), AI-consulting lead tool second. The home page `/` is a full-screen chat app: the chat is the whole site, and it funnels visitors toward hiring James or working with him (AI consulting, software projects). The chat speaks in first person as James. Visitors can also read `/consulting` and `/work` without chatting.
+**jamesalmeida.me** — AI consulting and software engineering first. James is also open to remote building-with-AI roles. The home page `/` is a full-screen chat app: the chat is the whole site, and it funnels visitors toward working with James (AI consulting, software projects) or hiring him. The chat speaks in first person as James. Visitors can also read `/consulting` and `/work` without chatting.
 
 - **Production**: https://www.jamesalmeida.me (apex redirects to www)
 - **Repo**: https://github.com/jamesalmeida/jamesalmeida-me
@@ -83,7 +83,7 @@ components/
   site-nav.tsx                 # Nav for /work, /consulting, /privacy
   chat-app.tsx                 # Full-screen chat shell (app-shell / app-panel)
   thread.tsx                   # Chat thread, header Hire me + Book a call, tool UIs
-  tool-cards.tsx               # showBookingCta / showPortfolio cards
+  tool-cards.tsx               # showConsultingOffer / showBookingCta / showPortfolio cards
   booking-button.tsx           # HireButton, BookingButton, EmailLink, BookingCard
   theme-provider.tsx           # theme/accent/sound state; MotionConfig reducedMotion="user"
   suggestions.tsx              # Empty-state starters; General Chat adds the Konteks card and WIP chips
@@ -93,7 +93,7 @@ components/
 lib/
   system-prompt.ts             # First-person persona + guardrails
   context.ts                   # knowledge.md + generated offer and portfolio
-  chat-tools.ts                # showBookingCta, showPortfolio
+  chat-tools.ts                # showConsultingOffer, showBookingCta, showPortfolio
   tool-results.ts              # Tool input schemas + pure output builders (shared)
   sanitize-messages.ts         # Untrusted chat body → last 20 UIMessages
   request-body.ts              # Body size cap (Content-Length, then UTF-8 bytes)
@@ -148,7 +148,7 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 - Example: "I built Sheldn.ai" ✅ / "James built Sheldn.ai" ❌
 - General Systems Ventures / GSV is only for contracts and billing (and, on the resume, where the consulting is contracted). Never "we" as the company. "We'll see" between the visitor and James is fine.
 - Public contact is `james@gsv.to`, X `@james_almeida`, GitHub, LinkedIn, and the Cal booking link. No phone number. Never state how long the intro call is. Hiring CTAs: "Hire me / Get in touch" (mailto) and "Book a call" (`SITE.bookingUrl`, keep the URL unchanged). The consulting page can still use "Book a free intro call".
-- Personal apps (Konteks and the works in progress) are roughly built and **not** publicly shipped. Never say they are shipped, in production, or launched. Never say "one-person AI lab". Company work at Society6, iROKOtv, and Datadog is the exception.
+- Personal apps (Konteks and the works in progress) are works in progress. Never say they are shipped, in production, or launched. Never say "one-person AI lab". Company work at Society6, iROKOtv, and Datadog is the exception.
 
 ### Content
 - `data/site.ts` exports `SITE` and `OFFER`. Pages and the bot both use `OFFER`. Do not copy prices into page copy.
@@ -204,7 +204,7 @@ konteksDemo: {
 - The thread options menu (`components/thread.tsx`) follows the ARIA menu-button pattern: `aria-haspopup`/`aria-expanded`/`aria-controls` on the trigger, `role="menu"`/`menuitem`, arrow/Home/End keys, Escape or Tab closes and refocuses the trigger.
 
 ### Chat tools and abuse caps
-- `showBookingCta` renders a booking card from `SITE` (buying intent, contact, timing). It takes no input. Old stored parts with a `reason` field still validate, because the key is stripped. `showPortfolio` renders project cards (public fields only).
+- `showConsultingOffer` renders the consulting offer from `OFFER` only (audience line, Audit/Build/Keep it running with the published price ranges and notes, each step optional, audit credit). It takes no input. `showBookingCta` renders a booking card from `SITE`. Consulting intent gets one qualifying question before that card, unless the visitor explicitly asks to book or contact. It takes no input. Old stored parts with a `reason` field still validate, because the key is stripped. `showPortfolio` renders project cards (public fields only).
 - `POST /api/chat` rejects bodies over 200 KB (413) and bad JSON (400). `sanitizeMessages` drops system roles and unknown parts, keeps the last 20 user/assistant messages, truncates each text part to 2,000 characters, and requires the last message to be from the user.
 - Client-sent tool parts are never trusted. `sanitizeMessages` discards their `output`, validates `input` with the schemas in `lib/tool-results.ts` (also used by `lib/chat-tools.ts`), and rebuilds the output with the same pure functions the tools' `execute` uses. Parts are dropped if input is invalid, over 1 KB serialized, has more than 20 ids or ids over 64 chars, or has a malformed `toolCallId`. Max 4 tool parts per message and 8 KB of tool input per request. Assistant text parts are still accepted as sent (2,000-char cap); signing them is not done.
 - `streamText` uses `stopWhen: stepCountIs(3)` and `maxOutputTokens: 800`. The system prompt is sent as a system message with `providerOptions.anthropic.cacheControl` (ephemeral) when an Anthropic model is selected. The stream sends no message metadata, so the active model is never exposed to visitors.

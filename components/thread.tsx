@@ -37,7 +37,7 @@ import type { PortfolioThread } from "@/lib/threads";
 import { Modal } from "./modal";
 import { Suggestions } from "./suggestions";
 import { useTheme } from "./theme-provider";
-import { ShowBookingCtaToolUI, ShowPortfolioToolUI } from "./tool-cards";
+import { ShowBookingCtaToolUI, ShowConsultingOfferToolUI, ShowPortfolioToolUI } from "./tool-cards";
 
 type ThreadProps = {
   initialMessages: UIMessage[];
@@ -90,6 +90,7 @@ export function Thread({
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <ShowBookingCtaToolUI />
+      <ShowConsultingOfferToolUI />
       <ShowPortfolioToolUI />
       <ThreadPersistence onMessagesChange={onMessagesChange} />
       <RunCompleteDetector cancelledRef={cancelledRef} onReply={onReply} onRunComplete={onRunComplete} />
@@ -482,10 +483,15 @@ function AutoScrollViewport({ children }: { children: React.ReactNode }) {
 function ScrollToBottomButton() {
   const isAtBottom = useThreadViewport((state) => state.isAtBottom);
   const scrollToBottom = useThreadViewport((state) => state.scrollToBottom);
+  const hasMessages = useThread((state) => state.messages.length > 0);
+  // An empty thread starts at the top, so isAtBottom is false and this button
+  // used to cover the starter row on a phone. Hide it until there is a thread
+  // to scroll, and sit it above that row if it does show.
+  const visible = hasMessages && !isAtBottom;
 
   return (
     <AnimatePresence>
-      {!isAtBottom && (
+      {visible && (
         <motion.button
           type="button"
           onClick={() => scrollToBottom({ behavior: "smooth" })}
@@ -493,7 +499,7 @@ function ScrollToBottomButton() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="absolute bottom-4 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
+          className="absolute bottom-24 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)] sm:bottom-4"
           aria-label="Scroll to latest message"
           data-cuelume-press="tick"
         >

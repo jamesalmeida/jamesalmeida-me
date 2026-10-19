@@ -1,12 +1,12 @@
 export const SITE = {
   name: "James Almeida",
   url: "https://www.jamesalmeida.me",
-  title: "James Almeida — building with AI",
+  title: "James Almeida — AI consulting and software engineering",
   description:
-    "Power user turned builder. I run 40+ coordinated Grok Bot agents across my household, finances, and code, and I build the tools they use. Los Angeles, open to remote.",
+    "AI consulting and software engineering for small businesses. Power user turned builder. I run 40+ coordinated Grok Bot agents across my household, finances, and code, and I build the tools they use. Los Angeles, open to remote. I'm also open to remote building-with-AI roles.",
   heroLine:
-    "I'm a power user turned builder. I run 40+ coordinated Grok Bot agents across my household, finances, and code — and I build the tools they use.",
-  bio: "I'm James Almeida, a software engineer in Los Angeles, open to remote. I run 40+ coordinated Grok Bot agents across my household, finances, and code, and I build the tools they use. Before that I trained models at xAI and did product engineering at Leaf Group (Society6), iROKOtv, and Datadog. I'm looking for a remote building-with-AI role. I also consult with small businesses on automation.",
+    "I consult on AI and software engineering for small businesses. I'm a power user turned builder. I run 40+ coordinated Grok Bot agents across my household, finances, and code — and I build the tools they use. I'm also open to remote building-with-AI roles.",
+  bio: "I'm James Almeida, a software engineer in Los Angeles, open to remote. I consult on AI and software engineering for small businesses. I'm a power user turned builder. I run 40+ coordinated Grok Bot agents across my household, finances, and code, and I build the tools they use. Before that I trained models at xAI and did product engineering at Leaf Group (Society6), iROKOtv, and Datadog. I'm also open to remote building-with-AI roles.",
   locationLine: "Los Angeles / open to remote",
   email: "james@gsv.to", // PROVISIONAL: public contact email (only email shown on the site)
   bookingUrl: "https://cal.com/james-almeida/free-discovery-call", // PROVISIONAL: existing 30-min Cal event until a dedicated intro event exists

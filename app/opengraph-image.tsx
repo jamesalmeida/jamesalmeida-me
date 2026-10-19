@@ -50,13 +50,34 @@ export default function OpenGraphImage() {
             maxWidth: 980,
           }}
         >
+          AI consulting and software engineering
+        </div>
+        <div
+          style={{
+            display: "flex",
+            fontSize: 28,
+            marginTop: 16,
+            lineHeight: 1.35,
+            maxWidth: 980,
+          }}
+        >
           Power user turned builder. 40+ Grok Bot agents — and I build the tools they use.
         </div>
         <div
           style={{
             display: "flex",
             fontSize: 22,
-            marginTop: 28,
+            marginTop: 20,
+            opacity: 0.62,
+          }}
+        >
+          Also open to remote building-with-AI roles.
+        </div>
+        <div
+          style={{
+            display: "flex",
+            fontSize: 22,
+            marginTop: 12,
             opacity: 0.62,
           }}
         >

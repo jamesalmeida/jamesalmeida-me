@@ -4,6 +4,8 @@ import type { UIMessage } from "ai";
 import {
   bookingCtaInputSchema,
   bookingCtaOutput,
+  consultingOfferInputSchema,
+  consultingOfferOutput,
   portfolioInputSchema,
   portfolioOutput,
 } from "@/lib/tool-results";
@@ -52,6 +54,19 @@ function rebuildToolPart(
       state: "output-available",
       input: parsed.data,
       output: bookingCtaOutput(),
+    };
+  }
+
+  if (type === "tool-showConsultingOffer") {
+    const parsed = consultingOfferInputSchema.safeParse(input);
+    if (!parsed.success) return null;
+    budget.inputChars += inputChars;
+    return {
+      type,
+      toolCallId,
+      state: "output-available",
+      input: parsed.data,
+      output: consultingOfferOutput(),
     };
   }
 
