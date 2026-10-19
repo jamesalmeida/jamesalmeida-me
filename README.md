@@ -1,6 +1,6 @@
 # jamesalmeida.me
 
-Hiring portfolio first (remote building-with-AI role), AI-consulting lead tool second. The home page is a scrolling site with the chatbot as the centerpiece of proof. Visitors can chat with James in first person, or read `/consulting` and `/work` as normal pages.
+Hiring portfolio first (remote building-with-AI role), AI-consulting lead tool second. The home page is a full-screen chat: visitors talk to James in first person, and the chat funnels them toward hiring him or working with him. `/consulting` and `/work` are normal pages for anyone who'd rather read.
 
 **Production:** [www.jamesalmeida.me](https://www.jamesalmeida.me) (the apex host redirects to www).
 
@@ -21,7 +21,7 @@ Deployed on Vercel as project `jamesalmeida-portfolio`, team GSV (slug `gsv-2`).
 
 | Path | What it is |
 |---|---|
-| `/` | Hiring home: hero, embedded chat, Konteks demo, works in progress, about/contact, consulting last. `/?thread=work-with-me#chat` opens that thread and scrolls to the chat. |
+| `/` | Full-screen chat (no page scroll). The empty state has the Konteks card, starter prompts and works-in-progress chips; the header has Hire me and Book a call. `/?thread=work-with-me` opens that thread. |
 | `/consulting` | Offer page, rendered from `OFFER` |
 | `/work` | Work page, rendered from `PROJECTS` |
 | `/admin` | Password-gated model switcher. Not indexed. |
@@ -46,7 +46,7 @@ The site speaks as James ("I", "my"). General Systems Ventures is only how contr
 
 1. Drop an `.mp4`, `.webm`, `.gif`, `.png`, `.jpg`, or `.webp` in `public/media/`.
 2. In `data/site.ts`, set `SITE.konteksDemo.src` to that path (for example `"/media/konteks-demo.mp4"`). Optional `poster` for video.
-3. Leave `src: null` to keep the placeholder. mp4/webm autoplay muted loop `playsInline`; images render as an `<img>`.
+3. Leave `src: null` to keep the placeholder. The media shows in the General Chat empty state and on the Konteks project card. mp4/webm autoplay muted loop `playsInline`; images render as an `<img>`.
 
 `lib/context.ts` strips those HTML comments, fills the placeholders, and appends the offer and portfolio before they go into the system prompt.
 

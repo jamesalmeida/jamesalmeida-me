@@ -20,7 +20,7 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { play } from "cuelume";
-import { ArrowDown, ArrowUp, CalendarCheck, MoreHorizontal, Pencil, RotateCcw, Square, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarCheck, Mail, MoreHorizontal, Pencil, RotateCcw, Square, Trash2, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -298,17 +298,29 @@ function Header({
 
         <div className="flex shrink-0 items-center gap-2">
           <a
-            href={SITE.bookingUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent)] px-2.5 py-2 text-xs font-medium text-[var(--accent-foreground)] transition hover:opacity-90 lg:px-4 lg:text-sm"
-            aria-label={SITE.bookingLabel}
+            href={`mailto:${SITE.email}`}
+            className="inline-flex h-10 w-10 items-center justify-center gap-1.5 rounded-full bg-[var(--accent)] text-sm font-medium text-[var(--accent-foreground)] transition hover:opacity-90 sm:w-auto sm:px-4"
+            aria-label="Hire me"
+            title={SITE.hireLabel}
             data-cuelume-hover="whisper"
             data-cuelume-press="tick"
           >
-            <CalendarCheck size={15} />
-            <span className="lg:hidden">{SITE.bookingShortLabel}</span>
-            <span className="hidden lg:inline">{SITE.bookingLabel}</span>
+            <Mail size={15} aria-hidden />
+            <span className="hidden sm:inline">Hire me</span>
+          </a>
+          <a
+            href={SITE.bookingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-10 w-10 items-center justify-center gap-1.5 rounded-full border border-[var(--border)] text-sm font-medium text-[var(--foreground)] transition hover:border-[var(--border-strong)] sm:w-auto sm:px-4"
+            style={{ backgroundColor: btnBg }}
+            aria-label={SITE.bookingShortLabel}
+            title={SITE.bookingShortLabel}
+            data-cuelume-hover="whisper"
+            data-cuelume-press="tick"
+          >
+            <CalendarCheck size={15} aria-hidden />
+            <span className="hidden sm:inline">{SITE.bookingShortLabel}</span>
           </a>
 
         {onDeleteThread ? (

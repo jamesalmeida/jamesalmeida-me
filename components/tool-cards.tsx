@@ -4,6 +4,7 @@ import { makeAssistantToolUI } from "@assistant-ui/react";
 import Link from "next/link";
 import { selectProjects, toPublicProjects, type PublicProject } from "@/data/portfolio";
 import { BookingCard } from "./booking-button";
+import { KONTEKS_PROJECT_ID, KonteksDemoMedia } from "./featured-demo";
 
 const serif =
   "font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif]";
@@ -59,6 +60,7 @@ function ProjectGrid({ projects }: { projects: PublicProject[] }) {
               </p>
             ) : null}
             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{project.oneLiner}</p>
+            {project.id === KONTEKS_PROJECT_ID ? <KonteksDemoMedia className="mt-3" /> : null}
             {project.tags.length > 0 ? (
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {project.tags.map((tag) => (

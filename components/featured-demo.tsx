@@ -8,25 +8,10 @@ import { demoMediaKind } from "@/lib/demo-media";
 const serif =
   "font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif]";
 
-function Placeholder() {
-  return (
-    <div className="flex h-full min-h-[16rem] items-center justify-center bg-[var(--panel-strong)] px-6 py-10 sm:min-h-[20rem]">
-      <div className="w-full max-w-sm rounded-[1.25rem] border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.06)]">
-        <p className="eyebrow text-[10px] text-[var(--muted)]">Live Activity</p>
-        <p className={`mt-2 text-2xl tracking-[-0.03em] ${serif}`}>Konteks</p>
-        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-          Grok Bots send Live Activities to my iPhone — a live layer of context about what&apos;s
-          going on.
-        </p>
-        <p className="mt-4 text-xs text-[var(--muted)]">Demo clip coming soon</p>
-      </div>
-    </div>
-  );
-}
+// The portfolio project whose card shows the demo media (data/portfolio.ts).
+export const KONTEKS_PROJECT_ID = "konteks";
 
-export function FeaturedDemo() {
-  const { src, poster } = SITE.konteksDemo;
-  const kind = demoMediaKind(src);
+function usePrefersReducedMotion() {
   const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
@@ -37,41 +22,85 @@ export function FeaturedDemo() {
     return () => media.removeEventListener("change", sync);
   }, []);
 
-  return (
-    <section id="featured" className="space-y-4">
-      <p className="eyebrow text-xs text-[var(--muted)]">Featured</p>
-      <h2 className={`text-3xl tracking-[-0.03em] sm:text-4xl ${serif}`}>Konteks</h2>
-      <p className="max-w-2xl text-sm leading-6 text-[var(--muted)] sm:text-base">
-        My Grok Bots send Live Activities to my iPhone. It&apos;s a work in progress — a live
-        layer of context about what&apos;s going on, not a shipped product.
+  return reduceMotion;
+}
+
+// SITE.konteksDemo as a video or image. With no src, a small placeholder line —
+// never a broken embed.
+export function KonteksDemoMedia({ className = "" }: { className?: string }) {
+  const { src, poster } = SITE.konteksDemo;
+  const kind = demoMediaKind(src);
+  const reduceMotion = usePrefersReducedMotion();
+
+  if (kind === "none" || !src) {
+    return (
+      <p
+        className={`rounded-[1rem] border border-dashed border-[var(--border)] px-3 py-2 text-xs text-[var(--muted)] ${className}`}
+      >
+        Demo clip coming soon
       </p>
-      <div className="overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel)]">
-        {kind === "none" || !src ? (
-          <Placeholder />
-        ) : kind === "video" ? (
-          <video
-            className="aspect-video h-auto w-full object-cover"
+    );
+  }
+
+  return (
+    <div
+      className={`overflow-hidden rounded-[1rem] border border-[var(--border)] bg-[var(--panel)] ${className}`}
+    >
+      {kind === "video" ? (
+        <video
+          className="aspect-video max-h-56 w-full object-cover"
+          src={src}
+          poster={poster}
+          autoPlay={!reduceMotion}
+          muted
+          loop
+          playsInline
+          controls={reduceMotion}
+        />
+      ) : (
+        <div className="relative aspect-video max-h-56 w-full">
+          <Image
             src={src}
-            poster={poster}
-            autoPlay={!reduceMotion}
-            muted
-            loop
-            playsInline
-            controls={reduceMotion}
+            alt="Konteks demo: Grok Bots sending Live Activities to an iPhone"
+            fill
+            unoptimized
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 32rem"
           />
-        ) : (
-          <div className="relative aspect-video">
-            <Image
-              src={src}
-              alt="Konteks demo: Grok Bots sending Live Activities to an iPhone"
-              fill
-              unoptimized
-              className="object-cover"
-              sizes="(max-width: 1024px) 100vw, 64rem"
-            />
-          </div>
-        )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Compact featured card for the General Chat empty state.
+export function FeaturedDemo({ onAsk }: { onAsk?: () => void }) {
+  return (
+    <section
+      aria-label="Featured: Konteks"
+      className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--panel-strong)] p-4"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="eyebrow text-[10px] text-[var(--muted)]">Work in progress</p>
+          <h3 className={`mt-1 text-xl tracking-[-0.03em] ${serif}`}>Konteks</h3>
+        </div>
+        {onAsk ? (
+          <button
+            type="button"
+            onClick={onAsk}
+            className="shrink-0 rounded-full border border-[var(--border)] px-3 py-1.5 text-[var(--foreground)] transition hover:-translate-y-px hover:border-[var(--border-strong)]"
+            data-cuelume-press="tick"
+          >
+            <span className="text-xs">Ask about it</span>
+          </button>
+        ) : null}
       </div>
+      <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+        My Grok Bots send Live Activities to my iPhone — a live layer of context about what&apos;s
+        going on.
+      </p>
+      <KonteksDemoMedia className="mt-3" />
     </section>
   );
 }

@@ -132,18 +132,6 @@ body {
   height: var(--app-height, 100dvh);
 }
 
-.chat-embed {
-  height: min(72dvh, 44rem);
-  min-height: 28rem;
-}
-
-@media (max-width: 430px) {
-  .chat-embed {
-    height: min(70dvh, 36rem);
-    min-height: 24rem;
-  }
-}
-
 .site-page {
   position: absolute;
   inset: 0;

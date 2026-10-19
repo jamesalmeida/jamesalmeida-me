@@ -152,7 +152,7 @@ export default function ConsultingPage() {
           </div>
           <p>
             <Link
-              href="/?thread=work-with-me#chat"
+              href="/?thread=work-with-me"
               className="text-sm text-[var(--foreground)] underline-offset-4 hover:underline"
               data-cuelume-hover="whisper"
               data-cuelume-press="tick"

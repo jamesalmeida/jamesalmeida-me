@@ -6,6 +6,7 @@ import { getProjects } from "@/data/portfolio";
 import { OFFER, SITE } from "@/data/site";
 import type { StaticThreadId } from "@/lib/threads";
 import { BookingButton, BookingCard, HireButton } from "./booking-button";
+import { FeaturedDemo } from "./featured-demo";
 
 function GithubIcon({ size = 16 }: { size?: number }) {
   return (
@@ -51,6 +52,8 @@ const featuredSuggestions: Suggestion[] = [
   prompt: `Tell me about ${project.name}.`,
 }));
 
+const wipProjects = getProjects("wip");
+
 const THREAD_SUGGESTIONS: Record<StaticThreadId, ThreadSuggestions> = {
   "new-chat": {
     title: "General Chat",
@@ -66,12 +69,13 @@ const THREAD_SUGGESTIONS: Record<StaticThreadId, ThreadSuggestions> = {
         prompt: "How does your Grok Bot agent setup work?",
       },
       {
-        title: "Show me your portfolio",
-        prompt: "Show me your portfolio",
-      },
-      {
         title: "How can I hire you?",
         prompt: "I'd like to hire you for a remote building-with-AI role. How should I get in touch?",
+      },
+      {
+        title: "I have a project",
+        prompt:
+          "I have a software project, or work at my business I'd like to automate with AI. Can you help?",
       },
     ],
   },
@@ -194,6 +198,7 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
     composer.setText(prompt);
     composer.send();
   };
+  const isGeneral = config === THREAD_SUGGESTIONS["new-chat"];
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5 px-6 py-2 sm:gap-6 sm:py-10">
@@ -208,6 +213,7 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
           </p>
         ) : null}
       </div>
+      {isGeneral ? <FeaturedDemo onAsk={() => handleClick("Tell me about Konteks.")} /> : null}
       {threadId === "socials" ? (
         <div className="flex flex-wrap items-center gap-2">
           <HireButton />
@@ -266,13 +272,40 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
           >
             <div className="text-sm font-medium">{suggestion.title}</div>
             {suggestion.prompt !== suggestion.title ? (
-              <div className="mt-2 text-sm leading-6 text-[var(--muted)]">
+              <div className="mt-2 hidden text-sm leading-6 text-[var(--muted)] sm:block">
                 {suggestion.prompt}
               </div>
             ) : null}
           </button>
         ))}
       </div>
+      {isGeneral ? (
+        <div className="space-y-2">
+          <p className="eyebrow text-[10px] text-[var(--muted)] sm:text-xs">Works in progress</p>
+          <div className="flex flex-wrap gap-2">
+            {wipProjects.map((project) => (
+              <button
+                key={project.id}
+                type="button"
+                onClick={() => handleClick(`Tell me about ${project.name}.`)}
+                className="rounded-full border border-[var(--border)] bg-[var(--panel-strong)] px-3 py-1.5 transition hover:-translate-y-px hover:border-[var(--border-strong)]"
+                title={project.oneLiner}
+                data-cuelume-press="tick"
+              >
+                <span className="text-sm">{project.name}</span>
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => handleClick("Show me your works in progress.")}
+              className="rounded-full border border-dashed border-[var(--border)] px-3 py-1.5 text-[var(--muted)] transition hover:-translate-y-px hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
+              data-cuelume-press="tick"
+            >
+              <span className="text-sm">Show them all</span>
+            </button>
+          </div>
+        </div>
+      ) : null}
       {threadId === "work-with-me" ? <BookingCard /> : null}
     </div>
   );
