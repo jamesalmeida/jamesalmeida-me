@@ -46,7 +46,7 @@ function HeroMenu() {
         className="absolute bottom-full left-1/2 z-20 mb-2 w-56 -translate-x-1/2 rounded-[1rem] border border-[var(--border)] bg-[var(--panel-strong)] p-2 text-left shadow-[0_16px_40px_rgba(0,0,0,0.12)]"
       >
         <button type="button" className={menuItemClass} onClick={askHowIWork}>
-          How I work
+          How James works
         </button>
         <Link href="/work" className={menuItemClass} data-cuelume-hover="whisper" data-cuelume-press="tick">
           Work

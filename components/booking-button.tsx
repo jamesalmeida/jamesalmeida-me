@@ -94,12 +94,12 @@ const serif =
 export function BookingCard() {
   return (
     <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.06)]">
-      <p className="eyebrow text-xs text-[var(--muted)]">Work with me</p>
+      <p className="eyebrow text-xs text-[var(--muted)]">Talk with James</p>
       <h3 className={`mt-2 text-2xl tracking-[-0.03em] text-[var(--foreground)] ${serif}`}>
-        {SITE.bookingLabel}
+        Book a free 30-minute call
       </h3>
       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-        Tell me how the work happens today and we&apos;ll see if there&apos;s a fit.
+        A free 30-minute call with James. He asks how the work happens today.
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <BookingButton />

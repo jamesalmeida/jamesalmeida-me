@@ -3,17 +3,17 @@ export const SITE = {
   url: "https://www.jamesalmeida.me",
   title: "James Almeida — AI consulting and software engineering",
   description:
-    "Power user turned builder. I help small and mid-size teams get their first AI system working, and I consult on automation. I run 40+ coordinated Grok Bot agents. Also open to remote building-with-AI roles.",
-  heroHeadline: "What do you want AI to do for your business?",
+    "James helps people and small teams get their first AI system working. He consults on automation and runs 40+ coordinated Grok Bot agents. He's also open to remote building-with-AI roles.",
+  heroHeadline: "What do you want AI to do for you?",
   heroLine:
-    "I help small and mid-size teams get their first AI system working. Also open to remote building-with-AI roles.",
-  bio: "I'm James Almeida, a power user turned builder. I help small and mid-size teams get their first AI system working, and I consult on automation. I run 40+ coordinated Grok Bot agents. I trained models at xAI and did product engineering at Leaf Group (Society6), iROKOtv, and Datadog. Contracts go through my S-Corp, General Systems Ventures. I'm also open to remote building-with-AI roles.",
+    "James helps people and small teams get their first AI system working. He's also open to remote building-with-AI roles.",
+  bio: "James Almeida is a power user turned builder. He helps people and small teams get their first AI system working, and he consults on automation. He runs 40+ coordinated Grok Bot agents. He trained models at xAI and did product engineering at Leaf Group (Society6), iROKOtv, and Datadog. Contracts go through his S-Corp, General Systems Ventures. He's also open to remote building-with-AI roles.",
   locationLine: "Los Angeles / open to remote",
   email: "james@gsv.to", // PROVISIONAL: public contact email (only email shown on the site)
   bookingUrl: "https://cal.com/james-almeida/free-discovery-call", // PROVISIONAL: existing 30-min Cal event until a dedicated intro event exists
   bookingLabel: "Book a free intro call", // PROVISIONAL: CTA label
   bookingShortLabel: "Book a call",
-  hireLabel: "Hire me / Get in touch",
+  hireLabel: "Hire James",
   callLengthMinutes: undefined as number | undefined, // PROVISIONAL: intro-call length undecided. Do not render or state it anywhere while undefined
   linkedin: "https://linkedin.com/in/jamesworkswell",
   github: "https://github.com/jamesalmeida",
@@ -36,7 +36,7 @@ export const SITE = {
 
 export const CONSULTING_OFFER_HEADLINE = "Start with one task";
 
-export const WEEK_SYSTEMS_TITLE = "Systems running my week";
+export const WEEK_SYSTEMS_TITLE = "Systems running James's week";
 
 // The only routines the week-systems card and the bot may name.
 export const WEEK_SYSTEMS = [
@@ -62,7 +62,7 @@ export const OFFER = {
       priceRange: "$500–$1,500",
       priceNote: "depending on team size",
       summary:
-        "I spend about a week watching how your team works. You get a short report on the three biggest time sinks, the hours each one costs, and what automating each would save in dollars. The report is yours either way.",
+        "James spends about a week watching how the team works. You get a short report on the three biggest time sinks, the hours each one costs, and what automating each would save in dollars. The report is yours either way.",
     },
     {
       id: "build",
@@ -70,7 +70,7 @@ export const OFFER = {
       priceRange: "$2,000–$5,000",
       priceNote: "per workflow",
       summary:
-        "I build one workflow end to end, starting with the one that saves the most time. I choose tools that fit. You don't have a new stack to learn.",
+        "James builds one workflow end to end, starting with the one that saves the most time. He chooses tools that fit. There isn't a new stack to learn.",
     },
     {
       id: "retainer",
@@ -78,24 +78,24 @@ export const OFFER = {
       priceRange: "$1,000–$2,500",
       priceNote: "per month",
       summary:
-        "I monitor it, fix it when the underlying tools change, add a new workflow every quarter, and send a one-page hours-saved report every month.",
+        "James monitors it, fixes it when the underlying tools change, adds a new workflow every quarter, and sends a one-page hours-saved report every month.",
     },
   ],
   defaults: {
-    introCall: "Start with a free intro call.",
+    introCall: "Start with a free 30-minute intro call with James.",
     reportIsYours: "The audit report is yours whether or not you go ahead.",
     oneOffFixes: "One-off fixes are available without a retainer.",
     auditCredit: AUDIT_CREDIT,
     eachStepOptional:
       "Each step is its own decision. You can stop after any of them.",
-    directWithJames: "You work directly with me, from audit to retainer.",
+    directWithJames: "You work directly with James, from audit to retainer.",
     billing:
-      "Contracts and billing go through General Systems Ventures (GSV), my S-Corp.",
+      "Contracts and billing go through General Systems Ventures (GSV), his S-Corp.",
     outcomesNotTools:
-      "I measure the work in hours saved, not in tools installed.",
+      "James measures the work in hours saved, not in tools installed.",
     stayAfterLaunch:
-      "I stay after launch. Automations break when the apps underneath them change, and fixing that is my job, not yours.",
-    yourStack: "Where I can, I build on the tools you already pay for.",
+      "James stays after launch. Automations break when the apps underneath them change, and fixing that is his job, not yours.",
+    yourStack: "Where he can, James builds on the tools you already pay for.",
   },
   exampleWorkflows: [
     {
@@ -137,7 +137,7 @@ export const OFFER = {
     {
       question: "Do I need to be technical?",
       answer:
-        "No. You tell me how the work happens today. I handle the setup.",
+        "No. You tell James how the work happens today. He handles the setup.",
     },
     {
       question: "What tools do you use?",
@@ -147,7 +147,7 @@ export const OFFER = {
     {
       question: "What if something breaks?",
       answer:
-        "On a retainer, I fix it. Without one, I can fix it as a one-off.",
+        "On a retainer, James fixes it. Without one, he can fix it as a one-off.",
     },
     {
       question: "Do I have to sign up for the monthly plan?",
@@ -160,7 +160,7 @@ export const OFFER = {
     {
       question: "Who do I sign with and who bills me?",
       answer:
-        "General Systems Ventures (GSV), my S-Corp. You still work directly with me.",
+        "General Systems Ventures (GSV), James's S-Corp. You still work directly with him.",
     },
   ],
 } as const;

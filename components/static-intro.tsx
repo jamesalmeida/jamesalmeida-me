@@ -24,10 +24,10 @@ export function StaticIntro() {
             <a
               href={`mailto:${SITE.email}`}
               className="inline-flex h-10 w-10 items-center justify-center gap-1.5 rounded-full bg-[var(--accent)] text-sm font-medium text-[var(--accent-foreground)] sm:w-auto sm:px-4"
-              aria-label="Hire me"
+              aria-label="Hire James"
             >
               <Mail size={15} aria-hidden />
-              <span className="hidden sm:inline">Hire me</span>
+              <span className="hidden sm:inline">Hire James</span>
             </a>
             <a
               href={SITE.bookingUrl}
@@ -50,10 +50,10 @@ export function StaticIntro() {
                 {SITE.heroLine}
               </p>
               <div className="hero-input-block relative mt-8 w-full" aria-hidden="true">
-                <div className="flex min-h-[3rem] items-center rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] py-3 pl-4 pr-14 text-base text-[var(--muted)]">
+                <div className="flex min-h-[48px] items-center rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] py-2.5 pl-4 pr-12 text-base leading-6 text-[var(--muted)]">
                   Try &apos;We bought ChatGPT and nothing changed&apos;
                 </div>
-                <div className="absolute bottom-1.5 right-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)]">
+                <div className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)]">
                   <ArrowUp size={16} />
                 </div>
               </div>
@@ -64,7 +64,7 @@ export function StaticIntro() {
                   className="absolute bottom-full left-1/2 z-10 mb-2 w-56 -translate-x-1/2 rounded-[1rem] border border-[var(--border)] bg-[var(--panel-strong)] p-2 shadow-[0_16px_40px_rgba(0,0,0,0.12)]"
                 >
                   <Link href="/consulting" className={linkClass}>
-                    How I work
+                    How James works
                   </Link>
                   <Link href="/work" className={linkClass}>
                     Work

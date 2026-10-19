@@ -359,13 +359,13 @@ function Header({
           <a
             href={`mailto:${SITE.email}`}
             className="inline-flex h-10 w-10 items-center justify-center gap-1.5 rounded-full bg-[var(--accent)] text-sm font-medium text-[var(--accent-foreground)] transition hover:opacity-90 sm:w-auto sm:px-4"
-            aria-label="Hire me"
+            aria-label="Hire James"
             title={SITE.hireLabel}
             data-cuelume-hover="whisper"
             data-cuelume-press="tick"
           >
             <Mail size={15} aria-hidden />
-            <span className="hidden sm:inline">Hire me</span>
+            <span className="hidden sm:inline">Hire James</span>
           </a>
           <a
             href={SITE.bookingUrl}
@@ -644,7 +644,7 @@ function ComposerActions({
   isRunning: boolean;
   compact?: boolean;
 }) {
-  const size = compact ? "h-9 w-9" : "h-11 w-11";
+  const size = compact ? "h-8 w-8" : "h-11 w-11";
   if (isRunning) {
     return (
       <ComposerPrimitive.Cancel
@@ -686,19 +686,42 @@ function PrivacyNotice() {
   );
 }
 
+// Same gap from the pill's right edge and from its bottom. One line centers
+// the button in that inset; extra lines keep it on the bottom.
+const HERO_SEND_INSET = 8;
+const HERO_SEND_SIZE = 32;
+
 function HeroComposer({ onCancel }: { onCancel: () => void }) {
   const isRunning = useDismissKeyboardOnRun();
   const charCount = useComposer((state) => state.text.length);
   const [focused, setFocused] = useState(false);
+  const [multiline, setMultiline] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const { theme } = useTheme();
   const charCounterId = useId();
   const examples = useHeroExamples(focused || charCount > 0);
   const inputBg = theme === "dark" ? "rgba(23, 23, 23, 0.9)" : "rgba(255, 255, 255, 0.9)";
 
+  const measure = useCallback(() => {
+    const field = inputRef.current;
+    if (!field) return;
+    setMultiline(field.offsetHeight > HERO_SEND_SIZE + HERO_SEND_INSET * 2 + 2);
+  }, []);
+
+  useEffect(() => {
+    measure();
+    const field = inputRef.current;
+    if (!field || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(field);
+    return () => observer.disconnect();
+  }, [measure, examples.example.label]);
+
   return (
     <ComposerPrimitive.Root className="px-0 py-0">
       <div className="relative">
         <ComposerPrimitive.Input
+          ref={inputRef}
           rows={1}
           autoFocus={false}
           unstable_focusOnScrollToBottom={false}
@@ -706,16 +729,28 @@ function HeroComposer({ onCancel }: { onCancel: () => void }) {
           unstable_focusOnThreadSwitched={false}
           aria-label="Message"
           enterKeyHint="send"
-          className="max-h-[160px] min-h-[3rem] w-full resize-none overflow-y-auto rounded-[1.5rem] border border-[var(--border)] py-3 pl-4 pr-14 text-base leading-6 shadow-[0_10px_30px_rgba(0,0,0,0.05)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
-          style={{ backgroundColor: inputBg }}
+          className="block max-h-[160px] min-h-12 w-full resize-none overflow-y-auto rounded-[1.5rem] border border-[var(--border)] py-2.5 pl-4 text-base leading-6 shadow-[0_10px_30px_rgba(0,0,0,0.05)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
+          style={{
+            backgroundColor: inputBg,
+            paddingRight: HERO_SEND_INSET + HERO_SEND_SIZE + HERO_SEND_INSET,
+          }}
           placeholder={examples.example.label}
           maxLength={MAX_MESSAGE_CHARS}
           aria-describedby={charCount >= CHAR_COUNTER_FROM ? charCounterId : undefined}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
         />
-        <div className="absolute bottom-1.5 right-1.5">
-          <ComposerActions compact onCancel={onCancel} isRunning={isRunning} />
+        <div
+          className="pointer-events-none absolute flex items-center"
+          style={{
+            right: HERO_SEND_INSET,
+            bottom: HERO_SEND_INSET,
+            top: multiline ? "auto" : HERO_SEND_INSET,
+          }}
+        >
+          <div className="pointer-events-auto">
+            <ComposerActions compact onCancel={onCancel} isRunning={isRunning} />
+          </div>
         </div>
       </div>
       <HeroExampleControls examples={examples} />

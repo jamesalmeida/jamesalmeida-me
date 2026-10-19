@@ -97,8 +97,8 @@ export function FeaturedDemo({ onAsk }: { onAsk?: () => void }) {
         ) : null}
       </div>
       <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-        My Grok Bots send Live Activities to my iPhone — a live layer of context about what&apos;s
-        going on.
+        James&apos;s Grok Bots send Live Activities to his iPhone — a live layer of context about
+        what&apos;s going on.
       </p>
       <KonteksDemoMedia className="mt-3" />
     </section>

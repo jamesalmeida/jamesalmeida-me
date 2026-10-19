@@ -76,8 +76,8 @@ export function ThreadList({
           <div>
             <p className="eyebrow text-xs text-[var(--muted)]">JamesAlmeida.me</p>
             <p className="mt-3 max-w-xs text-sm leading-6 text-[var(--muted)]">
-              Chat with me about AI consulting, a software project, or the agents I run. Also
-              open to remote building-with-AI roles.
+              Chat with one of the assistants James runs. Ask about his consulting, a software
+              project, or the agents he runs. He&apos;s also open to remote building-with-AI roles.
             </p>
             <p className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-[var(--muted)]">
               <Link

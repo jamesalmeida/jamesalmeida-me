@@ -53,7 +53,7 @@ export function SiteNav({
           data-cuelume-hover="whisper"
           data-cuelume-press="tick"
         >
-          Hire me
+          Hire James
         </a>
       </div>
     </nav>

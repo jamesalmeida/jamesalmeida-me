@@ -51,7 +51,7 @@ describe("weekSystemsOutput", () => {
 
   it("lists the systems running the week and nothing else", () => {
     expect(card.title).toBe(WEEK_SYSTEMS_TITLE);
-    expect(card.title).toBe("Systems running my week");
+    expect(card.title).toBe("Systems running James's week");
     expect(card.systems).toEqual([
       "A 6am heads-up",
       "An 8:30am desk brief",

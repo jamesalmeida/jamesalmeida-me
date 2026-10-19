@@ -77,6 +77,17 @@ describe("getKnowledge / getSystemPrompt", () => {
     expect(prompt).toContain("showWeekSystems");
   });
 
+  it("speaks as James's assistant and refers to him in the third person", () => {
+    expect(prompt).toMatch(/one of the AI assistants James runs/i);
+    expect(prompt).toMatch(/third person/i);
+    expect(prompt).toMatch(/you are not James/i);
+    expect(prompt).toMatch(/free 30-minute call with him/i);
+    expect(prompt).not.toMatch(/You are James Almeida/i);
+    expect(prompt).not.toMatch(/Always speak in first person/i);
+    expect(knowledge).toMatch(/James is a power user turned builder/);
+    expect(knowledge).not.toMatch(/^I'm a power user/m);
+  });
+
   it("includes the published offer price ranges", () => {
     for (const step of OFFER.steps) {
       expect(prompt).toContain(step.priceRange);

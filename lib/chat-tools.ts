@@ -24,13 +24,13 @@ export const chatTools = {
   }),
   showWeekSystems: tool({
     description:
-      "Show the systems running my week: a 6am heads-up, an 8:30am desk brief, triage across five inboxes, bill tracking, calendar leave-now pings that include drive time, and a chief-of-staff agent coordinating 40+ agents. Use when the visitor asks what runs my week, my daily agents, or my routines. Do not add systems that are not in the card. Still write a short text reply.",
+      "Show the systems running James's week: a 6am heads-up, an 8:30am desk brief, triage across five inboxes, bill tracking, calendar leave-now pings that include drive time, and a chief-of-staff agent coordinating 40+ agents. Use when the visitor asks what runs his week, his daily agents, or his routines. Do not add systems that are not in the card. Still write a short text reply.",
     inputSchema: weekSystemsInputSchema,
     execute: async () => weekSystemsOutput(),
   }),
   showBookingCta: tool({
     description:
-      "Show the booking card with the intro-call link and email. Before calling this, ask one qualifying question, such as what task they would want automated first, unless they already answered it. Then use it when the visitor shows hiring or buying intent, asks about price, timing, availability, how to start, how to hire, or how to contact you. Do not mention a call length. Still write a short text reply.",
+      "Show the booking card with the intro-call link and email. Before calling this, ask one qualifying question, such as what task they would want automated first, unless they already answered it. Then use it when the visitor shows hiring or buying intent, asks about price, timing, availability, how to start, how to hire James, or how to contact him. The intro call is 30 minutes. Still write a short text reply.",
     inputSchema: bookingCtaInputSchema,
     execute: async () => bookingCtaOutput(),
   }),

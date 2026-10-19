@@ -1,6 +1,6 @@
 # jamesalmeida.me
 
-AI consulting and software engineering first, with one secondary line: also open to remote building-with-AI roles. The home page is a full-screen chat: visitors talk to James in first person, and the chat funnels them toward working with him. `/consulting` and `/work` are normal pages for anyone who'd rather read.
+AI consulting and software engineering first, with one secondary line: also open to remote building-with-AI roles. The home page is a full-screen chat with one of James's assistants. It talks about him in the third person and funnels visitors toward working with him. `/consulting` and `/work` are normal pages for anyone who'd rather read.
 
 **Production:** [www.jamesalmeida.me](https://www.jamesalmeida.me) (the apex host redirects to www).
 

@@ -61,7 +61,7 @@ export default function OpenGraphImage() {
             maxWidth: 980,
           }}
         >
-          I help small and mid-size teams get their first AI system working.
+          James helps people and small teams get their first AI system working.
         </div>
         <div
           style={{
@@ -71,7 +71,7 @@ export default function OpenGraphImage() {
             opacity: 0.62,
           }}
         >
-          Also open to remote building-with-AI roles.
+          He&apos;s also open to remote building-with-AI roles.
         </div>
       </div>
     ),
