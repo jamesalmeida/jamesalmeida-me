@@ -4,8 +4,12 @@ import type { UIMessage } from "ai";
 import {
   bookingCtaInputSchema,
   bookingCtaOutput,
+  consultingOfferInputSchema,
+  consultingOfferOutput,
   portfolioInputSchema,
   portfolioOutput,
+  weekSystemsInputSchema,
+  weekSystemsOutput,
 } from "@/lib/tool-results";
 
 const MAX_MESSAGES = 20;
@@ -52,6 +56,32 @@ function rebuildToolPart(
       state: "output-available",
       input: parsed.data,
       output: bookingCtaOutput(),
+    };
+  }
+
+  if (type === "tool-showConsultingOffer") {
+    const parsed = consultingOfferInputSchema.safeParse(input);
+    if (!parsed.success) return null;
+    budget.inputChars += inputChars;
+    return {
+      type,
+      toolCallId,
+      state: "output-available",
+      input: parsed.data,
+      output: consultingOfferOutput(),
+    };
+  }
+
+  if (type === "tool-showWeekSystems") {
+    const parsed = weekSystemsInputSchema.safeParse(input);
+    if (!parsed.success) return null;
+    budget.inputChars += inputChars;
+    return {
+      type,
+      toolCallId,
+      state: "output-available",
+      input: parsed.data,
+      output: weekSystemsOutput(),
     };
   }
 

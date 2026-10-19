@@ -1,6 +1,6 @@
 "use client";
 
-import { useComposerRuntime } from "@assistant-ui/react";
+import { useComposerRuntime, useThread } from "@assistant-ui/react";
 import { Mail } from "lucide-react";
 import { getProjects } from "@/data/portfolio";
 import { OFFER, SITE } from "@/data/site";
@@ -57,7 +57,7 @@ const wipProjects = getProjects("wip");
 const THREAD_SUGGESTIONS: Record<StaticThreadId, ThreadSuggestions> = {
   "new-chat": {
     title: "General Chat",
-    subtitle: "Ask me anything.",
+    subtitle: "Ask about James.",
     description: SITE.heroLine,
     suggestions: [
       {
@@ -65,12 +65,12 @@ const THREAD_SUGGESTIONS: Record<StaticThreadId, ThreadSuggestions> = {
         prompt: "Who are you?",
       },
       {
-        title: "How do your agents work?",
-        prompt: "How does your Grok Bot agent setup work?",
+        title: "How do his agents work?",
+        prompt: "How does James's Grok Bot agent setup work?",
       },
       {
-        title: "How can I hire you?",
-        prompt: "I'd like to hire you for a remote building-with-AI role. How should I get in touch?",
+        title: "How can I hire James?",
+        prompt: "How can I hire James for consulting or a software project?",
       },
       {
         title: "I have a project",
@@ -80,13 +80,13 @@ const THREAD_SUGGESTIONS: Record<StaticThreadId, ThreadSuggestions> = {
     ],
   },
   "work-with-me": {
-    title: "Work with me",
+    title: "Work with James",
     subtitle: "Get your team's hours back.",
     description: `${OFFER.audienceLine} Most often: ${OFFER.audience.map((a, i) => (i === 0 ? a : a.toLowerCase())).join(", ")}.`,
     suggestions: [
       {
-        title: "Who do you work with?",
-        prompt: "Who do you work with?",
+        title: "Who does James work with?",
+        prompt: "Who does James work with?",
       },
       {
         title: "How does it work?",
@@ -117,39 +117,39 @@ const THREAD_SUGGESTIONS: Record<StaticThreadId, ThreadSuggestions> = {
       ...featuredSuggestions,
       {
         title: "Earlier work",
-        prompt: "Tell me about your earlier work.",
+        prompt: "Tell me about James's earlier work.",
       },
     ],
   },
   experience: {
     title: "Experience",
-    subtitle: "My career across AI, product, and frontend engineering.",
+    subtitle: "James's career across AI, product, and frontend engineering.",
     suggestions: [
       {
         title: "AI Consulting",
-        prompt: "What does your AI consulting work look like?",
+        prompt: "What does James's AI consulting work look like?",
       },
       {
         title: "xAI Experience",
-        prompt: "What did you work on as an AI Trainer at xAI?",
+        prompt: "What did James work on as an AI Trainer at xAI?",
       },
       {
         title: "Society6 Engineering",
-        prompt: "What did you build as a Software Engineer at Society6?",
+        prompt: "What did James build as a Software Engineer at Society6?",
       },
       {
         title: "Earlier Career",
-        prompt: "Tell me about your earlier roles at iROKOtv and Datadog.",
+        prompt: "Tell me about James's earlier roles at iROKOtv and Datadog.",
       },
     ],
   },
   socials: {
     title: "Contact",
-    subtitle: "Hire me, book a call, or email.",
+    subtitle: "Hire James, book a call, or email.",
     suggestions: [
       {
         title: "Hiring",
-        prompt: "I'd like to hire you for a remote building-with-AI role. How should I get in touch?",
+        prompt: "How can I hire James for consulting or a software project?",
       },
       {
         title: "Consulting",
@@ -159,27 +159,83 @@ const THREAD_SUGGESTIONS: Record<StaticThreadId, ThreadSuggestions> = {
   },
   resume: {
     title: "Resume",
-    subtitle: "Download or explore my experience.",
+    subtitle: "Download or explore James's experience.",
     suggestions: [
       {
         title: "Download Resume",
-        prompt: "Can I download your resume as a PDF?",
+        prompt: "Can I download James's resume as a PDF?",
       },
       {
         title: "Recent Roles",
-        prompt: "What are your most recent positions?",
+        prompt: "What are James's most recent positions?",
       },
       {
         title: "Key Skills",
-        prompt: "What are your core technical skills?",
+        prompt: "What are James's core technical skills?",
       },
       {
         title: "Consulting Focus",
-        prompt: "What kind of businesses do you consult for?",
+        prompt: "What kind of businesses does James consult for?",
       },
     ],
   },
 };
+
+export const FOLLOW_UP_CHIPS = [
+  {
+    title: "How can I hire James?",
+    prompt: "How can I hire James for consulting or a software project?",
+  },
+  {
+    title: "I have a project",
+    prompt: "I have a project.",
+  },
+  {
+    title: "Systems running his week",
+    prompt: "Show me the systems running James's week.",
+  },
+  {
+    title: "Works in progress",
+    prompt: "Show me James's works in progress.",
+  },
+] as const;
+
+export function FollowUpChips() {
+  const composer = useComposerRuntime();
+  const isRunning = useThread((state) => state.isRunning);
+  const messages = useThread((state) => state.messages);
+  const last = messages[messages.length - 1];
+  const show =
+    !isRunning &&
+    last?.role === "assistant" &&
+    last.status.type !== "running" &&
+    last.status.type !== "requires-action";
+
+  if (!show) return null;
+
+  return (
+    <div
+      role="group"
+      aria-label="Follow-up suggestions"
+      className="flex flex-wrap gap-2 pr-16"
+    >
+      {FOLLOW_UP_CHIPS.map((chip) => (
+        <button
+          key={chip.title}
+          type="button"
+          onClick={() => {
+            composer.setText(chip.prompt);
+            composer.send();
+          }}
+          className="rounded-full border border-[var(--border)] bg-[var(--panel-strong)] px-3 py-2 text-left text-sm text-[var(--foreground)] transition hover:-translate-y-px hover:border-[var(--border-strong)]"
+          data-cuelume-press="tick"
+        >
+          {chip.title}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 const linkButtonClass =
   "inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel-strong)] px-4 py-2.5 text-sm text-[var(--foreground)] transition hover:-translate-y-px hover:border-[var(--border-strong)]";
@@ -297,7 +353,7 @@ export function Suggestions({ threadId = "new-chat" }: SuggestionsProps) {
             ))}
             <button
               type="button"
-              onClick={() => handleClick("Show me your works in progress.")}
+              onClick={() => handleClick("Show me James's works in progress.")}
               className="rounded-full border border-dashed border-[var(--border)] px-3 py-1.5 text-[var(--muted)] transition hover:-translate-y-px hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
               data-cuelume-press="tick"
             >

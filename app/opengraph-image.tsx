@@ -44,23 +44,34 @@ export default function OpenGraphImage() {
         <div
           style={{
             display: "flex",
-            fontSize: 32,
+            fontSize: 36,
             marginTop: 28,
+            lineHeight: 1.25,
+            maxWidth: 980,
+          }}
+        >
+          AI consulting and software engineering
+        </div>
+        <div
+          style={{
+            display: "flex",
+            fontSize: 28,
+            marginTop: 16,
             lineHeight: 1.35,
             maxWidth: 980,
           }}
         >
-          Power user turned builder. 40+ Grok Bot agents — and I build the tools they use.
+          James helps people and small teams get their first AI system working.
         </div>
         <div
           style={{
             display: "flex",
             fontSize: 22,
-            marginTop: 28,
+            marginTop: 18,
             opacity: 0.62,
           }}
         >
-          Los Angeles / open to remote
+          He&apos;s also open to remote building-with-AI roles.
         </div>
       </div>
     ),

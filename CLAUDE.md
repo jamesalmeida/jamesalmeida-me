@@ -4,7 +4,7 @@ This file gives you (Claude, Codex, or any other coding agent) the critical cont
 
 ## What This Is
 
-**jamesalmeida.me** — James Almeida's hiring portfolio first (remote building-with-AI role), AI-consulting lead tool second. The home page `/` is a full-screen chat app: the chat is the whole site, and it funnels visitors toward hiring James or working with him (AI consulting, software projects). The chat speaks in first person as James. Visitors can also read `/consulting` and `/work` without chatting.
+**jamesalmeida.me** — James Almeida's AI consulting and software engineering site first. One secondary line: he is also open to remote building-with-AI roles. The home page `/` is a full-screen chat app: the chat is the whole site, and it funnels visitors toward working with James. The chat is one of James's assistants and speaks about him in the third person. Visitors can also read `/consulting` and `/work` without chatting.
 
 - **Production**: https://www.jamesalmeida.me (apex redirects to www)
 - **Repo**: https://github.com/jamesalmeida/jamesalmeida-me
@@ -144,11 +144,11 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 ## Key Rules
 
 ### Persona
-- The assistant and the pages speak **as James in first person** ("I" / "my")
-- Example: "I built Sheldn.ai" ✅ / "James built Sheldn.ai" ❌
+- The chat is one of James's assistants. It uses "I" for itself and refers to James in the third person. It is not James and does not claim to be human. Pages and cards do the same.
+- Example: "James built Sheldn.ai" ✅ / "I built Sheldn.ai" ❌ (that "I" would mean the assistant did the work)
 - General Systems Ventures / GSV is only for contracts and billing (and, on the resume, where the consulting is contracted). Never "we" as the company. "We'll see" between the visitor and James is fine.
-- Public contact is `james@gsv.to`, X `@james_almeida`, GitHub, LinkedIn, and the Cal booking link. No phone number. Never state how long the intro call is. Hiring CTAs: "Hire me / Get in touch" (mailto) and "Book a call" (`SITE.bookingUrl`, keep the URL unchanged). The consulting page can still use "Book a free intro call".
-- Personal apps (Konteks and the works in progress) are roughly built and **not** publicly shipped. Never say they are shipped, in production, or launched. Never say "one-person AI lab". Company work at Society6, iROKOtv, and Datadog is the exception.
+- Public contact is `james@gsv.to`, X `@james_almeida`, GitHub, LinkedIn, and the Cal booking link. No phone number. The intro call is 30 minutes; the assistant may say it can set up a free 30-minute call with James. Hiring CTA: "Hire James" (mailto) and "Book a call" (`SITE.bookingUrl`, keep the URL unchanged).
+- Personal apps (Konteks and the works in progress) are works in progress. Never say they are shipped, in production, or launched. Never say "one-person AI lab". Company work at Society6, iROKOtv, and Datadog is the exception.
 
 ### Content
 - `data/site.ts` exports `SITE` and `OFFER`. Pages and the bot both use `OFFER`. Do not copy prices into page copy.
@@ -161,13 +161,13 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 
 - `ChatApp` fills the viewport (`.app-shell` / `.app-panel`, height `var(--app-height, 100dvh)`; `body` is fixed with `overflow: hidden`). The document never scrolls. Only the message viewport and the sidebar scroll.
 - Before hydration, `StaticIntro` renders in the same frame (no layout shift) with the real h1 and crawlable copy from `SITE`. No prices.
-- Portfolio content lives inside the chat, never as page sections: the General Chat empty state shows the Konteks card (`FeaturedDemo`), the starter prompts (including hiring and a consulting/software project), and the works in progress as chips that send "Tell me about X". The chat header always shows Hire me (mailto) and Book a call (icon-only under `sm`). The `showPortfolio` card shows the Konteks demo media on the Konteks project.
+- Portfolio content lives inside the chat, never as page sections. Before the first message, General Chat is a centered hero: headline, one line, and one input. Hire James (mailto) and Book a call stay in the header (icon-only under `sm`). After the first send, the input docks at the bottom and follow-up chips appear under answers. Konteks media shows on the `showPortfolio` card, not on the hero. Other threads still use their empty-state suggestions.
 - `/?thread=<static id>` opens that thread (used by `/consulting` for `work-with-me`).
 - `/work`, `/consulting` and `/privacy` are normal scrolling pages (`.site-page`) and link back to `/`.
 
 ### Konteks demo clip
 
-`SITE.konteksDemo` in `data/site.ts` drives the Konteks media (the General Chat empty-state card and the Konteks project card):
+`SITE.konteksDemo` in `data/site.ts` drives the Konteks media on the Konteks project card:
 
 ```ts
 konteksDemo: {
@@ -188,7 +188,7 @@ konteksDemo: {
 - Caps: 50 history threads (newest kept) and the last 100 messages per thread. Stored messages for history threads not in the list are pruned.
 - All localStorage access in `lib/threads.ts` is wrapped in try/catch and never throws. On `QuotaExceededError`, `writeStoredThreads` evicts the oldest half of history threads and retries once; evicted threads are also removed from the sidebar.
 - "Clear all chats" in the Settings modal (with a confirm step) calls `clearStoredChats()` in `lib/threads.ts`, which removes the three chat keys and keeps theme/accent/sound prefs. `ChatApp` bumps a generation counter so the old thread remounts and its unmount flush is ignored.
-- The composer shows a one-line notice linking to `/privacy`. If you change providers, storage, logging, cookies or abuse protection, update `app/privacy/page.tsx` and that notice to match.
+- The docked composer shows a one-line notice linking to `/privacy`. The hero does not; Privacy stays in its menu. If you change providers, storage, logging, cookies or abuse protection, update `app/privacy/page.tsx` and that notice to match.
 - A seeded thread forks into a history thread (and requests a title) only after its first run ends with a completed assistant message that has content. Errored runs and runs stopped with the Stop button don't fork. The Stop button sets a flag, because a stopped AI SDK run still reports a `complete` status.
 - Deleting a history thread (sidebar or header menu) opens a confirm dialog in `ChatApp`.
 - **Never** persist chats to a database.

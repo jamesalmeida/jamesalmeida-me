@@ -14,7 +14,8 @@ const jsonLd = {
       "@id": personId,
       name: SITE.name,
       url: SITE.url,
-      jobTitle: "Software Engineer",
+      jobTitle: "AI consultant and software engineer",
+      description: SITE.bio,
       email: `mailto:${SITE.email}`,
       sameAs: [SITE.linkedin, SITE.github, SITE.x],
     },
@@ -59,6 +60,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  // Resize the layout viewport with the keyboard so iOS does not scroll the page away.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({

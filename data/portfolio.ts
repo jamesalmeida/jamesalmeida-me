@@ -18,7 +18,7 @@ const featuredProjects: Project[] = [
     id: "konteks",
     name: "Konteks",
     oneLiner:
-      "An iOS app where my Grok Bots send Live Activities to my iPhone — a live layer of context about what's going on.",
+      "An iOS app where James's Grok Bots send Live Activities to his iPhone — a live layer of context about what's going on.",
     status: "Work in progress",
     url: "https://konteks.app",
     tags: ["iOS", "AI"],

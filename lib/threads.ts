@@ -51,7 +51,7 @@ export const THREADS: PortfolioThread[] = [
     id: "new-chat",
     title: "General Chat",
     icon: "JA",
-    description: "Ask me about my agent setup, my work, or how to hire me.",
+    description: "AI consulting and software engineering. Also open to remote building-with-AI roles.",
     seeded: false,
     baseMessages: [],
   },

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNod
 import { Modal } from "@/components/modal";
 import { Thread } from "@/components/thread";
 import { ThreadList } from "@/components/thread-list";
-import { SITE } from "@/data/site";
+import { readVisualViewportBox } from "@/lib/visual-viewport";
 import {
   THREADS,
   THREADS_BY_ID,
@@ -76,15 +76,26 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
 
   useEffect(() => {
     const updateAppHeight = () => {
-      const height = window.visualViewport?.height ?? window.innerHeight;
-      document.documentElement.style.setProperty("--app-height", `${height}px`);
+      const vv = window.visualViewport;
+      const box = readVisualViewportBox({
+        innerHeight: window.innerHeight,
+        innerWidth: window.innerWidth,
+        height: vv?.height ?? window.innerHeight,
+        offsetTop: vv?.offsetTop ?? 0,
+      });
+      const root = document.documentElement;
+      root.style.setProperty("--app-height", `${box.height}px`);
+      root.style.setProperty("--vv-offset", `${box.offset}px`);
+      root.dataset.keyboard = box.keyboardOpen ? "open" : "closed";
     };
     updateAppHeight();
     window.visualViewport?.addEventListener("resize", updateAppHeight);
+    window.visualViewport?.addEventListener("scroll", updateAppHeight);
     window.addEventListener("resize", updateAppHeight);
     window.addEventListener("orientationchange", updateAppHeight);
     return () => {
       window.visualViewport?.removeEventListener("resize", updateAppHeight);
+      window.visualViewport?.removeEventListener("scroll", updateAppHeight);
       window.removeEventListener("resize", updateAppHeight);
       window.removeEventListener("orientationchange", updateAppHeight);
     };
@@ -254,7 +265,6 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
           threads={THREADS}
         />
         <main className="flex min-w-0 flex-1 flex-col">
-          <h1 className="sr-only">{SITE.name}</h1>
           <Thread
             key={`${activeThreadId}:${chatGeneration}`}
             initialMessages={activeMessages}
