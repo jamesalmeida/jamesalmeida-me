@@ -1,6 +1,6 @@
 # jamesalmeida.me
 
-Hiring portfolio first (remote building-with-AI role), AI-consulting lead tool second. The home page is a full-screen chat: visitors talk to James in first person, and the chat funnels them toward hiring him or working with him. `/consulting` and `/work` are normal pages for anyone who'd rather read.
+AI consulting and software engineering first. Also open to remote building-with-AI roles. The home page is a full-screen chat: visitors talk to James in first person, and the chat funnels them toward working with him or hiring him. `/consulting` and `/work` are normal pages for anyone who'd rather read.
 
 **Production:** [www.jamesalmeida.me](https://www.jamesalmeida.me) (the apex host redirects to www).
 
@@ -33,7 +33,7 @@ There is no `/api/admin/verify`.
 
 ## Voice and contact
 
-The site speaks as James ("I", "my"). General Systems Ventures is only how contracts and billing are handled. Public contact is `james@gsv.to`, [X](https://x.com/james_almeida), [GitHub](https://github.com/jamesalmeida), and [LinkedIn](https://linkedin.com/in/jamesworkswell). Do not add a phone number, and do not state how long the intro call is. Personal apps are works in progress — not shipped, not in production.
+The site speaks as James ("I", "my"). General Systems Ventures is only how contracts and billing are handled. Public contact is `james@gsv.to`, [X](https://x.com/james_almeida), [GitHub](https://github.com/jamesalmeida), and [LinkedIn](https://linkedin.com/in/jamesworkswell). Do not add a phone number, and do not state how long the intro call is. Personal apps are works in progress. Do not describe them as shipped, launched, or in production.
 
 ## Where content lives
 
@@ -52,7 +52,7 @@ The site speaks as James ("I", "my"). General Systems Ventures is only how contr
 
 ## Chat tools
 
-Buying intent shows a booking card (`showBookingCta`). Asking about projects shows portfolio cards (`showPortfolio`). Both are defined in `lib/chat-tools.ts` and rendered in `components/tool-cards.tsx`.
+Asking about the consulting offer shows an offer card (`showConsultingOffer`) built from `OFFER`. Explicit booking or contact, and hiring for a role, show a booking card (`showBookingCta`). Consulting interest gets one qualifying question before that card. Asking about projects shows portfolio cards (`showPortfolio`). The tools are defined in `lib/chat-tools.ts` and rendered in `components/tool-cards.tsx`.
 
 `/api/chat` rejects bodies over 200 KB, drops system messages and unknown parts, keeps the last 20 messages, and truncates each text part to 2,000 characters. Title generation rejects bodies over 10 KB.
 

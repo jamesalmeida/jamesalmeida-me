@@ -3,6 +3,10 @@
 import { makeAssistantToolUI } from "@assistant-ui/react";
 import Link from "next/link";
 import { selectProjects, toPublicProjects, type PublicProject } from "@/data/portfolio";
+import {
+  consultingOfferOutput,
+  type ConsultingOfferOutput,
+} from "@/lib/consulting-offer";
 import { BookingCard } from "./booking-button";
 import { KONTEKS_PROJECT_ID, KonteksDemoMedia } from "./featured-demo";
 
@@ -99,6 +103,45 @@ function ProjectGrid({ projects }: { projects: PublicProject[] }) {
     </div>
   );
 }
+
+function ConsultingOfferCard() {
+  const offer: ConsultingOfferOutput = consultingOfferOutput();
+
+  return (
+    <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.06)]">
+      <p className="eyebrow text-xs text-[var(--muted)]">Consulting</p>
+      <p className="mt-2 text-sm leading-6 text-[var(--foreground)]">{offer.audienceLine}</p>
+      <ol className="mt-4 space-y-3">
+        {offer.steps.map((step, index) => (
+          <li
+            key={step.name}
+            className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--panel)] px-4 py-3"
+          >
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className={`text-lg tracking-[-0.02em] ${serif}`}>
+                {index + 1}. {step.name}
+              </h3>
+              <p className="text-sm font-medium">
+                {step.priceRange}{" "}
+                <span className="font-normal text-[var(--muted)]">({step.priceNote})</span>
+              </p>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-4 text-sm leading-6 text-[var(--muted)]">{offer.eachStepOptional}</p>
+      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{offer.auditCredit}</p>
+    </div>
+  );
+}
+
+export const ShowConsultingOfferToolUI = makeAssistantToolUI<
+  Record<string, never>,
+  ConsultingOfferOutput
+>({
+  toolName: "showConsultingOffer",
+  render: () => <ConsultingOfferCard />,
+});
 
 export const ShowBookingCtaToolUI = makeAssistantToolUI<
   Record<string, never>,

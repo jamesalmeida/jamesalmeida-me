@@ -71,7 +71,7 @@ export default function WorkPage() {
           <h1 className={`text-4xl tracking-[-0.04em] sm:text-5xl ${serif}`}>Work</h1>
           <p className="max-w-2xl text-sm leading-6 text-[var(--muted)] sm:text-base">
             Konteks, a short list of works in progress, and earlier product work. My own apps are
-            still being built — not publicly shipped.
+            works in progress.
           </p>
         </header>
 
@@ -105,7 +105,8 @@ export default function WorkPage() {
         <section className="space-y-4 rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel)] p-6">
           <h2 className={`text-3xl tracking-[-0.03em] ${serif}`}>Hire me</h2>
           <p className="text-sm leading-6 text-[var(--muted)]">
-            Looking for a remote building-with-AI role. Email me, or {SITE.bookingShortLabel.toLowerCase()}.
+            I consult on AI and software engineering for small businesses. I&apos;m also open to
+            remote building-with-AI roles. Email me, or {SITE.bookingShortLabel.toLowerCase()}.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <HireButton />

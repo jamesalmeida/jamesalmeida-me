@@ -70,7 +70,8 @@ const THREAD_SUGGESTIONS: Record<StaticThreadId, ThreadSuggestions> = {
       },
       {
         title: "How can I hire you?",
-        prompt: "I'd like to hire you for a remote building-with-AI role. How should I get in touch?",
+        prompt:
+          "I'd like to hire you for AI consulting or a software engineering project. How should I get in touch?",
       },
       {
         title: "I have a project",
@@ -145,15 +146,16 @@ const THREAD_SUGGESTIONS: Record<StaticThreadId, ThreadSuggestions> = {
   },
   socials: {
     title: "Contact",
-    subtitle: "Hire me, book a call, or email.",
+    subtitle: "Book a call, email, or talk about a role.",
     suggestions: [
-      {
-        title: "Hiring",
-        prompt: "I'd like to hire you for a remote building-with-AI role. How should I get in touch?",
-      },
       {
         title: "Consulting",
         prompt: "I have a project I'd like to discuss. How should I reach out?",
+      },
+      {
+        title: "Hiring",
+        prompt:
+          "I saw you're also open to remote building-with-AI roles. How should I get in touch?",
       },
     ],
   },

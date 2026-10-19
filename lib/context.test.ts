@@ -40,8 +40,15 @@ describe("getKnowledge / getSystemPrompt", () => {
     }
   });
 
-  it("positions hiring first and describes the agent setup", () => {
-    expect(knowledge).toMatch(/hiring portfolio first/i);
+  it("positions consulting first and describes the agent setup", () => {
+    expect(knowledge).toMatch(/AI consulting and software engineering/);
+    expect(knowledge).toMatch(/also open to remote building-with-AI roles/);
+    expect(knowledge).not.toMatch(/hiring portfolio first/i);
+    expect(prompt).toMatch(/AI consulting and software engineering/);
+    expect(prompt).toMatch(/also open to remote building-with-AI roles/);
+    expect(prompt).toMatch(/one qualifying question/i);
+    expect(prompt).toMatch(/showConsultingOffer/);
+    expect(prompt).toMatch(/explicitly ask to book/i);
     expect(knowledge).toContain("Chief of Staff");
     expect(knowledge).toMatch(/iCloud/i);
     expect(knowledge).toMatch(/pull requests/i);
@@ -49,12 +56,17 @@ describe("getKnowledge / getSystemPrompt", () => {
 
   it("does not brand James with the banned lab phrase", () => {
     expect(knowledge.toLowerCase()).not.toContain("one-person ai lab");
+    expect(knowledge.toLowerCase()).not.toContain("fineants");
+    expect(prompt.toLowerCase()).not.toContain("fineants");
   });
 
   it("treats personal apps as works in progress", () => {
     expect(knowledge).toMatch(/works in progress/i);
-    expect(knowledge).toMatch(/not publicly shipped/i);
-    expect(prompt).toMatch(/not shipped, not in production, and not launched/i);
+    expect(prompt).toMatch(/works in progress/i);
+    expect(knowledge).not.toMatch(/not publicly shipped/i);
+    expect(knowledge).not.toMatch(/not shipped/i);
+    expect(prompt).not.toMatch(/not shipped/i);
+    expect(prompt).toMatch(/Never describe them as live, shipped, launched, or in production/);
   });
 
   it("includes the published offer price ranges", () => {

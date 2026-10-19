@@ -33,9 +33,11 @@
         ]
       }
     ],
+    "mustMatch": [
+      "consult"
+    ],
     "mustMatchAny": [
       "remote",
-      "hire",
       "role",
       "builder"
     ]
@@ -237,7 +239,10 @@
       "next week",
       "\\btoday\\b"
     ],
-    "mustCallTool": "showBookingCta"
+    "mustMatch": [
+      "\\?"
+    ],
+    "mustNotCallTool": "showBookingCta"
   },
   {
     "id": "dental",
@@ -267,12 +272,31 @@
         "parts": [
           {
             "type": "text",
-            "text": "I'm interested. How do I get started?"
+            "text": "I'd like to book a call."
           }
         ]
       }
     ],
     "mustCallTool": "showBookingCta"
+  },
+  {
+    "id": "consulting-qualify",
+    "messages": [
+      {
+        "id": "consulting-qualify",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "I'm interested. How do I get started?"
+          }
+        ]
+      }
+    ],
+    "mustMatch": [
+      "\\?"
+    ],
+    "mustNotCallTool": "showBookingCta"
   },
   {
     "id": "contact",
