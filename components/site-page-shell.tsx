@@ -4,7 +4,7 @@ export function SitePageShell({
   current,
   children,
 }: {
-  current?: "home" | "work" | "consulting" | "privacy";
+  current?: "work" | "consulting" | "privacy";
   children: React.ReactNode;
 }) {
   return (

@@ -4,7 +4,7 @@ This file gives you (Claude, Codex, or any other coding agent) the critical cont
 
 ## What This Is
 
-**jamesalmeida.me** — James Almeida's hiring portfolio first (remote building-with-AI role), AI-consulting lead tool second. The home page is a scrolling site with the chatbot as the centerpiece of proof. The chat speaks in first person as James. Visitors can also read `/consulting` and `/work` without chatting.
+**jamesalmeida.me** — James Almeida's hiring portfolio first (remote building-with-AI role), AI-consulting lead tool second. The home page `/` is a full-screen chat app: the chat is the whole site, and it funnels visitors toward hiring James or working with him (AI consulting, software projects). The chat speaks in first person as James. Visitors can also read `/consulting` and `/work` without chatting.
 
 - **Production**: https://www.jamesalmeida.me (apex redirects to www)
 - **Repo**: https://github.com/jamesalmeida/jamesalmeida-me
@@ -67,7 +67,7 @@ app/
   api/generate-title/route.ts  # short title for a forked history thread
   api/admin/model/route.ts     # GET current model; POST password + signed cookie
   admin/page.tsx               # Password-gated model switcher (noindex)
-  page.tsx                     # Hiring home: hero, embedded chat, Konteks, WIP, about, consulting
+  page.tsx                     # Full-screen chat: <ChatApp fallback={<StaticIntro />} />
   consulting/page.tsx          # Offer page, rendered from OFFER
   work/page.tsx                # Portfolio page, rendered from PROJECTS
   privacy/page.tsx             # Plain-language privacy page (keep claims true to the code)
@@ -78,16 +78,16 @@ app/
   globals.css
 
 components/
-  home-page.tsx                # Scrolling hiring home
-  featured-demo.tsx            # Konteks media slot (SITE.konteksDemo)
-  site-nav.tsx                 # Shared nav
-  chat-app.tsx                 # Client chat shell; embedded={true} on the home page
-  thread.tsx                   # Chat thread, header booking CTA, tool UIs
+  static-intro.tsx             # Pre-hydration fallback for `/` (h1, hero, bio, WIP, CTAs, links)
+  featured-demo.tsx            # Compact Konteks card + KonteksDemoMedia (SITE.konteksDemo)
+  site-nav.tsx                 # Nav for /work, /consulting, /privacy
+  chat-app.tsx                 # Full-screen chat shell (app-shell / app-panel)
+  thread.tsx                   # Chat thread, header Hire me + Book a call, tool UIs
   tool-cards.tsx               # showBookingCta / showPortfolio cards
   booking-button.tsx           # HireButton, BookingButton, EmailLink, BookingCard
   theme-provider.tsx           # theme/accent/sound state; MotionConfig reducedMotion="user"
-  suggestions.tsx              # Empty-state pills
-  thread-list.tsx              # Sidebar, including links to /consulting and /work
+  suggestions.tsx              # Empty-state starters; General Chat adds the Konteks card and WIP chips
+  thread-list.tsx              # Sidebar, with links to /work, /consulting, /privacy and the resume
   modal.tsx                    # Native <dialog> (showModal) wrapper for Rename/Settings
 
 lib/
@@ -155,9 +155,19 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 - `data/portfolio.ts` exports `PROJECTS`. Never render `confirmed`.
 - `data/knowledge.md` is the swappable bio. `lib/context.ts` strips HTML comments, fills `{{email}}`, `{{bookingUrl}}`, `{{linkedin}}`, `{{github}}`, `{{resumeUrl}}`, `{{x}}`, `{{xHandle}}` from `SITE`, then appends offer and portfolio markdown.
 
+### Home page: full-screen chat
+
+`/` must stay a full-screen chat. It must never become a scrolling page with sections.
+
+- `ChatApp` fills the viewport (`.app-shell` / `.app-panel`, height `var(--app-height, 100dvh)`; `body` is fixed with `overflow: hidden`). The document never scrolls. Only the message viewport and the sidebar scroll.
+- Before hydration, `StaticIntro` renders in the same frame (no layout shift) with the real h1 and crawlable copy from `SITE`. No prices.
+- Portfolio content lives inside the chat, never as page sections: the General Chat empty state shows the Konteks card (`FeaturedDemo`), the starter prompts (including hiring and a consulting/software project), and the works in progress as chips that send "Tell me about X". The chat header always shows Hire me (mailto) and Book a call (icon-only under `sm`). The `showPortfolio` card shows the Konteks demo media on the Konteks project.
+- `/?thread=<static id>` opens that thread (used by `/consulting` for `work-with-me`).
+- `/work`, `/consulting` and `/privacy` are normal scrolling pages (`.site-page`) and link back to `/`.
+
 ### Konteks demo clip
 
-`SITE.konteksDemo` in `data/site.ts` drives the featured media slot:
+`SITE.konteksDemo` in `data/site.ts` drives the Konteks media (the General Chat empty-state card and the Konteks project card):
 
 ```ts
 konteksDemo: {

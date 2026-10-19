@@ -7,20 +7,20 @@ const linkClass =
 export function SiteNav({
   current,
 }: {
-  current?: "home" | "work" | "consulting" | "privacy";
+  current?: "work" | "consulting" | "privacy";
 }) {
   return (
     <nav className="mb-8 flex flex-wrap items-center justify-between gap-3">
       <Link
         href="/"
-        className={current === "home" ? "text-sm text-[var(--foreground)]" : linkClass}
+        className={linkClass}
         data-cuelume-hover="whisper"
         data-cuelume-press="tick"
       >
         {SITE.name}
       </Link>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <Link href="/#chat" className={linkClass} data-cuelume-hover="whisper" data-cuelume-press="tick">
+        <Link href="/" className={linkClass} data-cuelume-hover="whisper" data-cuelume-press="tick">
           Chat
         </Link>
         <Link

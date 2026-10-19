@@ -5,6 +5,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNod
 import { Modal } from "@/components/modal";
 import { Thread } from "@/components/thread";
 import { ThreadList } from "@/components/thread-list";
+import { SITE } from "@/data/site";
 import {
   THREADS,
   THREADS_BY_ID,
@@ -28,13 +29,7 @@ import {
   type StoredThreads,
 } from "@/lib/threads";
 
-export function ChatApp({
-  fallback,
-  embedded = false,
-}: {
-  fallback: ReactNode;
-  embedded?: boolean;
-}) {
+export function ChatApp({ fallback }: { fallback: ReactNode }) {
   const [activeThreadId, setActiveThreadId] = useState<string>("new-chat");
   const [storedThreads, setStoredThreads] = useState<StoredThreads>({});
   const [historyThreads, setHistoryThreads] = useState<HistoryThread[]>([]);
@@ -99,13 +94,6 @@ export function ChatApp({
     if (!isHydrated) return;
     writeStoredActiveThread(activeThreadId);
   }, [activeThreadId, isHydrated]);
-
-  useEffect(() => {
-    if (!isHydrated || !embedded) return;
-    if (new URLSearchParams(window.location.search).get("thread")) {
-      document.getElementById("chat")?.scrollIntoView({ block: "start" });
-    }
-  }, [isHydrated, embedded]);
 
   useEffect(() => {
     if (!isHydrated) return;
@@ -248,32 +236,14 @@ export function ChatApp({
   );
 
   if (!isHydrated) {
-    if (!embedded) return fallback;
-    return (
-      <div className="chat-embed relative overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel)]">
-        {fallback}
-      </div>
-    );
+    return fallback;
   }
 
   return (
-    <div
-      className={
-        embedded
-          ? "chat-embed relative overflow-hidden"
-          : "app-shell relative overflow-hidden px-3 sm:px-4 min-[431px]:py-4"
-      }
-    >
-      <div
-        className={
-          embedded
-            ? "relative flex h-full overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel)] shadow-[0_16px_40px_rgba(0,0,0,0.06)]"
-            : "app-panel grain-panel flex overflow-hidden rounded-[2rem] border border-[var(--border)]"
-        }
-      >
+    <div className="app-shell relative overflow-hidden px-3 sm:px-4 min-[431px]:py-4">
+      <div className="app-panel grain-panel flex overflow-hidden rounded-[2rem] border border-[var(--border)]">
         <ThreadList
           activeThreadId={activeThreadId}
-          contained={embedded}
           historyThreads={historyThreads}
           isOpen={isSidebarOpen}
           onClearAllChats={handleClearAllChats}
@@ -284,7 +254,7 @@ export function ChatApp({
           threads={THREADS}
         />
         <main className="flex min-w-0 flex-1 flex-col">
-          <h1 className="sr-only">James Almeida</h1>
+          <h1 className="sr-only">{SITE.name}</h1>
           <Thread
             key={`${activeThreadId}:${chatGeneration}`}
             initialMessages={activeMessages}
