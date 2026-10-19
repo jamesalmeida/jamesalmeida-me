@@ -4,7 +4,7 @@ export const SITE = {
   title: "James Almeida — AI consulting and software engineering",
   description:
     "Power user turned builder. I help small and mid-size teams get their first AI system working, and I consult on automation. I run 40+ coordinated Grok Bot agents. Also open to remote building-with-AI roles.",
-  heroHeadline: "Hi, I'm James. What do you want AI to do for your business?",
+  heroHeadline: "What do you want AI to do for your business?",
   heroLine:
     "I help small and mid-size teams get their first AI system working. Also open to remote building-with-AI roles.",
   bio: "I'm James Almeida, a power user turned builder. I help small and mid-size teams get their first AI system working, and I consult on automation. I run 40+ coordinated Grok Bot agents. I trained models at xAI and did product engineering at Leaf Group (Society6), iROKOtv, and Datadog. Contracts go through my S-Corp, General Systems Ventures. I'm also open to remote building-with-AI roles.",

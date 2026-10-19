@@ -29,7 +29,7 @@ function HeroMenu() {
   return (
     <details
       ref={detailsRef}
-      className="relative mt-6 open:mb-48"
+      className="relative mt-4"
       onKeyDown={(event) => {
         if (event.key === "Escape" && detailsRef.current?.open) {
           detailsRef.current.open = false;
@@ -43,7 +43,7 @@ function HeroMenu() {
       </summary>
       <nav
         aria-label="Site"
-        className="absolute left-1/2 top-full z-20 mt-2 w-56 -translate-x-1/2 rounded-[1rem] border border-[var(--border)] bg-[var(--panel-strong)] p-2 text-left shadow-[0_16px_40px_rgba(0,0,0,0.12)]"
+        className="absolute bottom-full left-1/2 z-20 mb-2 w-56 -translate-x-1/2 rounded-[1rem] border border-[var(--border)] bg-[var(--panel-strong)] p-2 text-left shadow-[0_16px_40px_rgba(0,0,0,0.12)]"
       >
         <button type="button" className={menuItemClass} onClick={askHowIWork}>
           How I work
@@ -69,19 +69,19 @@ function HeroMenu() {
 
 export function HeroStart({ children }: { children: ReactNode }) {
   return (
-    <div className="relative min-h-0 flex-1 overflow-y-auto">
+    <div className="hero-stage relative flex min-h-0 flex-1 flex-col overflow-hidden">
       <HeroBackground />
-      <div className="relative flex min-h-full flex-col justify-center px-4 py-6 sm:px-6 sm:py-10">
+      <div className="hero-stage-inner relative flex min-h-0 flex-1 flex-col justify-center overflow-hidden px-4 py-6 sm:px-6 sm:py-10">
         <div className="mx-auto flex w-full max-w-xl flex-col items-center">
           <h1
-            className={`text-center text-[1.7rem] leading-tight tracking-[-0.04em] text-[var(--foreground)] sm:text-5xl ${serif}`}
+            className={`hero-headline text-center text-[1.7rem] leading-tight tracking-[-0.04em] text-[var(--foreground)] sm:text-5xl ${serif}`}
           >
             {SITE.heroHeadline}
           </h1>
           <p className="mt-3 max-w-lg text-center text-sm leading-6 text-[var(--muted)] sm:text-base sm:leading-7">
             {SITE.heroLine}
           </p>
-          <div className="mt-8 w-full">{children}</div>
+          <div className="hero-input-block mt-8 w-full">{children}</div>
           <HeroMenu />
         </div>
       </div>

@@ -60,6 +60,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  // Resize the layout viewport with the keyboard so iOS does not scroll the page away.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({

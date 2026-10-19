@@ -116,7 +116,11 @@ html {
 
 body {
   position: fixed;
-  inset: 0;
+  top: var(--vv-offset, 0px);
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: var(--app-height, 100dvh);
   overflow: hidden;
   margin: 0;
   background: transparent;
@@ -129,7 +133,23 @@ body {
 }
 
 .app-shell {
-  height: var(--app-height, 100dvh);
+  height: 100%;
+}
+
+/* Keyboard open: keep the header and the question visible, with the input
+   at the bottom of the area above the keyboard. */
+html[data-keyboard="open"] .hero-stage-inner {
+  justify-content: flex-end;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+html[data-keyboard="open"] .hero-headline {
+  font-size: 1.35rem;
+}
+
+html[data-keyboard="open"] .hero-input-block {
+  margin-top: 0.75rem;
 }
 
 .site-page {

@@ -635,27 +635,36 @@ function useDismissKeyboardOnRun() {
   return isRunning;
 }
 
-function ComposerActions({ onCancel, isRunning }: { onCancel: () => void; isRunning: boolean }) {
+function ComposerActions({
+  onCancel,
+  isRunning,
+  compact = false,
+}: {
+  onCancel: () => void;
+  isRunning: boolean;
+  compact?: boolean;
+}) {
+  const size = compact ? "h-9 w-9" : "h-11 w-11";
   if (isRunning) {
     return (
       <ComposerPrimitive.Cancel
         onClick={onCancel}
-        className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] transition hover:opacity-85"
+        className={`flex ${size} flex-shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] transition hover:opacity-85`}
         aria-label="Stop generating"
         data-cuelume-press="tick"
       >
-        <Square size={16} fill="currentColor" />
+        <Square size={compact ? 14 : 16} fill="currentColor" />
       </ComposerPrimitive.Cancel>
     );
   }
 
   return (
     <ComposerPrimitive.Send
-      className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] transition hover:opacity-85 disabled:opacity-40"
+      className={`flex ${size} flex-shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] transition hover:opacity-85 disabled:opacity-40`}
       aria-label="Send message"
       data-cuelume-press
     >
-      <ArrowUp size={18} />
+      <ArrowUp size={compact ? 16 : 18} />
     </ComposerPrimitive.Send>
   );
 }
@@ -683,16 +692,12 @@ function HeroComposer({ onCancel }: { onCancel: () => void }) {
   const [focused, setFocused] = useState(false);
   const { theme } = useTheme();
   const charCounterId = useId();
-  const exampleId = useId();
   const examples = useHeroExamples(focused || charCount > 0);
   const inputBg = theme === "dark" ? "rgba(23, 23, 23, 0.9)" : "rgba(255, 255, 255, 0.9)";
-  const describedBy = [exampleId, charCount >= CHAR_COUNTER_FROM ? charCounterId : null]
-    .filter(Boolean)
-    .join(" ");
 
   return (
     <ComposerPrimitive.Root className="px-0 py-0">
-      <div className="flex items-end gap-2">
+      <div className="relative">
         <ComposerPrimitive.Input
           rows={1}
           autoFocus={false}
@@ -701,29 +706,24 @@ function HeroComposer({ onCancel }: { onCancel: () => void }) {
           unstable_focusOnThreadSwitched={false}
           aria-label="Message"
           enterKeyHint="send"
-          className="max-h-[160px] min-h-[3rem] min-w-0 flex-1 resize-none overflow-y-auto rounded-[1.5rem] border border-[var(--border)] px-4 py-3 text-base leading-6 shadow-[0_10px_30px_rgba(0,0,0,0.05)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
+          className="max-h-[160px] min-h-[3rem] w-full resize-none overflow-y-auto rounded-[1.5rem] border border-[var(--border)] py-3 pl-4 pr-14 text-base leading-6 shadow-[0_10px_30px_rgba(0,0,0,0.05)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
           style={{ backgroundColor: inputBg }}
           placeholder={examples.example.label}
           maxLength={MAX_MESSAGE_CHARS}
-          aria-describedby={describedBy}
-          onFocus={(event) => {
-            setFocused(true);
-            const target = event.currentTarget;
-            window.setTimeout(() => {
-              target.scrollIntoView({ block: "center" });
-            }, 300);
-          }}
+          aria-describedby={charCount >= CHAR_COUNTER_FROM ? charCounterId : undefined}
+          onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
         />
-        <ComposerActions onCancel={onCancel} isRunning={isRunning} />
+        <div className="absolute bottom-1.5 right-1.5">
+          <ComposerActions compact onCancel={onCancel} isRunning={isRunning} />
+        </div>
       </div>
-      <HeroExampleControls describedById={exampleId} examples={examples} />
+      <HeroExampleControls examples={examples} />
       {charCount >= CHAR_COUNTER_FROM ? (
         <p id={charCounterId} className="mt-1.5 px-1 text-right text-[11px] leading-4 text-[var(--muted)]">
           {charCount.toLocaleString()} / {MAX_MESSAGE_CHARS.toLocaleString()}
         </p>
       ) : null}
-      <PrivacyNotice />
     </ComposerPrimitive.Root>
   );
 }

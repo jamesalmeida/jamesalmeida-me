@@ -188,7 +188,7 @@ konteksDemo: {
 - Caps: 50 history threads (newest kept) and the last 100 messages per thread. Stored messages for history threads not in the list are pruned.
 - All localStorage access in `lib/threads.ts` is wrapped in try/catch and never throws. On `QuotaExceededError`, `writeStoredThreads` evicts the oldest half of history threads and retries once; evicted threads are also removed from the sidebar.
 - "Clear all chats" in the Settings modal (with a confirm step) calls `clearStoredChats()` in `lib/threads.ts`, which removes the three chat keys and keeps theme/accent/sound prefs. `ChatApp` bumps a generation counter so the old thread remounts and its unmount flush is ignored.
-- The composer shows a one-line notice linking to `/privacy`. If you change providers, storage, logging, cookies or abuse protection, update `app/privacy/page.tsx` and that notice to match.
+- The docked composer shows a one-line notice linking to `/privacy`. The hero does not; Privacy stays in its menu. If you change providers, storage, logging, cookies or abuse protection, update `app/privacy/page.tsx` and that notice to match.
 - A seeded thread forks into a history thread (and requests a title) only after its first run ends with a completed assistant message that has content. Errored runs and runs stopped with the Stop button don't fork. The Stop button sets a flag, because a stopped AI SDK run still reports a `complete` status.
 - Deleting a history thread (sidebar or header menu) opens a confirm dialog in `ChatApp`.
 - **Never** persist chats to a database.

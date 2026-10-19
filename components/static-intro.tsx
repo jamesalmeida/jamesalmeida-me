@@ -39,29 +39,29 @@ export function StaticIntro() {
             </a>
           </div>
         </header>
-        <div className="relative min-h-0 flex-1 overflow-y-auto">
+        <div className="hero-stage relative flex min-h-0 flex-1 flex-col overflow-hidden">
           <div data-slot="hero-background" aria-hidden="true" className="pointer-events-none absolute inset-0" />
-          <div className="relative flex min-h-full flex-col justify-center px-4 py-6 sm:px-6">
+          <div className="hero-stage-inner relative flex min-h-0 flex-1 flex-col justify-center overflow-hidden px-4 py-6 sm:px-6">
             <div className="mx-auto flex w-full max-w-xl flex-col items-center">
-              <h1 className={`text-center text-[1.7rem] leading-tight tracking-[-0.04em] sm:text-5xl ${serif}`}>
+              <h1 className={`hero-headline text-center text-[1.7rem] leading-tight tracking-[-0.04em] sm:text-5xl ${serif}`}>
                 {SITE.heroHeadline}
               </h1>
               <p className="mt-3 max-w-lg text-center text-sm leading-6 text-[var(--muted)] sm:text-base">
                 {SITE.heroLine}
               </p>
-              <div className="mt-8 flex w-full items-end gap-2" aria-hidden="true">
-                <div className="flex min-h-[3rem] min-w-0 flex-1 items-center rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] px-4 text-base text-[var(--muted)]">
+              <div className="hero-input-block relative mt-8 w-full" aria-hidden="true">
+                <div className="flex min-h-[3rem] items-center rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] py-3 pl-4 pr-14 text-base text-[var(--muted)]">
                   Try &apos;We bought ChatGPT and nothing changed&apos;
                 </div>
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)]">
-                  <ArrowUp size={18} />
+                <div className="absolute bottom-1.5 right-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)]">
+                  <ArrowUp size={16} />
                 </div>
               </div>
-              <details className="relative mt-6">
+              <details className="relative mt-4">
                 <summary className="cursor-pointer text-sm text-[var(--muted)]">Menu</summary>
                 <nav
                   aria-label="Site"
-                  className="absolute left-1/2 z-10 mt-2 w-56 -translate-x-1/2 rounded-[1rem] border border-[var(--border)] bg-[var(--panel-strong)] p-2 shadow-[0_16px_40px_rgba(0,0,0,0.12)]"
+                  className="absolute bottom-full left-1/2 z-10 mb-2 w-56 -translate-x-1/2 rounded-[1rem] border border-[var(--border)] bg-[var(--panel-strong)] p-2 shadow-[0_16px_40px_rgba(0,0,0,0.12)]"
                 >
                   <Link href="/consulting" className={linkClass}>
                     How I work
