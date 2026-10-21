@@ -14,13 +14,13 @@ const jsonLd = {
       "@id": personId,
       name: SITE.name,
       url: SITE.url,
-      jobTitle: "Software Engineer",
+      jobTitle: "AI consultant",
       email: `mailto:${SITE.email}`,
       sameAs: [SITE.linkedin, SITE.github, SITE.x],
     },
     {
       "@type": "ProfessionalService",
-      name: "James Almeida — AI consulting",
+      name: "James Almeida — AI for individuals and small teams",
       url: `${SITE.url}/consulting`,
       description: SITE.description,
       areaServed: "US",
@@ -69,14 +69,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#000000" media="(max-width: 430px)" />
-        <meta
-          name="theme-color"
-          content="#f7f5ef"
-          media="(min-width: 431px)"
-          id="theme-color-meta"
-        />
-        {/* Sets the theme class and accent before first paint (see lib/theme.ts). */}
+        <meta name="theme-color" content="#f7f5ef" id="theme-color-meta" />
+        {/* Sets the theme class before first paint (see lib/theme.ts). */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="text-[var(--foreground)] antialiased">

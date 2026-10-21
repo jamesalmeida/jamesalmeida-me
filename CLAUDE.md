@@ -4,7 +4,7 @@ This file gives you (Claude, Codex, or any other coding agent) the critical cont
 
 ## What This Is
 
-**jamesalmeida.me** — James Almeida's hiring portfolio first (remote building-with-AI role), AI-consulting lead tool second. The home page `/` is a full-screen chat app: the chat is the whole site, and it funnels visitors toward hiring James or working with him (AI consulting, software projects). The chat speaks in first person as James. Visitors can also read `/consulting` and `/work` without chatting.
+**jamesalmeida.me** — James Almeida's site for his AI consulting, all in on clients: individuals and small teams who want to find their place in a world with AI, at their own pace. The home page `/` is a full-screen chat with a simple landing (a question, one line of story, a big composer). The chat is run by **Skaffen, James' AI assistant**, which asks a few discovery questions, writes the visitor a brief, and funnels them to a discovery call or an email. Visitors can also read `/consulting` ("How I can help") and `/about` ("Why I do this") without chatting.
 
 - **Production**: https://www.jamesalmeida.me (apex redirects to www)
 - **Repo**: https://github.com/jamesalmeida/jamesalmeida-me
@@ -59,7 +59,7 @@ const runtime = useChatRuntime({
 
 ## Architecture
 
-Routes: `/`, `/consulting`, `/work`, `/privacy`, `/admin`, `/api/chat`, `/api/generate-title`, `/api/admin/model`. There is no `/api/admin/verify`.
+Routes: `/`, `/consulting`, `/about`, `/privacy`, `/admin`, `/api/chat`, `/api/generate-title`, `/api/admin/model`. There is no `/api/admin/verify`. `/work` redirects to `/about` (`next.config.ts`).
 
 ```
 app/
@@ -68,8 +68,8 @@ app/
   api/admin/model/route.ts     # GET current model; POST password + signed cookie
   admin/page.tsx               # Password-gated model switcher (noindex)
   page.tsx                     # Full-screen chat: <ChatApp fallback={<StaticIntro />} />
-  consulting/page.tsx          # Offer page, rendered from OFFER
-  work/page.tsx                # Portfolio page, rendered from PROJECTS
+  consulting/page.tsx          # "How I can help", rendered from OFFER
+  about/page.tsx               # "Why I do this": the story, past work from PROJECTS, Skaffen
   privacy/page.tsx             # Plain-language privacy page (keep claims true to the code)
   opengraph-image.tsx          # next/og image
   icon.png / icon.svg / favicon.ico / apple-icon.png
@@ -78,41 +78,39 @@ app/
   globals.css
 
 components/
-  static-intro.tsx             # Pre-hydration fallback for `/` (h1, hero, bio, WIP, CTAs, links)
-  featured-demo.tsx            # Compact Konteks card + KonteksDemoMedia (SITE.konteksDemo)
-  site-nav.tsx                 # Nav for /work, /consulting, /privacy
-  chat-app.tsx                 # Full-screen chat shell (app-shell / app-panel)
-  thread.tsx                   # Chat thread, header Hire me + Book a call, tool UIs
-  tool-cards.tsx               # showBookingCta / showPortfolio cards
-  booking-button.tsx           # HireButton, BookingButton, EmailLink, BookingCard
-  theme-provider.tsx           # theme/accent/sound state; MotionConfig reducedMotion="user"
-  suggestions.tsx              # Empty-state starters; General Chat adds the Konteks card and WIP chips
-  thread-list.tsx              # Sidebar, with links to /work, /consulting, /privacy and the resume
-  modal.tsx                    # Native <dialog> (showModal) wrapper for Rename/Settings
+  static-intro.tsx             # Pre-hydration fallback for `/`: same header + landing, real h1, links
+  site-header.tsx              # Top bar: name, "Book a discovery call" (from `sm`), Menu
+  site-menu.tsx                # Menu sheet: theme, sound, links, booking, recent chats, clear all
+  site-page-shell.tsx          # /consulting, /about, /privacy: a "Back to chat" button, then the page
+  chat-app.tsx                 # Full-screen chat shell (app-shell), header, menu, threads
+  thread.tsx                   # Landing (headline + composer) until the first message, then the conversation
+  tool-cards.tsx               # showBookingCta / showBrief cards
+  booking-button.tsx           # BookingButton, EmailButton, EmailLink, BookingCard
+  theme-provider.tsx           # theme preference (system/light/dark) + sound; MotionConfig reducedMotion="user"
+  modal.tsx                    # Native <dialog> (showModal) wrapper; `layout="sheet"` for the menu
 
 lib/
-  system-prompt.ts             # First-person persona + guardrails
-  context.ts                   # knowledge.md + generated offer and portfolio
-  chat-tools.ts                # showBookingCta, showPortfolio
+  system-prompt.ts             # Skaffen persona, discovery flow + guardrails
+  context.ts                   # knowledge.md + generated offer and past work
+  chat-tools.ts                # showBookingCta, showBrief
   tool-results.ts              # Tool input schemas + pure output builders (shared)
+  brief.ts                     # Brief fields, text, mailto and Cal links (client-safe)
   sanitize-messages.ts         # Untrusted chat body → last 20 UIMessages
   request-body.ts              # Body size cap (Content-Length, then UTF-8 bytes)
   rate-limit.ts                # In-memory per-IP / global fixed-window limiter
   bot-protection.ts            # Vercel BotID checkBotId() wrapper (403 on bots)
   admin-cookie.ts              # HMAC-signed model cookie
   message-convert.ts           # assistant-ui messages → UIMessage (keeps tools)
-  threads.ts                   # Thread ids; base messages are empty; getFirstUserText
-  theme.ts                     # Theme/accent keys + inline pre-paint script (client-safe)
-  demo-media.ts                # Classify SITE.konteksDemo.src (video / image / placeholder)
+  threads.ts                   # New chat + history threads; storage, caps, getFirstUserText
+  theme.ts                     # Theme keys + inline pre-paint script (client-safe)
 
 data/
-  knowledge.md                 # Bot knowledge. Placeholders {{email}} etc.
-  site.ts                      # SITE + OFFER. Client-safe. No secrets. Includes konteksDemo.
-  portfolio.ts                 # PROJECTS + selectProjects (client-safe). `confirmed` is never rendered.
+  knowledge.md                 # Bot knowledge, about James in the third person. Placeholders {{email}} etc.
+  site.ts                      # SITE, HEADLINES, PROMPT_EXAMPLES + OFFER. Client-safe. No secrets.
+  portfolio.ts                 # PROJECTS: past company work only (client-safe). `confirmed` is never rendered.
 
 public/
-  resume.pdf
-  media/                       # Drop the Konteks demo clip here (see below)
+  resume.pdf                   # Not linked anywhere since the site went client-first
 instrumentation-client.ts      # initBotId() for POST /api/chat and /api/generate-title
 next.config.ts                 # wrapped with withBotId
 scripts/
@@ -144,69 +142,66 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 ## Key Rules
 
 ### Persona
-- The assistant and the pages speak **as James in first person** ("I" / "my")
-- Example: "I built Sheldn.ai" ✅ / "James built Sheldn.ai" ❌
-- General Systems Ventures / GSV is only for contracts and billing (and, on the resume, where the consulting is contracted). Never "we" as the company. "We'll see" between the visitor and James is fine.
-- Public contact is `james@gsv.to`, X `@james_almeida`, GitHub, LinkedIn, and the Cal booking link. No phone number. Never state how long the intro call is. Hiring CTAs: "Hire me / Get in touch" (mailto) and "Book a call" (`SITE.bookingUrl`, keep the URL unchanged). The consulting page can still use "Book a free intro call".
-- Personal apps (Konteks and the works in progress) are roughly built and **not** publicly shipped. Never say they are shipped, in production, or launched. Never say "one-person AI lab". Company work at Society6, iROKOtv, and Datadog is the exception.
+- The site is **all in on clients**: individuals and small teams. No hiring CTAs, no "remote role" framing, no resume links.
+- The **pages** speak as James in first person ("I", "my"). The **chat** is Skaffen, James' AI assistant (`SITE.assistant`), and talks about James in the third person ("James", "he"). Skaffen is open about being AI, never claims to be James, and never promises James' time, a price, a start date or a result.
+- Every assistant message shows the "SA" avatar and "SKAFFEN · JAMES' AI ASSISTANT" label. Write "James'" (no extra s).
+- The name: Skaffen-Amtiskaw, the drone in Iain M. Banks' *Use of Weapons* (James is a Culture fan). GSV echoes the Culture's General Systems Vehicles; Skaffen may say so only when asked about its name or the company.
+- Discovery flow: one useful thought per reply, at most one question per reply, stop after about 3 or 4 questions, then `showBrief`. Tone is calm and kind; never alarmist about AI and jobs.
+- General Systems Ventures / GSV is otherwise only for contracts and billing. Never "we" as the company.
+- Public contact is `james@gsv.to`, X `@james_almeida`, GitHub, LinkedIn, and the Cal booking link. No phone number. Never state how long the discovery call is. The CTA is "Book a discovery call" (`SITE.bookingLabel`, `SITE.bookingUrl`; keep the URL unchanged).
+- James' personal apps and side projects (Konteks and the rest) have **not shipped**. The site and Skaffen never mention, list or describe them; if asked, Skaffen says it's not something James shares publicly here, without echoing the name. Only company work at Society6, iROKOtv and Datadog (`PROJECTS`) is described as shipped, and only when asked. Never say "one-person AI lab".
 
 ### Content
-- `data/site.ts` exports `SITE` and `OFFER`. Pages and the bot both use `OFFER`. Do not copy prices into page copy.
-- `data/portfolio.ts` exports `PROJECTS`. Never render `confirmed`.
-- `data/knowledge.md` is the swappable bio. `lib/context.ts` strips HTML comments, fills `{{email}}`, `{{bookingUrl}}`, `{{linkedin}}`, `{{github}}`, `{{resumeUrl}}`, `{{x}}`, `{{xHandle}}` from `SITE`, then appends offer and portfolio markdown.
+- `data/site.ts` exports `SITE`, `HEADLINES` (the landing question; the first is the default, the rest are A/B candidates), `PROMPT_EXAMPLES` (rotating composer placeholders) and `OFFER`. Pages and the bot both use `OFFER`. Do not copy prices into page copy. There is no price for individuals: James scopes it on the call.
+- `data/portfolio.ts` exports `PROJECTS` (past company work only). Never render `confirmed`.
+- `data/knowledge.md` is the swappable bio, written about James in the third person. `lib/context.ts` strips HTML comments, fills `{{email}}`, `{{bookingUrl}}`, `{{linkedin}}`, `{{github}}`, `{{x}}`, `{{xHandle}}` from `SITE`, then appends the offer and past-work markdown.
+- Provisional business decisions are one value plus a `// PROVISIONAL:` comment in `.ts`, or `<!-- // PROVISIONAL: ... -->` in `.md`. Find them with `rg "PROVISIONAL"`. Comments are stripped before the model sees the knowledge, so that word must not reach the prompt.
 
 ### Home page: full-screen chat
 
 `/` must stay a full-screen chat. It must never become a scrolling page with sections.
 
-- `ChatApp` fills the viewport (`.app-shell` / `.app-panel`, height `var(--app-height, 100dvh)`; `body` is fixed with `overflow: hidden`). The document never scrolls. Only the message viewport and the sidebar scroll.
-- Before hydration, `StaticIntro` renders in the same frame (no layout shift) with the real h1 and crawlable copy from `SITE`. No prices.
-- Portfolio content lives inside the chat, never as page sections: the General Chat empty state shows the Konteks card (`FeaturedDemo`), the starter prompts (including hiring and a consulting/software project), and the works in progress as chips that send "Tell me about X". The chat header always shows Hire me (mailto) and Book a call (icon-only under `sm`). The `showPortfolio` card shows the Konteks demo media on the Konteks project.
-- `/?thread=<static id>` opens that thread (used by `/consulting` for `work-with-me`).
-- `/work`, `/consulting` and `/privacy` are normal scrolling pages (`.site-page`) and link back to `/`.
-
-### Konteks demo clip
-
-`SITE.konteksDemo` in `data/site.ts` drives the Konteks media (the General Chat empty-state card and the Konteks project card):
-
-```ts
-konteksDemo: {
-  src: null, // or "/media/konteks-demo.mp4"
-  poster: undefined, // optional still, e.g. "/media/konteks-demo.jpg"
-}
-```
-
-1. Put the file in `public/media/` (path becomes `/media/<filename>`).
-2. Set `src` to that path. Use `.mp4` or `.webm` for video (`autoplay muted loop playsInline`); `.gif`, `.png`, `.jpg`, `.jpeg`, `.webp` for an image.
-3. Leave `src: null` for a placeholder — never a broken embed.
-- Provisional business decisions are one value plus a `// PROVISIONAL:` comment in `.ts`, or `<!-- // PROVISIONAL: ... -->` in `.md`. Find them with `rg "PROVISIONAL"`. Comments are stripped before the model sees the knowledge, so that word must not reach the prompt.
+- `ChatApp` fills the viewport (`.app-shell`, height `var(--app-height, 100dvh)`; `body` is fixed with `overflow: hidden`). The document never scrolls. Only the message viewport and the menu scroll.
+- Layout: `SiteHeader` (name, "Book a discovery call" from `sm` up, Menu), then the thread. There is no sidebar. Clicking the name starts a new chat (the current one stays in Recent chats); `SiteHeader` is a client component for that.
+- Landing (a thread with no messages): the h1 is `HEADLINES[0]`, then `SITE.subhead`, then a large composer that shows "Try “…”" with an example from `PROMPT_EXAMPLES`. The example slides out and the next slides in every 4.5 s until the visitor focuses the composer or types (an `aria-hidden` overlay, since a native placeholder can't animate). Sending an empty landing composer (button or Enter) sends the example shown. No suggestion chips, no project cards. The privacy notice sits at the bottom.
+- First send: the landing fades up and away (`AnimatePresence`), the composer glides to the dock (shared `layoutId="composer"`, `layout="position"`), the first message slides up into place and the reply fades in. Only messages that weren't there when the thread mounted animate (`InitialMessageIdsContext`), so restored chats don't replay.
+- Conversation: a centered column (`max-w-[760px]`), user messages in `--user-bubble` bubbles, assistant messages as plain text under the Skaffen label, the composer docked at the bottom with the privacy notice.
+- On phones the booking button lives only in the menu and in the booking/brief cards.
+- Menu (`SiteMenu`, a `Modal` with `layout="sheet"`: full screen on phones, a right-hand panel from `sm`) grows out of the Menu button (transform origin at its centre) and shrinks back into it on close; it draws its own fading backdrop. Closing (button, Escape, backdrop, or after New chat / a recent chat / Clear all) animates first and then calls `onClose`. theme chooser (System / Light / Dark, icon buttons with `aria-pressed`), an icon-only sound button, close; then New chat, How I can help, Why I do this, Email me, Privacy (large, slightly tight tracking, underlined on hover and focus); the booking button; and a Recent chats card with per-chat delete and "Clear all chats" (with a confirm step).
+- Before hydration, `StaticIntro` renders the same header and landing in the same frame (no layout shift) with the real h1 and crawlable links. No prices.
+- `/consulting`, `/about` and `/privacy` are normal scrolling pages (`.site-page`, `SitePageShell`) with a single "Back to chat" button at the top, no nav bar.
 
 ### Persistence
-- Seeded threads have empty `baseMessages`. User messages live in `localStorage` per thread.
+- There is one built-in thread, `new-chat` (the landing). User messages live in `localStorage` per thread. A stored active id that is no longer valid (e.g. the old pinned threads `projects`, `work-with-me`) falls back to `new-chat` (`resolveActiveThreadId`), and their stored messages are pruned.
 - Tool cards are kept: `lib/message-convert.ts` turns completed assistant-ui tool calls into `tool-*` parts with `state: "output-available"`. `@assistant-ui/react-ai-sdk` 1.1.21 converts those back into tool-call parts on reload.
 - `ThreadPersistence` (`components/thread.tsx`) saves only when no run is streaming, and flushes unsaved messages on `pagehide`, `visibilitychange` (hidden) and unmount. `ChatApp.updateStoredThreads` writes localStorage synchronously.
 - Caps: 50 history threads (newest kept) and the last 100 messages per thread. Stored messages for history threads not in the list are pruned.
-- All localStorage access in `lib/threads.ts` is wrapped in try/catch and never throws. On `QuotaExceededError`, `writeStoredThreads` evicts the oldest half of history threads and retries once; evicted threads are also removed from the sidebar.
-- "Clear all chats" in the Settings modal (with a confirm step) calls `clearStoredChats()` in `lib/threads.ts`, which removes the three chat keys and keeps theme/accent/sound prefs. `ChatApp` bumps a generation counter so the old thread remounts and its unmount flush is ignored.
+- "New chat" in the menu opens a fresh landing. If the new chat has messages that never got a reply, they move into history first.
+- All localStorage access in `lib/threads.ts` is wrapped in try/catch and never throws. On `QuotaExceededError`, `writeStoredThreads` evicts the oldest half of history threads and retries once; evicted threads are also removed from Recent chats.
+- "Clear all chats" in the menu (with a confirm step) calls `clearStoredChats()` in `lib/threads.ts`, which removes the three chat keys and keeps theme/sound prefs. `ChatApp` bumps a generation counter (also used by New chat) so the old thread remounts and its unmount flush is ignored.
 - The composer shows a one-line notice linking to `/privacy`. If you change providers, storage, logging, cookies or abuse protection, update `app/privacy/page.tsx` and that notice to match.
-- A seeded thread forks into a history thread (and requests a title) only after its first run ends with a completed assistant message that has content. Errored runs and runs stopped with the Stop button don't fork. The Stop button sets a flag, because a stopped AI SDK run still reports a `complete` status.
-- Deleting a history thread (sidebar or header menu) opens a confirm dialog in `ChatApp`.
+- The new chat forks into a history thread (and requests a title, shown in Recent chats) only after its first run ends with a completed assistant message that has content. Errored runs and runs stopped with the Stop button don't fork. The Stop button sets a flag, because a stopped AI SDK run still reports a `complete` status.
+- Deleting a chat from Recent chats opens a confirm dialog in `ChatApp`.
 - **Never** persist chats to a database.
 
 ### Theme, motion and accessibility
-- `app/layout.tsx` runs `themeInitScript` (`lib/theme.ts`) in `<head>`. It sets the `dark` class, `data-accent` and the theme-color meta before first paint. Keep its rules in line with `ThemeProvider`.
-- `prefers-reduced-motion` is respected: `MotionConfig reducedMotion="user"` in `ThemeProvider`, and a media query in `globals.css` that turns off CSS transitions and animations. Sounds default to on (the owner's choice).
+- `app/layout.tsx` runs `themeInitScript` (`lib/theme.ts`) in `<head>`. It sets the `dark` class and the theme-color meta before first paint. A stored `light` or `dark` wins; `system` (or nothing stored) follows `prefers-color-scheme`, and `ThemeProvider` keeps following it live. Keep the two in line.
+- The accent is fixed (slate `#2f4858`, `#8ba4b5` in dark). There is no accent picker.
+- `prefers-reduced-motion` is respected: `MotionConfig reducedMotion="user"` in `ThemeProvider`, and a media query in `globals.css` that turns off CSS transitions and animations. Sounds default to off until the visitor turns them on (stored as `jamesalmeida-sounds: "on"`); the sounds themselves will be revisited.
+- Theme changes fade: `ThemeProvider.setPreference` puts `.theme-transition` on `<html>` for 500 ms, and `globals.css` transitions colours under it (only without reduced motion). The selected theme pill slides (`layoutId="theme-pill"`).
 - `ChatApp` has a visually hidden `aria-live="polite"` region. It announces the text of the latest completed reply once the run ends, not every token. It lives in `ChatApp` because the first reply remounts `Thread`.
 - The composer has `maxLength={2000}`, the same as the server's per-part cap, and shows a character counter from 1,800 characters.
 
 ### Dialogs and menus
-- Modals use `components/modal.tsx`: a native `<dialog>` opened with `showModal()` (focus trap, Escape, top layer), labelled via `aria-labelledby`, closed on backdrop click, and returning focus to the trigger (or `returnFocusRef`). Mount it only while open. Don't build new modals from `div`s.
-- The thread options menu (`components/thread.tsx`) follows the ARIA menu-button pattern: `aria-haspopup`/`aria-expanded`/`aria-controls` on the trigger, `role="menu"`/`menuitem`, arrow/Home/End keys, Escape or Tab closes and refocuses the trigger.
+- Modals use `components/modal.tsx`: a native `<dialog>` opened with `showModal()` (focus trap, Escape, top layer), labelled via `aria-labelledby`, closed on backdrop click, and returning focus to the trigger (or `returnFocusRef`). Mount it only while open. Don't build new modals from `div`s. Its `close` handler ignores a close event that arrives while the dialog is open again (StrictMode in dev). Escape (`cancel`) is turned into `onClose` instead of closing natively, so an owner can animate out first. The sheet layout has a transparent `::backdrop`.
+- The site menu is that dialog with `layout="sheet"`. It opens with focus on its close button and returns focus to the Menu button.
 
 ### Chat tools and abuse caps
-- `showBookingCta` renders a booking card from `SITE` (buying intent, contact, timing). It takes no input. Old stored parts with a `reason` field still validate, because the key is stripped. `showPortfolio` renders project cards (public fields only).
+- `showBookingCta` renders a booking card from `SITE` (how to book or contact, price, timing). It takes no input. Old stored parts with a `reason` field still validate, because the key is stripped.
+- `showBrief` renders "Your brief": optional `who`, `challenge`, `tried`, `hopingFor`, `timing` strings (trimmed, at most 200 characters each; `who` or `challenge` required). The card waits for the tool result, can be edited in place, and its buttons carry the brief: "Book a discovery call" adds it as Cal's `notes` query parameter, "Email James" puts it in a `mailto:` body (`lib/brief.ts`). Nothing is sent unless the visitor clicks.
+- `showPortfolio` was removed. Stored `tool-showPortfolio` parts are dropped by `sanitizeMessages` and render nothing.
 - `POST /api/chat` rejects bodies over 200 KB (413) and bad JSON (400). `sanitizeMessages` drops system roles and unknown parts, keeps the last 20 user/assistant messages, truncates each text part to 2,000 characters, and requires the last message to be from the user.
-- Client-sent tool parts are never trusted. `sanitizeMessages` discards their `output`, validates `input` with the schemas in `lib/tool-results.ts` (also used by `lib/chat-tools.ts`), and rebuilds the output with the same pure functions the tools' `execute` uses. Parts are dropped if input is invalid, over 1 KB serialized, has more than 20 ids or ids over 64 chars, or has a malformed `toolCallId`. Max 4 tool parts per message and 8 KB of tool input per request. Assistant text parts are still accepted as sent (2,000-char cap); signing them is not done.
+- Client-sent tool parts are never trusted. `sanitizeMessages` discards their `output`, validates `input` with the schemas in `lib/tool-results.ts` (also used by `lib/chat-tools.ts`), and rebuilds the output with the same pure functions the tools' `execute` uses. Parts are dropped if input is invalid, over 1.5 KB serialized, or has a malformed `toolCallId`. Max 4 tool parts per message and 8 KB of tool input per request. Assistant text parts are still accepted as sent (2,000-char cap); signing them is not done.
 - `streamText` uses `stopWhen: stepCountIs(3)` and `maxOutputTokens: 800`. The system prompt is sent as a system message with `providerOptions.anthropic.cacheControl` (ephemeral) when an Anthropic model is selected. The stream sends no message metadata, so the active model is never exposed to visitors.
 - Body limits are in bytes (`lib/request-body.ts`): a `Content-Length` over the limit is rejected before reading, then the UTF-8 length is checked.
 - `POST /api/generate-title` rejects bodies over 10 KB and truncates the message to 500 characters. A provider error returns `{ title: null }` (200).
@@ -257,7 +252,7 @@ If `npm run dev` works but `npm run build` fails, fix the build errors **before*
 
 `.github/workflows/ci.yml` runs on every PR and on pushes to `main`, using Node from `.nvmrc`: `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`. The build needs no secrets.
 
-- `npm test` runs `vitest run` on `lib/**/*.test.ts`. The tests cover `sanitizeMessages` (including tool-output rebuilding), thread storage caps, quota eviction and corrupt-JSON reads (`lib/threads.test.ts`, fake `window.localStorage` via `vi.stubGlobal`), the admin cookie (`signModel`, `verifyModelCookie`, `timingSafeEqualString`, including expiry and `ADMIN_COOKIE_SECRET`), `readBodyWithLimit`, and `getKnowledge` / `getSystemPrompt` (no HTML comments or `PROVISIONAL`, all placeholders filled), `selectProjects` and `getFirstUserText`. They need no server and no API keys.
+- `npm test` runs `vitest run` on `lib/**/*.test.ts`. The tests cover `sanitizeMessages` (including booking and brief output rebuilding), thread storage caps, quota eviction, corrupt-JSON reads and `resolveActiveThreadId` (`lib/threads.test.ts`, fake `window.localStorage` via `vi.stubGlobal`), the admin cookie (`signModel`, `verifyModelCookie`, `timingSafeEqualString`, including expiry and `ADMIN_COOKIE_SECRET`), `readBodyWithLimit`, the brief links (`lib/brief.test.ts`), `PROJECTS`, `getFirstUserText`, and `getKnowledge` / `getSystemPrompt` (no HTML comments or `PROVISIONAL`, all placeholders filled, Skaffen persona, no unshipped app names). They need no server and no API keys.
 - `lib/` files import `server-only`. `vitest.config.mts` aliases it to an empty stub, so tests can import them directly.
 - `npm run lint` runs `eslint .`, not the deprecated `next lint`. Unused vars prefixed with `_` are allowed (for example, `node: _node` to drop a prop).
 - `@ai-sdk/react` is declared but not imported directly. It stays because it is on the version lock list above and is what `@assistant-ui/react-ai-sdk` 1.1.21 is pinned against.

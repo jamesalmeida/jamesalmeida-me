@@ -8,10 +8,10 @@ import {
   MessagePartPrimitive,
   ThreadPrimitive,
   useComposer,
+  useComposerRuntime,
   useMessage,
   useThread,
   type ThreadMessage,
-  useThreadRuntime,
   useThreadViewport,
 } from "@assistant-ui/react";
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
@@ -20,9 +20,11 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { play } from "cuelume";
-import { ArrowDown, ArrowUp, CalendarCheck, Mail, MoreHorizontal, Pencil, RotateCcw, Square, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Square } from "lucide-react";
 import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useId,
   useRef,
@@ -31,23 +33,16 @@ import {
   type KeyboardEvent,
   type RefObject,
 } from "react";
-import { SITE } from "@/data/site";
+import { HEADLINES, PROMPT_EXAMPLES, SITE } from "@/data/site";
 import { toUIMessages } from "@/lib/message-convert";
-import type { PortfolioThread } from "@/lib/threads";
-import { Modal } from "./modal";
-import { Suggestions } from "./suggestions";
-import { useTheme } from "./theme-provider";
-import { ShowBookingCtaToolUI, ShowPortfolioToolUI } from "./tool-cards";
+import { serif } from "./booking-button";
+import { ShowBookingCtaToolUI, ShowBriefToolUI } from "./tool-cards";
 
 type ThreadProps = {
   initialMessages: UIMessage[];
-  onDeleteThread?: () => void;
   onMessagesChange: (messages: UIMessage[]) => void;
-  onRenameThread?: (title: string) => void;
   onReply?: (text: string) => void;
-  onRestart?: (messages: UIMessage[]) => void;
   onRunComplete?: (messages: UIMessage[]) => void;
-  thread: PortfolioThread;
 };
 
 // Matches the server's per-part cap in lib/sanitize-messages.ts.
@@ -71,16 +66,20 @@ const chatFetch: typeof fetch = async (input, init) => {
 // Created once: a new transport per render is wasted work.
 const chatTransport = new DefaultChatTransport({ api: "/api/chat", fetch: chatFetch });
 
-export function Thread({
-  initialMessages,
-  onDeleteThread,
-  onMessagesChange,
-  onRenameThread,
-  onReply,
-  onRestart,
-  onRunComplete,
-  thread,
-}: ThreadProps) {
+// Ids of the messages the thread mounted with. Only messages sent or received after
+// that animate in, so a restored chat doesn't replay its whole history.
+const InitialMessageIdsContext = createContext<ReadonlySet<string>>(new Set());
+
+function useIsNewMessage() {
+  const initialIds = useContext(InitialMessageIdsContext);
+  const id = useMessage((message) => message.id);
+  return !initialIds.has(id);
+}
+
+// The composer moves from the landing to the bottom with a shared layout animation.
+const composerLayoutTransition = { type: "spring", stiffness: 320, damping: 34 } as const;
+
+export function Thread({ initialMessages, onMessagesChange, onReply, onRunComplete }: ThreadProps) {
   // The AI SDK chat's error. A run that fails before any assistant content (a 429,
   // a 403, or a stream that errors right after "start") creates no assistant
   // message, so MessagePrimitive.Error has nothing to render in; RunErrorNotice does.
@@ -95,11 +94,13 @@ export function Thread({
   });
   // Set by the Stop button. A stopped run still ends with a "complete" status.
   const cancelledRef = useRef(false);
+  const [initialIds] = useState(() => new Set(initialMessages.map((message) => message.id)));
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
+      <InitialMessageIdsContext.Provider value={initialIds}>
       <ShowBookingCtaToolUI />
-      <ShowPortfolioToolUI />
+      <ShowBriefToolUI />
       <ThreadPersistence onMessagesChange={onMessagesChange} />
       <RunCompleteDetector
         cancelledRef={cancelledRef}
@@ -108,29 +109,91 @@ export function Thread({
         onRunStart={clearRunError}
       />
       <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
-        <Header thread={thread} onDeleteThread={onDeleteThread} onRenameThread={onRenameThread} onRestart={onRestart} />
-
-        <div className="relative min-h-0 flex-1">
-          <AutoScrollViewport>
-            <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
-              <ThreadPrimitive.Empty>
-                <Suggestions threadId={thread.id} />
-              </ThreadPrimitive.Empty>
-              <ThreadPrimitive.Messages
-                components={{
-                  AssistantMessage: AssistantMessage,
-                  UserMessage: UserMessage,
-                }}
-              />
-              <RunErrorNotice error={runError} />
-            </div>
-          </AutoScrollViewport>
-          <ScrollToBottomButton />
-        </div>
-
-        <Composer onCancel={() => { cancelledRef.current = true; }} />
+        <ThreadBody runError={runError} onCancel={() => { cancelledRef.current = true; }} />
       </ThreadPrimitive.Root>
+      </InitialMessageIdsContext.Provider>
     </AssistantRuntimeProvider>
+  );
+}
+
+// The landing (a question and a big composer) until the first message, then the
+// conversation with the composer docked at the bottom. On the first send the landing
+// fades up and away while the composer glides down to the dock.
+function ThreadBody({ onCancel, runError }: { onCancel: () => void; runError: string | null }) {
+  const isEmpty = useThread((state) => state.messages.length === 0);
+
+  return (
+    <>
+      <div className="relative min-h-0 flex-1">
+        <AnimatePresence initial={false}>
+          {isEmpty ? (
+            <motion.div
+              key="landing"
+              className="absolute inset-0 flex flex-col overflow-y-auto"
+              exit={{ opacity: 0, y: -32, pointerEvents: "none" }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <div className="flex flex-1 flex-col items-center justify-center gap-5 px-4 pb-16 pt-4 sm:gap-7 sm:px-12 sm:pb-20">
+                <h1
+                  className={`max-w-[1000px] text-center text-[44px] font-normal leading-[1.05] tracking-[-0.02em] sm:text-[72px] lg:text-[88px] lg:leading-[1.02] ${serif}`}
+                >
+                  {HEADLINES[0]}
+                </h1>
+                <p className="max-w-[720px] text-center text-[17px] leading-[1.5] text-[var(--muted)] sm:text-[22px]">
+                  {SITE.subhead}
+                </p>
+                <div className="mt-3 w-full max-w-[780px] sm:mt-5">
+                  <Composer variant="landing" onCancel={onCancel} />
+                </div>
+              </div>
+              <PrivacyNotice className="px-4 pb-5 sm:px-12 sm:pb-6" />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+        {isEmpty ? null : (
+          <>
+            <h1 className="sr-only">Chat with {SITE.assistant.name}, {SITE.assistant.role}</h1>
+            <ThreadPrimitive.Viewport className="absolute inset-0 overflow-y-auto px-4 pb-10 pt-4 sm:px-12 sm:pt-6">
+              <div className="mx-auto flex w-full max-w-[760px] flex-col gap-7">
+                <ThreadPrimitive.Messages
+                  components={{
+                    AssistantMessage: AssistantMessage,
+                    UserMessage: UserMessage,
+                  }}
+                />
+                <RunErrorNotice error={runError} />
+              </div>
+            </ThreadPrimitive.Viewport>
+            <ScrollToBottomButton />
+          </>
+        )}
+      </div>
+      {isEmpty ? null : (
+        <div className="border-t border-[var(--border)] px-4 pb-5 pt-3 sm:px-12 sm:pb-6 sm:pt-6">
+          <div className="mx-auto w-full max-w-[780px]">
+            <Composer variant="dock" onCancel={onCancel} />
+          </div>
+          <PrivacyNotice className="mt-2.5" />
+        </div>
+      )}
+    </>
+  );
+}
+
+function PrivacyNotice({ className = "" }: { className?: string }) {
+  return (
+    <p className={`text-center text-[11px] leading-4 text-[var(--muted)] sm:text-xs ${className}`}>
+      Chats are processed by AI providers (OpenAI and Anthropic) and saved only in this browser.
+      Please don&apos;t share sensitive information.{" "}
+      <Link
+        href="/privacy"
+        className="underline underline-offset-2 transition hover:text-[var(--foreground)]"
+        data-cuelume-hover="whisper"
+        data-cuelume-press="tick"
+      >
+        Privacy
+      </Link>
+    </p>
   );
 }
 
@@ -191,314 +254,6 @@ function RunCompleteDetector({
   return null;
 }
 
-function getMenuItems(menu: HTMLElement | null) {
-  return Array.from(menu?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
-}
-
-function Header({
-  thread,
-  onDeleteThread,
-  onRenameThread,
-  onRestart,
-}: {
-  thread: PortfolioThread;
-  onDeleteThread?: () => void;
-  onRenameThread?: (title: string) => void;
-  onRestart?: (messages: UIMessage[]) => void;
-}) {
-  const runtime = useThreadRuntime();
-  const messages = useThread((state) => state.messages);
-  const hasMessages = messages.length > 0;
-  const { theme } = useTheme();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [renameValue, setRenameValue] = useState("");
-  const menuId = useId();
-  const menuButtonId = useId();
-  const renameTitleId = useId();
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const renameInputRef = useRef<HTMLInputElement>(null);
-  // Which item to focus when the menu opens: arrow-up on the trigger picks the last.
-  const focusLastOnOpen = useRef(false);
-
-  useEffect(() => {
-    if (!isMenuOpen) return;
-    const items = getMenuItems(menuRef.current);
-    (focusLastOnOpen.current ? items[items.length - 1] : items[0])?.focus();
-    focusLastOnOpen.current = false;
-  }, [isMenuOpen]);
-
-  const closeMenu = (returnFocus: boolean) => {
-    setIsMenuOpen(false);
-    if (returnFocus) menuButtonRef.current?.focus();
-  };
-
-  const handleMenuButtonKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      e.preventDefault();
-      focusLastOnOpen.current = e.key === "ArrowUp";
-      setIsMenuOpen(true);
-    }
-  };
-
-  const handleMenuKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    const items = getMenuItems(menuRef.current);
-    const index = items.indexOf(document.activeElement as HTMLElement);
-    let next: HTMLElement | undefined;
-    switch (e.key) {
-      case "ArrowDown":
-        next = items[(index + 1) % items.length];
-        break;
-      case "ArrowUp":
-        next = items[(index - 1 + items.length) % items.length];
-        break;
-      case "Home":
-        next = items[0];
-        break;
-      case "End":
-        next = items[items.length - 1];
-        break;
-      case "Escape":
-      case "Tab":
-        e.preventDefault();
-        closeMenu(true);
-        return;
-      default:
-        return;
-    }
-    e.preventDefault();
-    next?.focus();
-  };
-
-  const handleRestart = () => {
-    play("tick");
-    if (onRestart && messages.length > 0) {
-      onRestart(toUIMessages(messages));
-    }
-    runtime.reset();
-  };
-
-  const openRename = () => {
-    setRenameValue(thread.title);
-    setIsRenaming(true);
-    setIsMenuOpen(false);
-  };
-
-  const saveRename = () => {
-    const trimmed = renameValue.trim();
-    if (trimmed && onRenameThread) {
-      onRenameThread(trimmed);
-      play("success");
-    }
-    setIsRenaming(false);
-  };
-
-  // Inline styles for iOS Safari compatibility
-  const bgColor = theme === "dark" ? "rgba(23, 23, 23, 0.72)" : "rgba(255, 255, 255, 0.72)";
-  const btnBg = theme === "dark" ? "rgba(23, 23, 23, 0.9)" : "rgba(255, 255, 255, 0.9)";
-  const menuBg = theme === "dark" ? "rgba(28, 28, 28, 0.98)" : "rgba(255, 255, 255, 0.98)";
-
-  return (
-    <>
-      <header
-        className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3 sm:px-6 sm:py-4 lg:justify-between"
-        style={{ backgroundColor: bgColor }}
-      >
-        <div className="h-10 w-10 flex-shrink-0 lg:hidden" aria-hidden />
-        <div className="min-w-0 flex-1 text-center lg:flex-initial lg:text-left">
-          <p className="eyebrow text-[10px] text-[var(--muted)] sm:text-xs">James Almeida</p>
-          <h2 className="truncate font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif] text-lg tracking-[-0.03em] sm:text-2xl">
-            {thread.title}
-          </h2>
-          <p className="mt-1 hidden max-w-2xl text-sm leading-6 text-[var(--muted)] lg:block">
-            {thread.description}
-          </p>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2">
-          <a
-            href={`mailto:${SITE.email}`}
-            className="inline-flex h-10 w-10 items-center justify-center gap-1.5 rounded-full bg-[var(--accent)] text-sm font-medium text-[var(--accent-foreground)] transition hover:opacity-90 sm:w-auto sm:px-4"
-            aria-label="Hire me"
-            title={SITE.hireLabel}
-            data-cuelume-hover="whisper"
-            data-cuelume-press="tick"
-          >
-            <Mail size={15} aria-hidden />
-            <span className="hidden sm:inline">Hire me</span>
-          </a>
-          <a
-            href={SITE.bookingUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex h-10 w-10 items-center justify-center gap-1.5 rounded-full border border-[var(--border)] text-sm font-medium text-[var(--foreground)] transition hover:border-[var(--border-strong)] sm:w-auto sm:px-4"
-            style={{ backgroundColor: btnBg }}
-            aria-label={SITE.bookingShortLabel}
-            title={SITE.bookingShortLabel}
-            data-cuelume-hover="whisper"
-            data-cuelume-press="tick"
-          >
-            <CalendarCheck size={15} aria-hidden />
-            <span className="hidden sm:inline">{SITE.bookingShortLabel}</span>
-          </a>
-
-        {onDeleteThread ? (
-          <div className="relative flex-shrink-0">
-            <button
-              ref={menuButtonRef}
-              id={menuButtonId}
-              type="button"
-              onClick={() => setIsMenuOpen((v) => !v)}
-              onKeyDown={handleMenuButtonKeyDown}
-              aria-haspopup="menu"
-              aria-expanded={isMenuOpen}
-              aria-controls={isMenuOpen ? menuId : undefined}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
-              style={{ backgroundColor: btnBg }}
-              aria-label="Thread options"
-              title="Options"
-              data-cuelume-toggle
-            >
-              <MoreHorizontal size={16} />
-            </button>
-
-            {isMenuOpen && (
-              <>
-                {/* Mouse-only click-outside layer; keyboard users close with Escape or Tab. */}
-                <div
-                  className="fixed inset-0 z-40"
-                  aria-hidden="true"
-                  onClick={() => closeMenu(false)}
-                />
-                <div
-                  ref={menuRef}
-                  id={menuId}
-                  role="menu"
-                  aria-labelledby={menuButtonId}
-                  onKeyDown={handleMenuKeyDown}
-                  className="absolute right-0 top-12 z-50 w-44 overflow-hidden rounded-[1rem] border border-[var(--border)] shadow-[0_16px_40px_rgba(0,0,0,0.14)]"
-                  style={{ backgroundColor: menuBg }}
-                >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    tabIndex={-1}
-                    onClick={openRename}
-                    className="flex w-full items-center gap-2.5 px-4 py-3 text-sm text-[var(--foreground)] transition hover:bg-[var(--panel)] focus-visible:bg-[var(--panel)]"
-                  >
-                    <Pencil size={14} className="text-[var(--muted)]" />
-                    Rename
-                  </button>
-                  <div role="separator" className="mx-3 border-t border-[var(--border)]" />
-                  <button
-                    type="button"
-                    role="menuitem"
-                    tabIndex={-1}
-                    onClick={() => {
-                      closeMenu(true);
-                      play("whisper");
-                      onDeleteThread();
-                    }}
-                    className="flex w-full items-center gap-2.5 px-4 py-3 text-sm text-red-500 transition hover:bg-[var(--panel)] focus-visible:bg-[var(--panel)]"
-                  >
-                    <Trash2 size={14} />
-                    Delete
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        ) : hasMessages ? (
-          <button
-            onClick={handleRestart}
-            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
-            style={{ backgroundColor: btnBg }}
-            aria-label="Restart conversation"
-            title="Restart"
-          >
-            <RotateCcw size={16} />
-          </button>
-        ) : null}
-        </div>
-      </header>
-
-      {isRenaming && (
-        <Modal
-          labelledBy={renameTitleId}
-          onClose={() => setIsRenaming(false)}
-          initialFocusRef={renameInputRef}
-          returnFocusRef={menuButtonRef}
-        >
-          {/* A form so Enter saves on implicit submit, while focus is still in the input. */}
-          <form
-            className="relative w-full max-w-sm rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]"
-            onSubmit={(e) => {
-              e.preventDefault();
-              saveRename();
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <h2
-                id={renameTitleId}
-                className="font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif] text-2xl tracking-[-0.02em]"
-              >
-                Rename
-              </h2>
-              <button
-                type="button"
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
-                onClick={() => setIsRenaming(false)}
-                aria-label="Cancel"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <input
-              ref={renameInputRef}
-              type="text"
-              aria-label="Thread title"
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-              className="mt-5 w-full rounded-[0.75rem] border border-[var(--border)] bg-[var(--panel)] px-4 py-2.5 text-sm outline-none transition focus:border-[var(--border-strong)]"
-              placeholder="Thread title"
-            />
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setIsRenaming(false)}
-                className="rounded-full border border-[var(--border)] px-4 py-2 text-sm text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm text-[var(--accent-foreground)] transition hover:opacity-85"
-              >
-                Save
-              </button>
-            </div>
-          </form>
-        </Modal>
-      )}
-    </>
-  );
-}
-
-// Only auto-scroll once a conversation exists, so tall empty states (e.g. the
-// Work with me pills + booking card) start at the top instead of the bottom.
-function AutoScrollViewport({ children }: { children: React.ReactNode }) {
-  const hasMessages = useThread((state) => state.messages.length > 0);
-  return (
-    <ThreadPrimitive.Viewport
-      autoScroll={hasMessages}
-      className="absolute inset-0 overflow-y-auto px-4 pb-6 pt-6 sm:px-6"
-    >
-      {children}
-    </ThreadPrimitive.Viewport>
-  );
-}
-
 function ScrollToBottomButton() {
   const isAtBottom = useThreadViewport((state) => state.isAtBottom);
   const scrollToBottom = useThreadViewport((state) => state.scrollToBottom);
@@ -540,77 +295,121 @@ function RunErrorNotice({ error }: { error: string | null }) {
   if (last.role === "assistant" && hasVisibleContent(last)) return null;
 
   return (
-    <div className="flex w-full justify-start">
-      <p
-        role="alert"
-        className="max-w-[85%] rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 sm:max-w-3xl"
+    <p
+      role="alert"
+      className="self-start rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+    >
+      {error}
+    </p>
+  );
+}
+
+function AssistantLabel() {
+  return (
+    <div className="eyebrow flex items-center gap-2.5 text-xs tracking-[0.04em] text-[var(--muted)] sm:text-[13px]">
+      <span
+        aria-hidden
+        className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] tracking-normal text-[var(--accent-foreground)]"
       >
-        {error}
-      </p>
+        {SITE.assistant.initials}
+      </span>
+      <span>
+        {SITE.assistant.name} · {SITE.assistant.role}
+      </span>
     </div>
   );
 }
 
 function AssistantMessage() {
   const message = useMessage();
-  const hasText = message.content.some(
-    (part) => part.type === "text" && part.text.length > 0,
-  );
-  const hasTool = message.content.some((part) => part.type === "tool-call");
+  const isNew = useIsNewMessage();
+  const hasContent = hasVisibleContent(message);
+  const isWriting = message.status?.type === "running";
 
-  if (!hasText && !hasTool) {
-    // An empty reply that is no longer running failed or was stopped: show
-    // nothing here (RunErrorNotice shows the error) instead of endless dots.
-    if (message.status?.type !== "running") return null;
-    return (
-      <MessagePrimitive.Root className="flex w-full justify-start">
-        <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel)] px-5 py-4 shadow-[0_16px_40px_rgba(0,0,0,0.06)]">
-          <div className="flex items-center gap-1">
+  // An empty reply that is no longer running failed or was stopped: show nothing
+  // here (RunErrorNotice shows the error) instead of an empty labelled reply.
+  if (!hasContent && !isWriting) return null;
+
+  return (
+    <MessagePrimitive.Root className="w-full">
+      <motion.div
+        className="flex w-full flex-col gap-3"
+        initial={isNew ? { opacity: 0, y: 12 } : false}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: "easeOut", delay: isNew ? 0.15 : 0 }}
+      >
+        <AssistantLabel />
+        {hasContent ? (
+          <div className="flex min-w-0 flex-col gap-4 text-base leading-[1.6] sm:text-lg">
+            <MessagePrimitive.Parts
+              components={{
+                Text: MarkdownText,
+              }}
+            />
+          </div>
+        ) : isWriting ? (
+          <div className="flex h-6 items-center gap-1" aria-label="Writing a reply">
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--muted)] [animation-delay:0ms]" />
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--muted)] [animation-delay:150ms]" />
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--muted)] [animation-delay:300ms]" />
           </div>
-        </div>
-      </MessagePrimitive.Root>
-    );
-  }
-
-  return (
-    <MessagePrimitive.Root className="flex w-full justify-start">
-      <div className={`min-w-0 rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel)] px-5 py-4 shadow-[0_16px_40px_rgba(0,0,0,0.06)] ${hasTool ? "w-full max-w-3xl" : "max-w-[85%] sm:max-w-3xl"}`}>
-        <MessagePrimitive.Parts
-          components={{
-            Text: MarkdownText,
-          }}
-        />
+        ) : null}
         <MessagePrimitive.Error>
-          <ErrorPrimitive.Root className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <ErrorPrimitive.Root className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             <ErrorPrimitive.Message />
           </ErrorPrimitive.Root>
         </MessagePrimitive.Error>
-      </div>
+      </motion.div>
     </MessagePrimitive.Root>
   );
 }
 
 function UserMessage() {
+  const isNew = useIsNewMessage();
+
   return (
     <MessagePrimitive.Root className="flex w-full justify-end">
-      <div className="max-w-[85%] rounded-[1.5rem] bg-[var(--accent)] px-5 py-4 text-[var(--accent-foreground)] shadow-[0_16px_40px_rgba(0,0,0,0.14)] sm:max-w-2xl">
+      <motion.div
+        className="max-w-[85%] rounded-[1.4rem] bg-[var(--user-bubble)] px-[18px] py-3 text-base leading-[1.55] sm:max-w-[560px] sm:rounded-[1.5rem] sm:px-[22px] sm:py-3.5 sm:text-lg"
+        initial={isNew ? { opacity: 0, y: 48 } : false}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      >
         <MessagePrimitive.Parts
           components={{
             Text: UserText,
           }}
         />
-      </div>
+      </motion.div>
     </MessagePrimitive.Root>
   );
 }
 
-function Composer({ onCancel }: { onCancel: () => void }) {
+// Cycles the landing example until the visitor focuses the composer or types.
+function useRotatingExample(enabled: boolean) {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    if (!enabled) return;
+    const timer = window.setInterval(() => setIndex((value) => value + 1), 4500);
+    return () => window.clearInterval(timer);
+  }, [enabled]);
+  return PROMPT_EXAMPLES[index % PROMPT_EXAMPLES.length];
+}
+
+function Composer({
+  variant,
+  onCancel,
+}: {
+  variant: "landing" | "dock";
+  onCancel: () => void;
+}) {
+  const composerRuntime = useComposerRuntime();
   const isRunning = useThread((state) => state.isRunning);
   const charCount = useComposer((state) => state.text.length);
-  const { theme } = useTheme();
+  const isBlank = useComposer((state) => state.text.trim().length === 0);
+  const [hasFocused, setHasFocused] = useState(false);
+  const isLanding = variant === "landing";
+  const example = useRotatingExample(isLanding && !hasFocused && charCount === 0);
   const wasRunningRef = useRef(false);
   const charCounterId = useId();
 
@@ -624,65 +423,105 @@ function Composer({ onCancel }: { onCancel: () => void }) {
     wasRunningRef.current = isRunning;
   }, [isRunning]);
 
-  // Inline styles for iOS Safari compatibility
-  const bgColor = theme === "dark" ? "rgba(23, 23, 23, 0.72)" : "rgba(255, 255, 255, 0.72)";
-  const inputBg = theme === "dark" ? "rgba(23, 23, 23, 0.9)" : "rgba(255, 255, 255, 0.9)";
+  // On the landing, sending an empty composer sends the example being shown.
+  const sendExample = () => {
+    composerRuntime.setText(example);
+    composerRuntime.send();
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!isLanding || !isBlank || isRunning) return;
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault();
+      sendExample();
+    }
+  };
+
+  const buttonSize = isLanding ? "h-12 w-12 sm:h-14 sm:w-14" : "h-11 w-11 sm:h-12 sm:w-12";
+  const buttonClass = `flex shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] transition hover:opacity-85 disabled:opacity-40 ${buttonSize}`;
+  const textClass = isLanding
+    ? "min-h-12 py-2.5 text-base sm:min-h-14 sm:py-4 sm:text-xl"
+    : "min-h-11 py-2.5 text-base sm:min-h-12 sm:text-lg";
 
   return (
-    <ComposerPrimitive.Root 
-      className="border-t border-[var(--border)] px-3 py-3 sm:px-6 sm:py-4"
-      style={{ backgroundColor: bgColor }}
-    >
-      <div className="mx-auto flex max-w-4xl items-end gap-2 sm:gap-3">
-        <ComposerPrimitive.Input
-          rows={1}
-          unstable_focusOnScrollToBottom={false}
-          unstable_focusOnRunStart={false}
-          className="max-h-[160px] min-h-[2.75rem] flex-1 resize-none overflow-y-auto rounded-[1.5rem] border border-[var(--border)] px-4 py-2.5 text-sm leading-6 shadow-[0_10px_30px_rgba(0,0,0,0.05)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] sm:px-5 sm:py-3"
-          style={{ backgroundColor: inputBg }}
-          placeholder="Ask me anything..."
-          maxLength={MAX_MESSAGE_CHARS}
-          aria-describedby={charCount >= CHAR_COUNTER_FROM ? charCounterId : undefined}
-        />
+    <ComposerPrimitive.Root>
+      <motion.div
+        layoutId="composer"
+        layout="position"
+        transition={composerLayoutTransition}
+        className={`flex items-end gap-2 rounded-[1.75rem] border border-[var(--border-strong)] bg-[var(--surface)] sm:gap-3 ${
+          isLanding
+            ? "py-1.5 pl-5 pr-1.5 shadow-[0_16px_48px_rgba(0,0,0,0.08)] sm:rounded-[2.25rem] sm:py-2.5 sm:pl-8 sm:pr-2.5 sm:shadow-[0_24px_80px_rgba(0,0,0,0.08)]"
+            : "py-1.5 pl-5 pr-1.5 sm:py-2 sm:pl-7 sm:pr-2"
+        }`}
+      >
+        <div className="relative flex flex-1 self-center">
+          <ComposerPrimitive.Input
+            rows={1}
+            unstable_focusOnScrollToBottom={false}
+            unstable_focusOnRunStart={false}
+            onFocus={() => setHasFocused(true)}
+            onKeyDown={handleKeyDown}
+            className={`max-h-[160px] w-full resize-none overflow-y-auto bg-transparent leading-6 outline-none placeholder:text-[var(--muted)] ${textClass}`}
+            placeholder={isLanding ? "" : "Reply\u2026"}
+            aria-label={isLanding ? "Tell me what you\u2019re working on" : "Reply"}
+            maxLength={MAX_MESSAGE_CHARS}
+            aria-describedby={charCount >= CHAR_COUNTER_FROM ? charCounterId : undefined}
+          />
+          {isLanding && charCount === 0 ? (
+            // The example slides up and out as the next one slides in.
+            <div
+              aria-hidden
+              className={`pointer-events-none absolute inset-0 overflow-hidden leading-6 text-[var(--muted)] ${textClass}`}
+            >
+              <AnimatePresence initial={false} mode="popLayout">
+                <motion.span
+                  key={example}
+                  className="block truncate"
+                  initial={{ y: "120%", opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: "-120%", opacity: 0 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                >
+                  Try &ldquo;{example}&rdquo;
+                </motion.span>
+              </AnimatePresence>
+            </div>
+          ) : null}
+        </div>
         {isRunning ? (
           <ComposerPrimitive.Cancel
             onClick={onCancel}
-            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] transition hover:opacity-85"
+            className={buttonClass}
             aria-label="Stop generating"
             data-cuelume-press="tick"
           >
             <Square size={16} fill="currentColor" />
           </ComposerPrimitive.Cancel>
-        ) : (
-          <ComposerPrimitive.Send
-            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] transition hover:opacity-85 disabled:opacity-40"
-            aria-label="Send message"
+        ) : isLanding && isBlank ? (
+          <button
+            type="button"
+            onClick={sendExample}
+            className={buttonClass}
+            aria-label={`Ask \u201c${example}\u201d`}
             data-cuelume-press
           >
-            <ArrowUp size={18} />
+            <ArrowUp size={22} />
+          </button>
+        ) : (
+          <ComposerPrimitive.Send className={buttonClass} aria-label="Send message" data-cuelume-press>
+            <ArrowUp size={isLanding ? 22 : 20} />
           </ComposerPrimitive.Send>
         )}
-      </div>
+      </motion.div>
       {charCount >= CHAR_COUNTER_FROM ? (
         <p
           id={charCounterId}
-          className="mx-auto mt-1.5 max-w-4xl px-1 text-right text-[11px] leading-4 text-[var(--muted)]"
+          className="mt-1.5 px-1 text-right text-[11px] leading-4 text-[var(--muted)]"
         >
           {charCount.toLocaleString()} / {MAX_MESSAGE_CHARS.toLocaleString()}
         </p>
       ) : null}
-      <p className="mx-auto mt-2 max-w-4xl px-1 text-center text-[11px] leading-4 text-[var(--muted)]">
-        Chats are processed by AI providers (OpenAI and Anthropic) and saved only in this
-        browser. Please don&apos;t share sensitive information.{" "}
-        <Link
-          href="/privacy"
-          className="underline underline-offset-2 transition hover:text-[var(--foreground)]"
-          data-cuelume-hover="whisper"
-          data-cuelume-press="tick"
-        >
-          Privacy
-        </Link>
-      </p>
     </ComposerPrimitive.Root>
   );
 }

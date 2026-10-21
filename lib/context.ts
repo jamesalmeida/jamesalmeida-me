@@ -2,7 +2,7 @@ import "server-only";
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { getProjects } from "@/data/portfolio";
+import { PROJECTS } from "@/data/portfolio";
 import { OFFER, SITE } from "@/data/site";
 
 const PLACEHOLDERS: Record<string, string> = {
@@ -10,7 +10,6 @@ const PLACEHOLDERS: Record<string, string> = {
   bookingUrl: SITE.bookingUrl,
   linkedin: SITE.linkedin,
   github: SITE.github,
-  resumeUrl: SITE.resumeUrl,
   x: SITE.x,
   xHandle: SITE.xHandle,
 };
@@ -60,28 +59,12 @@ function renderOffer(): string {
   ].join("\n");
 }
 
-function renderPortfolio(): string {
-  const format = (group: "featured" | "wip" | "earlier") =>
-    getProjects(group)
-      .map((project) => {
-        const link = project.url ? ` (${project.url})` : "";
-        const status = project.status ? ` Status: ${project.status}.` : "";
-        return `- **${project.name}.** ${project.oneLiner}${status}${link}`;
-      })
-      .join("\n");
+function renderPastWork(): string {
+  const projects = PROJECTS.map(
+    (project) => `- **${project.name}** (${project.company}). ${project.oneLiner}`,
+  ).join("\n");
 
-  return [
-    "## Portfolio",
-    "",
-    "### Featured",
-    format("featured"),
-    "",
-    "### Works in progress",
-    format("wip"),
-    "",
-    "### Earlier work",
-    format("earlier"),
-  ].join("\n");
+  return ["## Past work (shipped at those companies)", "", projects].join("\n");
 }
 
 // Module-level memo: react `cache()` only dedupes within a render, so route
@@ -96,6 +79,6 @@ export function getKnowledge(): string {
     return PLACEHOLDERS[key] ?? match;
   });
 
-  knowledge = `${filled.trim()}\n\n${renderOffer()}\n\n${renderPortfolio()}\n`;
+  knowledge = `${filled.trim()}\n\n${renderOffer()}\n\n${renderPastWork()}\n`;
   return knowledge;
 }

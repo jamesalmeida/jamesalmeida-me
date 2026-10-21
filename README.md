@@ -1,6 +1,6 @@
 # jamesalmeida.me
 
-Hiring portfolio first (remote building-with-AI role), AI-consulting lead tool second. The home page is a full-screen chat: visitors talk to James in first person, and the chat funnels them toward hiring him or working with him. `/consulting` and `/work` are normal pages for anyone who'd rather read.
+James Almeida's AI consulting site for individuals and small teams. The home page is a full-screen chat with a simple landing: a question ("What can I do for you?"), one line of story, and a big composer. The chat is run by Skaffen, James' AI assistant, which asks a few discovery questions, writes the visitor a brief, and helps them book a discovery call or email James. `/consulting` and `/about` are normal pages for anyone who'd rather read.
 
 **Production:** [www.jamesalmeida.me](https://www.jamesalmeida.me) (the apex host redirects to www).
 
@@ -21,9 +21,9 @@ Deployed on Vercel as project `jamesalmeida-portfolio`, team GSV (slug `gsv-2`).
 
 | Path | What it is |
 |---|---|
-| `/` | Full-screen chat (no page scroll). The empty state has the Konteks card, starter prompts and works-in-progress chips; the header has Hire me and Book a call. `/?thread=work-with-me` opens that thread. |
-| `/consulting` | Offer page, rendered from `OFFER` |
-| `/work` | Work page, rendered from `PROJECTS` |
+| `/` | Full-screen chat (no page scroll, no sidebar). Header: name, Book a discovery call (from `sm`), Menu. The Menu holds the links, theme and sound settings, and recent chats. |
+| `/consulting` | "How I can help", rendered from `OFFER`. The reading pages have a "Back to chat" button instead of a nav bar. |
+| `/about` | "Why I do this": the story and past work from `PROJECTS`. `/work` redirects here. |
 | `/admin` | Password-gated model switcher. Not indexed. |
 | `/api/chat` | Streaming chat |
 | `/api/generate-title` | Short title for a saved chat |
@@ -33,26 +33,20 @@ There is no `/api/admin/verify`.
 
 ## Voice and contact
 
-The site speaks as James ("I", "my"). General Systems Ventures is only how contracts and billing are handled. Public contact is `james@gsv.to`, [X](https://x.com/james_almeida), [GitHub](https://github.com/jamesalmeida), and [LinkedIn](https://linkedin.com/in/jamesworkswell). Do not add a phone number, and do not state how long the intro call is. Personal apps are works in progress — not shipped, not in production.
+The pages speak as James ("I", "my"). The chat is Skaffen, James' AI assistant (named after the drone in Iain M. Banks' *Use of Weapons*), and talks about James in the third person. General Systems Ventures is only how contracts and billing are handled. Public contact is `james@gsv.to`, [X](https://x.com/james_almeida), [GitHub](https://github.com/jamesalmeida), and [LinkedIn](https://linkedin.com/in/jamesworkswell). Do not add a phone number, and do not state how long the discovery call is. James' personal apps haven't shipped, so the site and the chat don't mention them.
 
 ## Where content lives
 
-- `data/site.ts` — `SITE` and `OFFER` (audience, steps, price ranges, defaults, examples, FAQ). Pages must render prices from here. Hero/bio/contact and `konteksDemo` live here too.
-- `data/portfolio.ts` — projects. The `confirmed` flag is never shown.
-- `data/knowledge.md` — bio the bot reads. Placeholders such as `{{email}}` are filled from `SITE`.
+- `data/site.ts` — `SITE` (subhead, contact, booking, the assistant), `HEADLINES` (landing question and A/B candidates), `PROMPT_EXAMPLES` (rotating placeholders) and `OFFER` (audience, steps, price ranges, defaults, examples, FAQ). Pages must render prices from here.
+- `data/portfolio.ts` — past company work. The `confirmed` flag is never shown.
+- `data/knowledge.md` — what Skaffen knows about James, in the third person. Placeholders such as `{{email}}` are filled from `SITE`.
 - Provisional decisions are a single value with a `// PROVISIONAL:` comment (TypeScript) or `<!-- // PROVISIONAL: ... -->` (Markdown). List them with `rg "PROVISIONAL"`.
 
-### Swap the Konteks demo clip
-
-1. Drop an `.mp4`, `.webm`, `.gif`, `.png`, `.jpg`, or `.webp` in `public/media/`.
-2. In `data/site.ts`, set `SITE.konteksDemo.src` to that path (for example `"/media/konteks-demo.mp4"`). Optional `poster` for video.
-3. Leave `src: null` to keep the placeholder. The media shows in the General Chat empty state and on the Konteks project card. mp4/webm autoplay muted loop `playsInline`; images render as an `<img>`.
-
-`lib/context.ts` strips those HTML comments, fills the placeholders, and appends the offer and portfolio before they go into the system prompt.
+`lib/context.ts` strips those HTML comments, fills the placeholders, and appends the offer and past work before they go into the system prompt.
 
 ## Chat tools
 
-Buying intent shows a booking card (`showBookingCta`). Asking about projects shows portfolio cards (`showPortfolio`). Both are defined in `lib/chat-tools.ts` and rendered in `components/tool-cards.tsx`.
+Asking how to book or contact James shows a booking card (`showBookingCta`). Once Skaffen understands what the visitor needs, it shows "Your brief" (`showBrief`): an editable summary whose buttons put it in a Cal booking's notes or an email to James. Nothing is sent unless the visitor clicks. Both tools are defined in `lib/chat-tools.ts` and rendered in `components/tool-cards.tsx`.
 
 `/api/chat` rejects bodies over 200 KB, drops system messages and unknown parts, keeps the last 20 messages, and truncates each text part to 2,000 characters. Title generation rejects bodies over 10 KB.
 

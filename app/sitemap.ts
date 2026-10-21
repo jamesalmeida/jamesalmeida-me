@@ -5,7 +5,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: SITE.url },
     { url: `${SITE.url}/consulting` },
-    { url: `${SITE.url}/work` },
+    { url: `${SITE.url}/about` },
     { url: `${SITE.url}/privacy` },
   ];
 }

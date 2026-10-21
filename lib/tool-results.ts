@@ -1,7 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
-import { selectProjects, toPublicProjects, type PublicProject } from "@/data/portfolio";
+import { BRIEF_FIELDS, MAX_BRIEF_FIELD_CHARS, type Brief } from "@/lib/brief";
 import { SITE } from "@/data/site";
 
 // Shared by lib/chat-tools.ts (live tool calls) and lib/sanitize-messages.ts
@@ -11,13 +11,23 @@ import { SITE } from "@/data/site";
 // the old `reason` field validates and is sent on as `{}`.
 export const bookingCtaInputSchema = z.object({});
 
-export const portfolioInputSchema = z.object({
-  ids: z.array(z.string()).optional(),
-  group: z.enum(["featured", "wip", "earlier", "all"]).optional(),
-});
+const briefField = z.string().trim().max(MAX_BRIEF_FIELD_CHARS).optional();
+
+// Same keys as BRIEF_FIELDS in lib/brief.ts.
+export const briefInputSchema = z
+  .object({
+    who: briefField,
+    challenge: briefField,
+    tried: briefField,
+    hopingFor: briefField,
+    timing: briefField,
+  })
+  .refine((brief) => Boolean(brief.who || brief.challenge), {
+    message: "A brief needs at least who the visitor is or what's in the way.",
+  });
 
 export type BookingCtaInput = z.infer<typeof bookingCtaInputSchema>;
-export type PortfolioInput = z.infer<typeof portfolioInputSchema>;
+export type BriefInput = z.infer<typeof briefInputSchema>;
 
 export type BookingCtaOutput = {
   bookingUrl: string;
@@ -25,7 +35,7 @@ export type BookingCtaOutput = {
   email: string;
 };
 
-export type PortfolioOutput = { projects: PublicProject[] };
+export type BriefOutput = BookingCtaOutput & { brief: Brief };
 
 export function bookingCtaOutput(): BookingCtaOutput {
   return {
@@ -35,6 +45,11 @@ export function bookingCtaOutput(): BookingCtaOutput {
   };
 }
 
-export function portfolioOutput(input: PortfolioInput): PortfolioOutput {
-  return { projects: toPublicProjects(selectProjects(input)) };
+export function briefOutput(input: BriefInput): BriefOutput {
+  const brief: Brief = {};
+  for (const { key } of BRIEF_FIELDS) {
+    const value = input[key];
+    if (value) brief[key] = value;
+  }
+  return { ...bookingCtaOutput(), brief };
 }

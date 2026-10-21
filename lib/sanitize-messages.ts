@@ -4,17 +4,16 @@ import type { UIMessage } from "ai";
 import {
   bookingCtaInputSchema,
   bookingCtaOutput,
-  portfolioInputSchema,
-  portfolioOutput,
+  briefInputSchema,
+  briefOutput,
 } from "@/lib/tool-results";
 
 const MAX_MESSAGES = 20;
 const MAX_TEXT_CHARS = 2_000;
 const MAX_TOOL_PARTS_PER_MESSAGE = 4;
-const MAX_TOOL_INPUT_CHARS = 1_024;
+// A full brief is five fields of up to 200 characters, plus keys and quotes.
+const MAX_TOOL_INPUT_CHARS = 1_536;
 const MAX_TOTAL_TOOL_INPUT_CHARS = 8 * 1_024;
-const MAX_PORTFOLIO_IDS = 20;
-const MAX_PORTFOLIO_ID_CHARS = 64;
 const TOOL_CALL_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 
 type ToolBudget = { inputChars: number };
@@ -55,23 +54,16 @@ function rebuildToolPart(
     };
   }
 
-  if (type === "tool-showPortfolio") {
-    const parsed = portfolioInputSchema.safeParse(input);
+  if (type === "tool-showBrief") {
+    const parsed = briefInputSchema.safeParse(input);
     if (!parsed.success) return null;
-    const ids = parsed.data.ids;
-    if (
-      ids &&
-      (ids.length > MAX_PORTFOLIO_IDS || ids.some((id) => id.length > MAX_PORTFOLIO_ID_CHARS))
-    ) {
-      return null;
-    }
     budget.inputChars += inputChars;
     return {
       type,
       toolCallId,
       state: "output-available",
       input: parsed.data,
-      output: portfolioOutput(parsed.data),
+      output: briefOutput(parsed.data),
     };
   }
 

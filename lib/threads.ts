@@ -1,25 +1,10 @@
 import type { UIMessage } from "ai";
 
-// Static thread ids — built-in threads. Keep these ids so stored state survives.
-export type StaticThreadId =
-  | "new-chat"
-  | "work-with-me"
-  | "projects"
-  | "experience"
-  | "socials"
-  | "resume";
+// The one built-in thread. A chat moves into history after its first reply.
+export type StaticThreadId = "new-chat";
 
-// ThreadId is now open — includes static ids + dynamic history ids ("history-{timestamp}")
+// Includes the static id and history ids ("history-{timestamp}").
 export type ThreadId = string;
-
-export type PortfolioThread = {
-  id: string;
-  title: string;
-  icon: string;
-  description: string;
-  seeded: boolean;
-  baseMessages: UIMessage[];
-};
 
 export type StoredThreadState = {
   userMessages: UIMessage[];
@@ -31,8 +16,8 @@ export type StoredThreads = Record<string, StoredThreadState>;
 
 export interface HistoryThread {
   id: string;              // "history-{timestamp}"
-  title: string;           // source thread title (e.g. "Experience")
-  icon: string;            // source thread icon (e.g. "XP")
+  title: string;           // generated title, else "New chat"
+  icon: string;            // kept for stored history; not shown
   description: string;     // first user message, truncated
   createdAt: number;
   sourceThreadId: string;  // which thread was forked from
@@ -46,62 +31,8 @@ export const HISTORY_THREADS_KEY = "jamesalmeida-history-threads";
 export const MAX_HISTORY_THREADS = 50;
 export const MAX_MESSAGES_PER_THREAD = 100;
 
-export const THREADS: PortfolioThread[] = [
-  {
-    id: "new-chat",
-    title: "General Chat",
-    icon: "JA",
-    description: "Ask me about my agent setup, my work, or how to hire me.",
-    seeded: false,
-    baseMessages: [],
-  },
-  {
-    id: "work-with-me",
-    title: "Work with me",
-    icon: "AI",
-    description:
-      "AI consulting for small businesses: how it works, price ranges, and booking a free intro call.",
-    seeded: true,
-    baseMessages: [],
-  },
-  {
-    id: "projects",
-    title: "Portfolio",
-    icon: "PJ",
-    description:
-      "Konteks, works in progress, and earlier product work.",
-    seeded: true,
-    baseMessages: [],
-  },
-  {
-    id: "experience",
-    title: "Experience",
-    icon: "XP",
-    description: "Career timeline across AI consulting, product engineering, and design-heavy web work.",
-    seeded: true,
-    baseMessages: [],
-  },
-  {
-    id: "socials",
-    title: "Contact",
-    icon: "SO",
-    description: "Email, X, GitHub, or book a call.",
-    seeded: true,
-    baseMessages: [],
-  },
-  {
-    id: "resume",
-    title: "Resume",
-    icon: "CV",
-    description: "Condensed resume highlights plus the PDF download.",
-    seeded: true,
-    baseMessages: [],
-  },
-];
-
-export const THREADS_BY_ID: Record<string, PortfolioThread> = Object.fromEntries(
-  THREADS.map((thread) => [thread.id, thread]),
-);
+export const NEW_CHAT_ID: StaticThreadId = "new-chat";
+const SITE_ICON = "SA";
 
 const isTextPart = (part: unknown): part is { type: "text"; text: string } => {
   if (!part || typeof part !== "object") return false;
@@ -148,7 +79,14 @@ const normalizeStoredMessage = (value: unknown): UIMessage | null => {
 };
 
 export function isStaticThreadId(value: string): value is StaticThreadId {
-  return value in THREADS_BY_ID;
+  return value === NEW_CHAT_ID;
+}
+
+// The stored active thread if it still exists, else a new chat. Ids of the old
+// pinned threads (e.g. "projects") fall back to a new chat.
+export function resolveActiveThreadId(stored: string, history: readonly HistoryThread[]): string {
+  if (isStaticThreadId(stored)) return stored;
+  return history.some((item) => item.id === stored) ? stored : NEW_CHAT_ID;
 }
 
 // localStorage can be missing or throw (privacy modes, disabled storage). Never throw from here.
@@ -292,7 +230,7 @@ export function writeStoredThreads(threads: StoredThreads): StoredThreads | null
 }
 
 // Removes every chat key this site writes (messages, history list, active thread).
-// Theme, accent and sound preferences are kept.
+// Theme and sound preferences are kept.
 export function clearStoredChats() {
   const storage = getStorage();
   if (!storage) return;
@@ -306,7 +244,7 @@ export function clearStoredChats() {
 }
 
 export function readStoredActiveThread(): string {
-  return safeGetItem(ACTIVE_THREAD_STORAGE_KEY) ?? "new-chat";
+  return safeGetItem(ACTIVE_THREAD_STORAGE_KEY) ?? NEW_CHAT_ID;
 }
 
 export function writeStoredActiveThread(threadId: string) {
@@ -357,15 +295,10 @@ export function createHistoryThread(
   const description =
     firstText.length > 72 ? `${firstText.slice(0, 72).trim()}\u2026` : firstText;
 
-  // Use the source thread's title and icon so history entries are grouped by thread
-  const sourceThread = THREADS_BY_ID[sourceThreadId];
-  const title = sourceThread?.title ?? "General Chat";
-  const icon = sourceThread?.icon ?? "JA";
-
   return {
     id: `history-${Date.now()}`,
-    title,
-    icon,
+    title: "New chat",
+    icon: SITE_ICON,
     description,
     createdAt: Date.now(),
     sourceThreadId,
@@ -376,8 +309,7 @@ export function getThreadMessages(
   threadId: string,
   storedThreads: StoredThreads,
 ): UIMessage[] {
-  // Pinned threads start empty. Suggestion pills are the landing state.
-  // The system prompt carries the knowledge, so a fresh message is enough.
+  // A new chat starts empty: the landing is its empty state.
   return storedThreads[threadId]?.userMessages ?? [];
 }
 
@@ -397,24 +329,4 @@ export function saveThreadMessages(
     ...storedThreads,
     [threadId]: nextState,
   };
-}
-
-export function getThreadPreview(
-  threadId: string,
-  storedThreads: StoredThreads,
-  fallback?: string,
-): string {
-  const stored = storedThreads[threadId]?.userMessages ?? [];
-
-  for (let index = stored.length - 1; index >= 0; index -= 1) {
-    const message = stored[index];
-    if (message.role !== "user") continue;
-
-    const part = message.parts.find(isTextPart);
-    if (!part) continue;
-
-    return part.text.length > 72 ? `${part.text.slice(0, 72).trim()}...` : part.text;
-  }
-
-  return fallback ?? THREADS_BY_ID[threadId]?.description ?? "";
 }

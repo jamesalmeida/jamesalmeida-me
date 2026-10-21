@@ -45,17 +45,17 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
       <>
         <p>
           Your chats are saved in your browser&apos;s localStorage so they&apos;re still there
-          when you come back. That includes your messages, the replies, your chat history list
-          and which chat you had open. Your theme, accent color and sound settings are saved
-          there too. It&apos;s stored as plain text, so anyone using this browser profile can
+          when you come back. That includes your messages, the replies (including any brief
+          the assistant writes for you), your recent chats list and which chat you had open.
+          Your theme and sound settings are saved there too. It&apos;s stored as plain text, so anyone using this browser profile can
           read it.
         </p>
         <p>To delete it:</p>
         <ul className="list-disc space-y-1 pl-5">
           <li>
-            Open Settings in the chat sidebar and choose <strong>Clear all chats</strong>.
+            Open the <strong>Menu</strong> on the chat and choose <strong>Clear all chats</strong>.
           </li>
-          <li>Delete a single chat from your history with its trash icon.</li>
+          <li>Delete a single chat from Recent chats in the Menu with its trash icon.</li>
           <li>Or clear this site&apos;s data in your browser settings.</li>
         </ul>
       </>
@@ -91,17 +91,25 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
   {
     title: "Booking and email",
     body: (
-      <p>
-        The booking links open Cal.com, which handles anything you enter there. If you email
-        me, the message goes to my inbox.
-      </p>
+      <>
+        <p>
+          The booking links open Cal.com, which handles anything you enter there. If you email
+          me, the message goes to my inbox.
+        </p>
+        <p>
+          If the assistant writes you a brief, it stays in your browser. It only reaches me if
+          you choose to send it: the email button puts it in a new email in your own mail app,
+          and the booking button puts it in the notes on the Cal.com booking page. You can edit
+          it first.
+        </p>
+      </>
     ),
   },
 ];
 
 export default function PrivacyPage() {
   return (
-    <SitePageShell current="privacy">
+    <SitePageShell>
       <article className="space-y-10 pb-16">
         <header className="space-y-3">
           <p className="eyebrow text-xs text-[var(--muted)]">Privacy</p>

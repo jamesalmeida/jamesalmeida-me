@@ -1,66 +1,46 @@
 import Link from "next/link";
-import { BookingOutlineButton, HireButton } from "@/components/booking-button";
-import { getProjects } from "@/data/portfolio";
-import { SITE } from "@/data/site";
+import { HEADLINES, PROMPT_EXAMPLES, SITE } from "@/data/site";
+import { serif } from "./booking-button";
+import { SiteHeader } from "./site-header";
 
-const serif =
-  "font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif]";
-
-const linkClass = "text-[var(--foreground)] underline-offset-4 hover:underline";
-
-// Server-rendered before the chat hydrates. Same app-shell/app-panel frame as
-// ChatApp, so there is no layout shift, and crawlers get real text and an h1.
+// Server-rendered before the chat hydrates. Same layout as the chat's landing, so
+// there is no layout shift, and crawlers get the real h1, copy and links.
 export function StaticIntro() {
-  const wip = [...getProjects("featured"), ...getProjects("wip")];
-
   return (
-    <div className="app-shell flex items-stretch justify-center px-3 sm:px-4 min-[431px]:py-4">
-      <div className="app-panel grain-panel w-full overflow-y-auto rounded-[2rem] border border-[var(--border)]">
-        <div className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-8 sm:px-10 sm:py-12">
-          <div className="space-y-3">
-            <p className="eyebrow text-xs text-[var(--muted)]">{SITE.locationLine}</p>
-            <h1 className={`text-4xl tracking-[-0.04em] sm:text-5xl ${serif}`}>{SITE.name}</h1>
-            <p className="text-lg leading-7 text-[var(--foreground)]">{SITE.heroLine}</p>
+    <div className="app-shell flex flex-col overflow-hidden">
+      <SiteHeader />
+      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="flex flex-1 flex-col items-center justify-center gap-5 px-4 pb-16 pt-4 sm:gap-7 sm:px-12 sm:pb-20">
+          <h1
+            className={`max-w-[1000px] text-center text-[44px] font-normal leading-[1.05] tracking-[-0.02em] sm:text-[72px] lg:text-[88px] lg:leading-[1.02] ${serif}`}
+          >
+            {HEADLINES[0]}
+          </h1>
+          <p className="max-w-[720px] text-center text-[17px] leading-[1.5] text-[var(--muted)] sm:text-[22px]">
+            {SITE.subhead}
+          </p>
+          <div
+            aria-hidden
+            className="mt-3 flex min-h-[61px] w-full max-w-[780px] items-center rounded-[1.75rem] border border-[var(--border-strong)] bg-[var(--surface)] pl-5 text-base text-[var(--muted)] shadow-[0_16px_48px_rgba(0,0,0,0.08)] sm:mt-5 sm:min-h-[77px] sm:rounded-[2.25rem] sm:pl-8 sm:text-xl sm:shadow-[0_24px_80px_rgba(0,0,0,0.08)]"
+          >
+            Try &ldquo;{PROMPT_EXAMPLES[0]}&rdquo;
           </div>
-          <p className="text-sm leading-6 text-[var(--muted)] sm:text-base">{SITE.bio}</p>
-          <div className="space-y-2">
-            <p className="eyebrow text-xs text-[var(--muted)]">Works in progress</p>
-            <ul className="flex flex-wrap gap-2">
-              {wip.map((project) => (
-                <li
-                  key={project.id}
-                  className="rounded-full border border-[var(--border)] bg-[var(--panel)] px-3 py-1.5 text-sm"
-                >
-                  {project.name}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <HireButton />
-            <BookingOutlineButton />
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-            <Link href="/work" className={linkClass} data-cuelume-hover="whisper" data-cuelume-press="tick">
-              Work
-            </Link>
-            <Link
-              href="/consulting"
-              className={linkClass}
-              data-cuelume-hover="whisper"
-              data-cuelume-press="tick"
-            >
-              Consulting
-            </Link>
-            <Link href="/privacy" className={linkClass} data-cuelume-hover="whisper" data-cuelume-press="tick">
-              Privacy
-            </Link>
-            <a href={SITE.resumeUrl} className={linkClass} data-cuelume-hover="whisper" data-cuelume-press="tick">
-              Resume
-            </a>
-          </div>
+          <nav aria-label="Site" className="sr-only">
+            <Link href="/consulting">How I can help</Link>
+            <Link href="/about">Why I do this</Link>
+            <Link href="/privacy">Privacy</Link>
+            <a href={SITE.bookingUrl}>{SITE.bookingLabel}</a>
+            <a href={`mailto:${SITE.email}`}>Email me</a>
+          </nav>
         </div>
-      </div>
+        <p className="px-4 pb-5 text-center text-[11px] leading-4 text-[var(--muted)] sm:px-12 sm:pb-6 sm:text-xs">
+          Chats are processed by AI providers (OpenAI and Anthropic) and saved only in this browser.
+          Please don&apos;t share sensitive information.{" "}
+          <Link href="/privacy" className="underline underline-offset-2">
+            Privacy
+          </Link>
+        </p>
+      </main>
     </div>
   );
 }
