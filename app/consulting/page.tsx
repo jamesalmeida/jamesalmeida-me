@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 
 export default function ConsultingPage() {
   return (
-    <SitePageShell current="consulting">
+    <SitePageShell>
       <article className="space-y-12 pb-16">
         <header className="space-y-4">
           <p className="eyebrow text-xs text-[var(--muted)]">How I can help</p>

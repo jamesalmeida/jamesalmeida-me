@@ -14,9 +14,11 @@ type ModalProps = {
   layout?: "center" | "sheet";
 };
 
+// The sheet draws its own animated backdrop, so its ::backdrop is transparent.
 const LAYOUT_CLASSES = {
-  center: "items-center justify-center px-4",
-  sheet: "items-stretch justify-end sm:p-5",
+  center:
+    "items-center justify-center px-4 backdrop:bg-[rgba(0,0,0,0.4)] backdrop:backdrop-blur-[8px]",
+  sheet: "items-stretch justify-end backdrop:bg-transparent sm:p-5",
 };
 
 // Native <dialog> opened with showModal(): the browser traps focus, closes on Escape
@@ -51,12 +53,20 @@ export function Modal({
       if (!dialog.open) onCloseRef.current();
     };
 
+    // Escape: let the owner close it (and animate out) instead of closing at once.
+    const handleCancel = (event: Event) => {
+      event.preventDefault();
+      onCloseRef.current();
+    };
+
     dialog.addEventListener("close", handleClose);
+    dialog.addEventListener("cancel", handleCancel);
     if (!dialog.open) dialog.showModal();
     initialFocusRef?.current?.focus();
 
     return () => {
       dialog.removeEventListener("close", handleClose);
+      dialog.removeEventListener("cancel", handleCancel);
       if (dialog.open) dialog.close();
       if (returnFocusTarget?.isConnected) returnFocusTarget.focus();
     };
@@ -66,7 +76,7 @@ export function Modal({
     <dialog
       ref={dialogRef}
       aria-labelledby={labelledBy}
-      className={`fixed inset-0 m-0 h-full max-h-none w-full max-w-none overflow-y-auto border-0 bg-transparent p-0 text-[var(--foreground)] open:flex backdrop:bg-[rgba(0,0,0,0.4)] backdrop:backdrop-blur-[8px] ${LAYOUT_CLASSES[layout]}`}
+      className={`fixed inset-0 m-0 h-full max-h-none w-full max-w-none overflow-y-auto border-0 bg-transparent p-0 text-[var(--foreground)] open:flex ${LAYOUT_CLASSES[layout]}`}
       onMouseDown={(e) => {
         pressStartedOnBackdrop.current = e.target === e.currentTarget;
       }}

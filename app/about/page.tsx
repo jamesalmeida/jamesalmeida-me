@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <SitePageShell current="about">
+    <SitePageShell>
       <article className="space-y-12 pb-16">
         <header className="space-y-4">
           <p className="eyebrow text-xs text-[var(--muted)]">Why I do this</p>

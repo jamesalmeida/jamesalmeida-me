@@ -153,10 +153,9 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
     [activeThreadId, forkIntoHistory],
   );
 
-  // Shows a fresh landing. A new chat that never got a reply (e.g. an error) is
-  // kept in history rather than lost.
+  // Shows a fresh landing (menu "New chat" and the name in the header). A new chat
+  // that never got a reply (e.g. an error) is kept in history rather than lost.
   const handleNewChat = useCallback(() => {
-    setIsMenuOpen(false);
     if (isStaticThreadId(activeThreadId)) {
       const unsaved = storedThreadsRef.current[NEW_CHAT_ID]?.userMessages ?? [];
       chatGenerationRef.current += 1;
@@ -167,9 +166,9 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
     setActiveThreadId(NEW_CHAT_ID);
   }, [activeThreadId, forkIntoHistory]);
 
+  // The menu animates itself closed after these, then calls onClose.
   const handleSelectThread = useCallback((threadId: string) => {
     setActiveThreadId(threadId);
-    setIsMenuOpen(false);
   }, []);
 
   const handleDeleteThread = useCallback(
@@ -200,7 +199,6 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
     setHistoryThreads([]);
     setActiveThreadId(NEW_CHAT_ID);
     setChatGeneration(chatGenerationRef.current);
-    setIsMenuOpen(false);
   }, []);
 
   if (!isHydrated) {
@@ -212,7 +210,11 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
 
   return (
     <div className="app-shell flex flex-col overflow-hidden">
-      <SiteHeader menuButtonRef={menuButtonRef} onOpenMenu={() => setIsMenuOpen(true)} />
+      <SiteHeader
+        menuButtonRef={menuButtonRef}
+        onOpenMenu={() => setIsMenuOpen(true)}
+        onNewChat={handleNewChat}
+      />
       <main className="flex min-h-0 flex-1 flex-col">
         <Thread
           key={`${activeThreadId}:${chatGeneration}`}

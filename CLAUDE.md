@@ -81,7 +81,7 @@ components/
   static-intro.tsx             # Pre-hydration fallback for `/`: same header + landing, real h1, links
   site-header.tsx              # Top bar: name, "Book a discovery call" (from `sm`), Menu
   site-menu.tsx                # Menu sheet: theme, sound, links, booking, recent chats, clear all
-  site-nav.tsx                 # Nav for /consulting, /about, /privacy
+  site-page-shell.tsx          # /consulting, /about, /privacy: a "Back to chat" button, then the page
   chat-app.tsx                 # Full-screen chat shell (app-shell), header, menu, threads
   thread.tsx                   # Landing (headline + composer) until the first message, then the conversation
   tool-cards.tsx               # showBookingCta / showBrief cards
@@ -162,13 +162,14 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 `/` must stay a full-screen chat. It must never become a scrolling page with sections.
 
 - `ChatApp` fills the viewport (`.app-shell`, height `var(--app-height, 100dvh)`; `body` is fixed with `overflow: hidden`). The document never scrolls. Only the message viewport and the menu scroll.
-- Layout: `SiteHeader` (name, "Book a discovery call" from `sm` up, Menu), then the thread. There is no sidebar.
-- Landing (a thread with no messages): the h1 is `HEADLINES[0]`, then `SITE.subhead`, then a large composer whose placeholder rotates through `PROMPT_EXAMPLES` every 4.5 s until the visitor focuses it or types. No suggestion chips, no project cards. The privacy notice sits at the bottom.
+- Layout: `SiteHeader` (name, "Book a discovery call" from `sm` up, Menu), then the thread. There is no sidebar. Clicking the name starts a new chat (the current one stays in Recent chats); `SiteHeader` is a client component for that.
+- Landing (a thread with no messages): the h1 is `HEADLINES[0]`, then `SITE.subhead`, then a large composer that shows "Try “…”" with an example from `PROMPT_EXAMPLES`. The example slides out and the next slides in every 4.5 s until the visitor focuses the composer or types (an `aria-hidden` overlay, since a native placeholder can't animate). Sending an empty landing composer (button or Enter) sends the example shown. No suggestion chips, no project cards. The privacy notice sits at the bottom.
+- First send: the landing fades up and away (`AnimatePresence`), the composer glides to the dock (shared `layoutId="composer"`, `layout="position"`), the first message slides up into place and the reply fades in. Only messages that weren't there when the thread mounted animate (`InitialMessageIdsContext`), so restored chats don't replay.
 - Conversation: a centered column (`max-w-[760px]`), user messages in `--user-bubble` bubbles, assistant messages as plain text under the Skaffen label, the composer docked at the bottom with the privacy notice.
 - On phones the booking button lives only in the menu and in the booking/brief cards.
-- Menu (`SiteMenu`, a `Modal` with `layout="sheet"`: full screen on phones, a right-hand panel from `sm`): theme chooser (System / Light / Dark, icon buttons with `aria-pressed`), an icon-only sound button, close; then New chat, How I can help, Why I do this, Email me, Privacy; the booking button; and a Recent chats card with per-chat delete and "Clear all chats" (with a confirm step).
+- Menu (`SiteMenu`, a `Modal` with `layout="sheet"`: full screen on phones, a right-hand panel from `sm`) grows out of the Menu button (transform origin at its centre) and shrinks back into it on close; it draws its own fading backdrop. Closing (button, Escape, backdrop, or after New chat / a recent chat / Clear all) animates first and then calls `onClose`. theme chooser (System / Light / Dark, icon buttons with `aria-pressed`), an icon-only sound button, close; then New chat, How I can help, Why I do this, Email me, Privacy (large, slightly tight tracking, underlined on hover and focus); the booking button; and a Recent chats card with per-chat delete and "Clear all chats" (with a confirm step).
 - Before hydration, `StaticIntro` renders the same header and landing in the same frame (no layout shift) with the real h1 and crawlable links. No prices.
-- `/consulting`, `/about` and `/privacy` are normal scrolling pages (`.site-page`) and link back to `/`.
+- `/consulting`, `/about` and `/privacy` are normal scrolling pages (`.site-page`, `SitePageShell`) with a single "Back to chat" button at the top, no nav bar.
 
 ### Persistence
 - There is one built-in thread, `new-chat` (the landing). User messages live in `localStorage` per thread. A stored active id that is no longer valid (e.g. the old pinned threads `projects`, `work-with-me`) falls back to `new-chat` (`resolveActiveThreadId`), and their stored messages are pruned.
@@ -186,12 +187,13 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 ### Theme, motion and accessibility
 - `app/layout.tsx` runs `themeInitScript` (`lib/theme.ts`) in `<head>`. It sets the `dark` class and the theme-color meta before first paint. A stored `light` or `dark` wins; `system` (or nothing stored) follows `prefers-color-scheme`, and `ThemeProvider` keeps following it live. Keep the two in line.
 - The accent is fixed (slate `#2f4858`, `#8ba4b5` in dark). There is no accent picker.
-- `prefers-reduced-motion` is respected: `MotionConfig reducedMotion="user"` in `ThemeProvider`, and a media query in `globals.css` that turns off CSS transitions and animations. Sounds default to on (the owner's choice).
+- `prefers-reduced-motion` is respected: `MotionConfig reducedMotion="user"` in `ThemeProvider`, and a media query in `globals.css` that turns off CSS transitions and animations. Sounds default to off until the visitor turns them on (stored as `jamesalmeida-sounds: "on"`); the sounds themselves will be revisited.
+- Theme changes fade: `ThemeProvider.setPreference` puts `.theme-transition` on `<html>` for 500 ms, and `globals.css` transitions colours under it (only without reduced motion). The selected theme pill slides (`layoutId="theme-pill"`).
 - `ChatApp` has a visually hidden `aria-live="polite"` region. It announces the text of the latest completed reply once the run ends, not every token. It lives in `ChatApp` because the first reply remounts `Thread`.
 - The composer has `maxLength={2000}`, the same as the server's per-part cap, and shows a character counter from 1,800 characters.
 
 ### Dialogs and menus
-- Modals use `components/modal.tsx`: a native `<dialog>` opened with `showModal()` (focus trap, Escape, top layer), labelled via `aria-labelledby`, closed on backdrop click, and returning focus to the trigger (or `returnFocusRef`). Mount it only while open. Don't build new modals from `div`s. Its `close` handler ignores a close event that arrives while the dialog is open again (StrictMode in dev).
+- Modals use `components/modal.tsx`: a native `<dialog>` opened with `showModal()` (focus trap, Escape, top layer), labelled via `aria-labelledby`, closed on backdrop click, and returning focus to the trigger (or `returnFocusRef`). Mount it only while open. Don't build new modals from `div`s. Its `close` handler ignores a close event that arrives while the dialog is open again (StrictMode in dev). Escape (`cancel`) is turned into `onClose` instead of closing natively, so an owner can animate out first. The sheet layout has a transparent `::backdrop`.
 - The site menu is that dialog with `layout="sheet"`. It opens with focus on its close button and returns focus to the Menu button.
 
 ### Chat tools and abuse caps

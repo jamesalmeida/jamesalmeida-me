@@ -221,6 +221,20 @@ body {
   border-bottom-color: rgba(245, 245, 245, 0.1);
 }
 
+/* Added briefly by ThemeProvider when the theme changes, so colours fade instead of
+   jumping. Only without reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .theme-transition,
+  .theme-transition *,
+  .theme-transition *::before,
+  .theme-transition *::after {
+    transition-property: background-color, border-color, color, fill, stroke, box-shadow !important;
+    transition-duration: 450ms !important;
+    transition-timing-function: ease !important;
+    transition-delay: 0ms !important;
+  }
+}
+
 /* prefers-reduced-motion: no CSS transitions or animations. framer-motion is
    handled by <MotionConfig reducedMotion="user"> in ThemeProvider. */
 @media (prefers-reduced-motion: reduce) {

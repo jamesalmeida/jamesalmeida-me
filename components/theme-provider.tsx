@@ -2,7 +2,7 @@
 
 import { bind, play, setEnabled } from "cuelume";
 import { MotionConfig } from "framer-motion";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import {
   THEME_COLORS,
   THEME_PREFERENCES,
@@ -14,6 +14,8 @@ import {
 export { THEME_PREFERENCES, type ThemePreference } from "@/lib/theme";
 
 const SOUNDS_STORAGE_KEY = "jamesalmeida-sounds";
+// How long the theme-transition class stays on <html> (see globals.css).
+const THEME_TRANSITION_MS = 500;
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 
 interface ThemeContextType {
@@ -46,7 +48,8 @@ function writeStorage(key: string, value: string) {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [preference, setPreferenceState] = useState<ThemePreference>("system");
   const [systemTheme, setSystemTheme] = useState<Theme>("light");
-  const [soundsEnabled, setSoundsEnabled] = useState(true);
+  // Sounds are off until the visitor turns them on.
+  const [soundsEnabled, setSoundsEnabled] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -60,7 +63,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     updateSystemTheme();
     query.addEventListener("change", updateSystemTheme);
 
-    const enabled = readStorage(SOUNDS_STORAGE_KEY) !== "off";
+    const enabled = readStorage(SOUNDS_STORAGE_KEY) === "on";
     setSoundsEnabled(enabled);
     setEnabled(enabled);
     bind();
@@ -77,7 +80,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.getElementById("theme-color-meta")?.setAttribute("content", THEME_COLORS[theme]);
   }, [theme, mounted]);
 
+  const transitionTimer = useRef<number | undefined>(undefined);
+
+  // Colours fade to the new theme instead of jumping (globals.css .theme-transition).
   const setPreference = (next: ThemePreference) => {
+    const root = document.documentElement;
+    root.classList.add("theme-transition");
+    window.clearTimeout(transitionTimer.current);
+    transitionTimer.current = window.setTimeout(
+      () => root.classList.remove("theme-transition"),
+      THEME_TRANSITION_MS,
+    );
     setPreferenceState(next);
     writeStorage(THEME_STORAGE_KEY, next);
   };

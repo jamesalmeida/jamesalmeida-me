@@ -22,7 +22,7 @@ Deployed on Vercel as project `jamesalmeida-portfolio`, team GSV (slug `gsv-2`).
 | Path | What it is |
 |---|---|
 | `/` | Full-screen chat (no page scroll, no sidebar). Header: name, Book a discovery call (from `sm`), Menu. The Menu holds the links, theme and sound settings, and recent chats. |
-| `/consulting` | "How I can help", rendered from `OFFER` |
+| `/consulting` | "How I can help", rendered from `OFFER`. The reading pages have a "Back to chat" button instead of a nav bar. |
 | `/about` | "Why I do this": the story and past work from `PROJECTS`. `/work` redirects here. |
 | `/admin` | Password-gated model switcher. Not indexed. |
 | `/api/chat` | Streaming chat |

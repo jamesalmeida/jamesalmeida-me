@@ -1,3 +1,5 @@
+"use client";
+
 import { CalendarCheck, Menu } from "lucide-react";
 import Link from "next/link";
 import type { Ref } from "react";
@@ -5,18 +7,27 @@ import { SITE } from "@/data/site";
 import { serif } from "./booking-button";
 
 // The top bar on the chat: name, "Book a discovery call" (from `sm`; on phones it
-// lives in the menu) and Menu. Server-renderable: StaticIntro passes no handler.
+// lives in the menu) and Menu. Server-renderable: StaticIntro passes no handlers.
 export function SiteHeader({
   menuButtonRef,
+  onNewChat,
   onOpenMenu,
 }: {
   menuButtonRef?: Ref<HTMLButtonElement>;
+  /** The name starts a new chat; the current one stays in Recent chats. */
+  onNewChat?: () => void;
   onOpenMenu?: () => void;
 }) {
   return (
     <header className="flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-8 sm:py-6 lg:px-12">
       <Link
         href="/"
+        onClick={(event) => {
+          if (!onNewChat) return;
+          event.preventDefault();
+          onNewChat();
+        }}
+        title={onNewChat ? "Start a new chat" : undefined}
         className={`text-[22px] tracking-[-0.01em] text-[var(--foreground)] sm:text-[26px] ${serif}`}
         data-cuelume-press="tick"
       >

@@ -8,6 +8,7 @@ import {
   MessagePartPrimitive,
   ThreadPrimitive,
   useComposer,
+  useComposerRuntime,
   useMessage,
   useThread,
   type ThreadMessage,
@@ -21,12 +22,15 @@ import Link from "next/link";
 import { play } from "cuelume";
 import { ArrowDown, ArrowUp, Square } from "lucide-react";
 import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useId,
   useRef,
   useState,
   type ComponentPropsWithoutRef,
+  type KeyboardEvent,
   type RefObject,
 } from "react";
 import { HEADLINES, PROMPT_EXAMPLES, SITE } from "@/data/site";
@@ -61,6 +65,19 @@ const chatFetch: typeof fetch = async (input, init) => {
 // Created once: a new transport per render is wasted work.
 const chatTransport = new DefaultChatTransport({ api: "/api/chat", fetch: chatFetch });
 
+// Ids of the messages the thread mounted with. Only messages sent or received after
+// that animate in, so a restored chat doesn't replay its whole history.
+const InitialMessageIdsContext = createContext<ReadonlySet<string>>(new Set());
+
+function useIsNewMessage() {
+  const initialIds = useContext(InitialMessageIdsContext);
+  const id = useMessage((message) => message.id);
+  return !initialIds.has(id);
+}
+
+// The composer moves from the landing to the bottom with a shared layout animation.
+const composerLayoutTransition = { type: "spring", stiffness: 320, damping: 34 } as const;
+
 export function Thread({ initialMessages, onMessagesChange, onReply, onRunComplete }: ThreadProps) {
   const runtime = useChatRuntime({
     messages: initialMessages,
@@ -68,9 +85,11 @@ export function Thread({ initialMessages, onMessagesChange, onReply, onRunComple
   });
   // Set by the Stop button. A stopped run still ends with a "complete" status.
   const cancelledRef = useRef(false);
+  const [initialIds] = useState(() => new Set(initialMessages.map((message) => message.id)));
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
+      <InitialMessageIdsContext.Provider value={initialIds}>
       <ShowBookingCtaToolUI />
       <ShowBriefToolUI />
       <ThreadPersistence onMessagesChange={onMessagesChange} />
@@ -78,58 +97,70 @@ export function Thread({ initialMessages, onMessagesChange, onReply, onRunComple
       <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
         <ThreadBody onCancel={() => { cancelledRef.current = true; }} />
       </ThreadPrimitive.Root>
+      </InitialMessageIdsContext.Provider>
     </AssistantRuntimeProvider>
   );
 }
 
 // The landing (a question and a big composer) until the first message, then the
-// conversation with the composer docked at the bottom.
+// conversation with the composer docked at the bottom. On the first send the landing
+// fades up and away while the composer glides down to the dock.
 function ThreadBody({ onCancel }: { onCancel: () => void }) {
   const isEmpty = useThread((state) => state.messages.length === 0);
 
-  if (isEmpty) {
-    return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        <div className="flex flex-1 flex-col items-center justify-center gap-5 px-4 pb-16 pt-4 sm:gap-7 sm:px-12 sm:pb-20">
-          <h1
-            className={`max-w-[1000px] text-center text-[44px] font-normal leading-[1.05] tracking-[-0.02em] sm:text-[72px] lg:text-[88px] lg:leading-[1.02] ${serif}`}
-          >
-            {HEADLINES[0]}
-          </h1>
-          <p className="max-w-[720px] text-center text-[17px] leading-[1.5] text-[var(--muted)] sm:text-[22px]">
-            {SITE.subhead}
-          </p>
-          <div className="mt-3 w-full max-w-[780px] sm:mt-5">
-            <Composer variant="landing" onCancel={onCancel} />
-          </div>
-        </div>
-        <PrivacyNotice className="px-4 pb-5 sm:px-12 sm:pb-6" />
-      </div>
-    );
-  }
-
   return (
     <>
-      <h1 className="sr-only">Chat with {SITE.assistant.name}, {SITE.assistant.role}</h1>
       <div className="relative min-h-0 flex-1">
-        <ThreadPrimitive.Viewport className="absolute inset-0 overflow-y-auto px-4 pb-10 pt-4 sm:px-12 sm:pt-6">
-          <div className="mx-auto flex w-full max-w-[760px] flex-col gap-7">
-            <ThreadPrimitive.Messages
-              components={{
-                AssistantMessage: AssistantMessage,
-                UserMessage: UserMessage,
-              }}
-            />
+        <AnimatePresence initial={false}>
+          {isEmpty ? (
+            <motion.div
+              key="landing"
+              className="absolute inset-0 flex flex-col overflow-y-auto"
+              exit={{ opacity: 0, y: -32, pointerEvents: "none" }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <div className="flex flex-1 flex-col items-center justify-center gap-5 px-4 pb-16 pt-4 sm:gap-7 sm:px-12 sm:pb-20">
+                <h1
+                  className={`max-w-[1000px] text-center text-[44px] font-normal leading-[1.05] tracking-[-0.02em] sm:text-[72px] lg:text-[88px] lg:leading-[1.02] ${serif}`}
+                >
+                  {HEADLINES[0]}
+                </h1>
+                <p className="max-w-[720px] text-center text-[17px] leading-[1.5] text-[var(--muted)] sm:text-[22px]">
+                  {SITE.subhead}
+                </p>
+                <div className="mt-3 w-full max-w-[780px] sm:mt-5">
+                  <Composer variant="landing" onCancel={onCancel} />
+                </div>
+              </div>
+              <PrivacyNotice className="px-4 pb-5 sm:px-12 sm:pb-6" />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+        {isEmpty ? null : (
+          <>
+            <h1 className="sr-only">Chat with {SITE.assistant.name}, {SITE.assistant.role}</h1>
+            <ThreadPrimitive.Viewport className="absolute inset-0 overflow-y-auto px-4 pb-10 pt-4 sm:px-12 sm:pt-6">
+              <div className="mx-auto flex w-full max-w-[760px] flex-col gap-7">
+                <ThreadPrimitive.Messages
+                  components={{
+                    AssistantMessage: AssistantMessage,
+                    UserMessage: UserMessage,
+                  }}
+                />
+              </div>
+            </ThreadPrimitive.Viewport>
+            <ScrollToBottomButton />
+          </>
+        )}
+      </div>
+      {isEmpty ? null : (
+        <div className="border-t border-[var(--border)] px-4 pb-5 pt-3 sm:px-12 sm:pb-6 sm:pt-6">
+          <div className="mx-auto w-full max-w-[780px]">
+            <Composer variant="dock" onCancel={onCancel} />
           </div>
-        </ThreadPrimitive.Viewport>
-        <ScrollToBottomButton />
-      </div>
-      <div className="border-t border-[var(--border)] px-4 pb-5 pt-3 sm:px-12 sm:pb-6 sm:pt-6">
-        <div className="mx-auto w-full max-w-[780px]">
-          <Composer variant="dock" onCancel={onCancel} />
+          <PrivacyNotice className="mt-2.5" />
         </div>
-        <PrivacyNotice className="mt-2.5" />
-      </div>
+      )}
     </>
   );
 }
@@ -246,61 +277,76 @@ function AssistantLabel() {
 
 function AssistantMessage() {
   const message = useMessage();
+  const isNew = useIsNewMessage();
   const hasContent = message.content.some(
     (part) => (part.type === "text" && part.text.length > 0) || part.type === "tool-call",
   );
   const isWriting = message.status?.type === "running";
 
   return (
-    <MessagePrimitive.Root className="flex w-full flex-col gap-3">
-      <AssistantLabel />
-      {hasContent ? (
-        <div className="flex min-w-0 flex-col gap-4 text-base leading-[1.6] sm:text-lg">
-          <MessagePrimitive.Parts
-            components={{
-              Text: MarkdownText,
-            }}
-          />
-        </div>
-      ) : isWriting ? (
-        <div className="flex h-6 items-center gap-1" aria-label="Writing a reply">
-          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--muted)] [animation-delay:0ms]" />
-          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--muted)] [animation-delay:150ms]" />
-          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--muted)] [animation-delay:300ms]" />
-        </div>
-      ) : null}
-      <MessagePrimitive.Error>
-        <ErrorPrimitive.Root className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          <ErrorPrimitive.Message />
-        </ErrorPrimitive.Root>
-      </MessagePrimitive.Error>
+    <MessagePrimitive.Root className="w-full">
+      <motion.div
+        className="flex w-full flex-col gap-3"
+        initial={isNew ? { opacity: 0, y: 12 } : false}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: "easeOut", delay: isNew ? 0.15 : 0 }}
+      >
+        <AssistantLabel />
+        {hasContent ? (
+          <div className="flex min-w-0 flex-col gap-4 text-base leading-[1.6] sm:text-lg">
+            <MessagePrimitive.Parts
+              components={{
+                Text: MarkdownText,
+              }}
+            />
+          </div>
+        ) : isWriting ? (
+          <div className="flex h-6 items-center gap-1" aria-label="Writing a reply">
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--muted)] [animation-delay:0ms]" />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--muted)] [animation-delay:150ms]" />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--muted)] [animation-delay:300ms]" />
+          </div>
+        ) : null}
+        <MessagePrimitive.Error>
+          <ErrorPrimitive.Root className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <ErrorPrimitive.Message />
+          </ErrorPrimitive.Root>
+        </MessagePrimitive.Error>
+      </motion.div>
     </MessagePrimitive.Root>
   );
 }
 
 function UserMessage() {
+  const isNew = useIsNewMessage();
+
   return (
     <MessagePrimitive.Root className="flex w-full justify-end">
-      <div className="max-w-[85%] rounded-[1.4rem] bg-[var(--user-bubble)] px-[18px] py-3 text-base leading-[1.55] sm:max-w-[560px] sm:rounded-[1.5rem] sm:px-[22px] sm:py-3.5 sm:text-lg">
+      <motion.div
+        className="max-w-[85%] rounded-[1.4rem] bg-[var(--user-bubble)] px-[18px] py-3 text-base leading-[1.55] sm:max-w-[560px] sm:rounded-[1.5rem] sm:px-[22px] sm:py-3.5 sm:text-lg"
+        initial={isNew ? { opacity: 0, y: 48 } : false}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      >
         <MessagePrimitive.Parts
           components={{
             Text: UserText,
           }}
         />
-      </div>
+      </motion.div>
     </MessagePrimitive.Root>
   );
 }
 
-// Cycles the landing placeholder until the visitor focuses the composer or types.
-function useRotatingPlaceholder(enabled: boolean) {
+// Cycles the landing example until the visitor focuses the composer or types.
+function useRotatingExample(enabled: boolean) {
   const [index, setIndex] = useState(0);
   useEffect(() => {
     if (!enabled) return;
     const timer = window.setInterval(() => setIndex((value) => value + 1), 4500);
     return () => window.clearInterval(timer);
   }, [enabled]);
-  return `Try \u201c${PROMPT_EXAMPLES[index % PROMPT_EXAMPLES.length]}\u201d`;
+  return PROMPT_EXAMPLES[index % PROMPT_EXAMPLES.length];
 }
 
 function Composer({
@@ -310,11 +356,13 @@ function Composer({
   variant: "landing" | "dock";
   onCancel: () => void;
 }) {
+  const composerRuntime = useComposerRuntime();
   const isRunning = useThread((state) => state.isRunning);
   const charCount = useComposer((state) => state.text.length);
+  const isBlank = useComposer((state) => state.text.trim().length === 0);
   const [hasFocused, setHasFocused] = useState(false);
   const isLanding = variant === "landing";
-  const rotatingPlaceholder = useRotatingPlaceholder(isLanding && !hasFocused && charCount === 0);
+  const example = useRotatingExample(isLanding && !hasFocused && charCount === 0);
   const wasRunningRef = useRef(false);
   const charCounterId = useId();
 
@@ -328,50 +376,97 @@ function Composer({
     wasRunningRef.current = isRunning;
   }, [isRunning]);
 
+  // On the landing, sending an empty composer sends the example being shown.
+  const sendExample = () => {
+    composerRuntime.setText(example);
+    composerRuntime.send();
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!isLanding || !isBlank || isRunning) return;
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault();
+      sendExample();
+    }
+  };
+
   const buttonSize = isLanding ? "h-12 w-12 sm:h-14 sm:w-14" : "h-11 w-11 sm:h-12 sm:w-12";
+  const buttonClass = `flex shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] transition hover:opacity-85 disabled:opacity-40 ${buttonSize}`;
+  const textClass = isLanding
+    ? "min-h-12 py-2.5 text-base sm:min-h-14 sm:py-4 sm:text-xl"
+    : "min-h-11 py-2.5 text-base sm:min-h-12 sm:text-lg";
 
   return (
     <ComposerPrimitive.Root>
-      <div
+      <motion.div
+        layoutId="composer"
+        layout="position"
+        transition={composerLayoutTransition}
         className={`flex items-end gap-2 rounded-[1.75rem] border border-[var(--border-strong)] bg-[var(--surface)] sm:gap-3 ${
           isLanding
             ? "py-1.5 pl-5 pr-1.5 shadow-[0_16px_48px_rgba(0,0,0,0.08)] sm:rounded-[2.25rem] sm:py-2.5 sm:pl-8 sm:pr-2.5 sm:shadow-[0_24px_80px_rgba(0,0,0,0.08)]"
             : "py-1.5 pl-5 pr-1.5 sm:py-2 sm:pl-7 sm:pr-2"
         }`}
       >
-        <ComposerPrimitive.Input
-          rows={1}
-          autoFocus={false}
-          unstable_focusOnScrollToBottom={false}
-          unstable_focusOnRunStart={false}
-          onFocus={() => setHasFocused(true)}
-          className={`max-h-[160px] flex-1 resize-none self-center overflow-y-auto bg-transparent py-2.5 leading-6 outline-none placeholder:text-[var(--muted)] ${
-            isLanding ? "min-h-12 text-base sm:min-h-14 sm:py-4 sm:text-xl" : "min-h-11 text-base sm:min-h-12 sm:text-lg"
-          }`}
-          placeholder={isLanding ? rotatingPlaceholder : "Reply\u2026"}
-          aria-label={isLanding ? "Tell me what you\u2019re working on" : "Reply"}
-          maxLength={MAX_MESSAGE_CHARS}
-          aria-describedby={charCount >= CHAR_COUNTER_FROM ? charCounterId : undefined}
-        />
+        <div className="relative flex flex-1 self-center">
+          <ComposerPrimitive.Input
+            rows={1}
+            unstable_focusOnScrollToBottom={false}
+            unstable_focusOnRunStart={false}
+            onFocus={() => setHasFocused(true)}
+            onKeyDown={handleKeyDown}
+            className={`max-h-[160px] w-full resize-none overflow-y-auto bg-transparent leading-6 outline-none placeholder:text-[var(--muted)] ${textClass}`}
+            placeholder={isLanding ? "" : "Reply\u2026"}
+            aria-label={isLanding ? "Tell me what you\u2019re working on" : "Reply"}
+            maxLength={MAX_MESSAGE_CHARS}
+            aria-describedby={charCount >= CHAR_COUNTER_FROM ? charCounterId : undefined}
+          />
+          {isLanding && charCount === 0 ? (
+            // The example slides up and out as the next one slides in.
+            <div
+              aria-hidden
+              className={`pointer-events-none absolute inset-0 overflow-hidden leading-6 text-[var(--muted)] ${textClass}`}
+            >
+              <AnimatePresence initial={false} mode="popLayout">
+                <motion.span
+                  key={example}
+                  className="block truncate"
+                  initial={{ y: "120%", opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: "-120%", opacity: 0 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                >
+                  Try &ldquo;{example}&rdquo;
+                </motion.span>
+              </AnimatePresence>
+            </div>
+          ) : null}
+        </div>
         {isRunning ? (
           <ComposerPrimitive.Cancel
             onClick={onCancel}
-            className={`flex shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] transition hover:opacity-85 ${buttonSize}`}
+            className={buttonClass}
             aria-label="Stop generating"
             data-cuelume-press="tick"
           >
             <Square size={16} fill="currentColor" />
           </ComposerPrimitive.Cancel>
-        ) : (
-          <ComposerPrimitive.Send
-            className={`flex shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] transition hover:opacity-85 disabled:opacity-40 ${buttonSize}`}
-            aria-label="Send message"
+        ) : isLanding && isBlank ? (
+          <button
+            type="button"
+            onClick={sendExample}
+            className={buttonClass}
+            aria-label={`Ask \u201c${example}\u201d`}
             data-cuelume-press
           >
+            <ArrowUp size={22} />
+          </button>
+        ) : (
+          <ComposerPrimitive.Send className={buttonClass} aria-label="Send message" data-cuelume-press>
             <ArrowUp size={isLanding ? 22 : 20} />
           </ComposerPrimitive.Send>
         )}
-      </div>
+      </motion.div>
       {charCount >= CHAR_COUNTER_FROM ? (
         <p
           id={charCounterId}

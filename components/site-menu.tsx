@@ -1,9 +1,18 @@
 "use client";
 
 import { play } from "cuelume";
+import { motion } from "framer-motion";
 import { Laptop, Moon, Sun, Trash2, Volume2, VolumeX, X } from "lucide-react";
 import Link from "next/link";
-import { useId, useRef, useState, type ReactNode, type RefObject } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { SITE } from "@/data/site";
 import type { HistoryThread } from "@/lib/threads";
 import { BookingButton } from "./booking-button";
@@ -20,7 +29,20 @@ const roundButtonClass =
   "flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--foreground)] transition hover:opacity-80";
 
 const menuLinkClass =
-  "text-[32px] leading-[1.3] text-[var(--foreground)] transition hover:opacity-70 sm:text-[38px] sm:leading-[1.25]";
+  "text-[32px] leading-[1.3] tracking-[-0.025em] text-[var(--foreground)] decoration-2 underline-offset-[6px] hover:underline focus-visible:underline sm:text-[38px] sm:leading-[1.25]";
+
+const panelTransition = { type: "spring", stiffness: 340, damping: 34 } as const;
+// Opens with a spring and a quick fade; closes with an ease-in shrink and a later
+// fade, so it visibly shrinks back into the Menu button.
+const openTransition = { ...panelTransition, opacity: { duration: 0.15, ease: "easeOut" } } as const;
+const closeTransition = {
+  scale: { duration: 0.32, ease: [0.4, 0, 1, 1] },
+  opacity: { duration: 0.32, ease: [0.7, 0, 1, 1] },
+} as const;
+const closedPanel = { opacity: 0, scale: 0.15 };
+const openPanel = { opacity: 1, scale: 1 };
+// Fallback in case the closing animation never reports completion.
+const CLOSE_FALLBACK_MS = 600;
 
 type SiteMenuProps = {
   activeThreadId: string;
@@ -31,6 +53,7 @@ type SiteMenuProps = {
   onDeleteThread: (threadId: string) => void;
   onNewChat: () => void;
   onSelectThread: (threadId: string) => void;
+  /** The Menu button: focus returns to it, and the panel grows out of and back into it. */
   returnFocusRef: RefObject<HTMLElement | null>;
 };
 
@@ -47,20 +70,61 @@ export function SiteMenu({
 }: SiteMenuProps) {
   const { preference, setPreference, soundsEnabled, toggleSounds } = useTheme();
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [origin, setOrigin] = useState("100% 0%");
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+
+  // Grow from the Menu button's centre. offsetLeft/Top ignore the panel's own scale.
+  useLayoutEffect(() => {
+    const button = returnFocusRef.current?.getBoundingClientRect();
+    const panel = panelRef.current;
+    if (!button || !panel) return;
+    setOrigin(
+      `${button.left + button.width / 2 - panel.offsetLeft}px ${button.top + button.height / 2 - panel.offsetTop}px`,
+    );
+  }, [returnFocusRef]);
+
+  useEffect(() => {
+    if (!isClosing) return;
+    const timer = window.setTimeout(onClose, CLOSE_FALLBACK_MS);
+    return () => window.clearTimeout(timer);
+  }, [isClosing, onClose]);
+
+  // Shrinks back into the Menu button, then unmounts (onClose).
+  const requestClose = () => setIsClosing(true);
+  const closeAfter = (action: () => void) => () => {
+    action();
+    requestClose();
+  };
 
   return (
     <Modal
       labelledBy={titleId}
-      onClose={onClose}
+      onClose={requestClose}
       layout="sheet"
       initialFocusRef={closeRef}
       returnFocusRef={returnFocusRef}
     >
-      <nav
+      <motion.div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 bg-[rgba(0,0,0,0.4)] backdrop-blur-[8px]"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isClosing ? 0 : 1 }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
+      />
+      <motion.nav
+        ref={panelRef}
         aria-labelledby={titleId}
-        className="flex min-h-full w-full flex-col gap-10 overflow-y-auto bg-[var(--surface)] px-4 pb-6 pt-4 sm:min-h-0 sm:w-[480px] sm:rounded-[2rem] sm:px-10 sm:pb-8 sm:pt-8 sm:shadow-[0_24px_80px_rgba(0,0,0,0.18)]"
+        style={{ transformOrigin: origin }}
+        initial={closedPanel}
+        animate={isClosing ? closedPanel : openPanel}
+        transition={isClosing ? closeTransition : openTransition}
+        onAnimationComplete={() => {
+          if (isClosing) onClose();
+        }}
+        className="relative flex min-h-full w-full flex-col gap-10 overflow-y-auto bg-[var(--surface)] px-4 pb-6 pt-4 sm:min-h-0 sm:w-[480px] sm:rounded-[2rem] sm:px-10 sm:pb-8 sm:pt-8 sm:shadow-[0_24px_80px_rgba(0,0,0,0.18)]"
       >
         <h2 id={titleId} className="sr-only">
           Menu
@@ -82,14 +146,22 @@ export function SiteMenu({
                     aria-label={option.label}
                     aria-pressed={isSelected}
                     title={option.label}
-                    className={`flex h-11 w-11 items-center justify-center rounded-full transition ${
+                    className={`relative flex h-11 w-11 items-center justify-center rounded-full transition-colors ${
                       isSelected
-                        ? "bg-[var(--surface)] text-[var(--foreground)] shadow-[0_1px_4px_rgba(0,0,0,0.18)]"
+                        ? "text-[var(--foreground)]"
                         : "text-[var(--muted)] hover:text-[var(--foreground)]"
                     }`}
                     data-cuelume-press="tick"
                   >
-                    {option.icon}
+                    {isSelected ? (
+                      // Slides to the selected option.
+                      <motion.span
+                        layoutId="theme-pill"
+                        className="absolute inset-0 rounded-full bg-[var(--surface)] shadow-[0_1px_4px_rgba(0,0,0,0.18)]"
+                        transition={{ type: "spring", stiffness: 500, damping: 38 }}
+                      />
+                    ) : null}
+                    <span className="relative">{option.icon}</span>
                   </button>
                 );
               })}
@@ -108,7 +180,7 @@ export function SiteMenu({
           <button
             ref={closeRef}
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             aria-label="Close menu"
             className={roundButtonClass}
             data-cuelume-press="droplet"
@@ -118,7 +190,7 @@ export function SiteMenu({
         </div>
 
         <div className="flex flex-col items-center gap-1.5">
-          <button type="button" onClick={onNewChat} className={menuLinkClass} data-cuelume-press="tick">
+          <button type="button" onClick={closeAfter(onNewChat)} className={menuLinkClass} data-cuelume-press="tick">
             New chat
           </button>
           <Link href="/consulting" className={menuLinkClass} data-cuelume-press="tick">
@@ -147,7 +219,7 @@ export function SiteMenu({
                     <li key={thread.id} className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={() => onSelectThread(thread.id)}
+                        onClick={closeAfter(() => onSelectThread(thread.id))}
                         aria-current={thread.id === activeThreadId ? "true" : undefined}
                         className={`min-w-0 flex-1 truncate py-2.5 pl-11 text-center text-base transition hover:opacity-70 ${
                           thread.id === activeThreadId ? "font-semibold" : ""
@@ -187,10 +259,10 @@ export function SiteMenu({
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={closeAfter(() => {
                       setIsConfirmingClear(false);
                       onClearAllChats();
-                    }}
+                    })}
                     className="rounded-full bg-red-600 px-4 py-2 text-white transition hover:bg-red-700"
                     data-cuelume-press="whisper"
                   >
@@ -210,7 +282,7 @@ export function SiteMenu({
             )}
           </div>
         ) : null}
-      </nav>
+      </motion.nav>
     </Modal>
   );
 }
