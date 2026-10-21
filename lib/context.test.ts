@@ -32,7 +32,6 @@ describe("getKnowledge / getSystemPrompt", () => {
       SITE.bookingUrl,
       SITE.linkedin,
       SITE.github,
-      SITE.resumeUrl,
       SITE.x,
       SITE.xHandle,
     ]) {
@@ -40,21 +39,27 @@ describe("getKnowledge / getSystemPrompt", () => {
     }
   });
 
-  it("positions hiring first and describes the agent setup", () => {
-    expect(knowledge).toMatch(/hiring portfolio first/i);
-    expect(knowledge).toContain("Chief of Staff");
-    expect(knowledge).toMatch(/iCloud/i);
-    expect(knowledge).toMatch(/pull requests/i);
+  it("positions the site for individuals and small teams, not hiring", () => {
+    expect(knowledge).toMatch(/individuals and small teams/i);
+    expect(knowledge).not.toMatch(/hiring portfolio|building-with-AI role/i);
+  });
+
+  it("introduces Skaffen as James' assistant and explains the name", () => {
+    expect(prompt).toContain(`You are ${SITE.assistant.name}, ${SITE.assistant.role}`);
+    expect(prompt).toMatch(/Never claim to be James/);
+    expect(knowledge).toContain("Skaffen-Amtiskaw");
+    expect(knowledge).toMatch(/Culture/);
   });
 
   it("does not brand James with the banned lab phrase", () => {
     expect(knowledge.toLowerCase()).not.toContain("one-person ai lab");
   });
 
-  it("treats personal apps as works in progress", () => {
-    expect(knowledge).toMatch(/works in progress/i);
-    expect(knowledge).toMatch(/not publicly shipped/i);
-    expect(prompt).toMatch(/not shipped, not in production, and not launched/i);
+  it("never names the unshipped personal apps", () => {
+    for (const text of [knowledge, prompt]) {
+      expect(text).not.toMatch(/Konteks|Grok Pebble|Sheldn|Mercury Rx|DGX Spark|Tesla infotainment/i);
+    }
+    expect(prompt).toMatch(/personal apps and side projects haven't shipped/i);
   });
 
   it("includes the published offer price ranges", () => {

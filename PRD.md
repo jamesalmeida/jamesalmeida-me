@@ -1,5 +1,7 @@
 # PRD: jamesalmeida.me — AI Chat Portfolio Site
 
+> **Superseded (October 2026).** The site is now all in on clients: a simple landing, no sidebar, and a chat run by Skaffen, James' AI assistant. `CLAUDE.md` and `data/` are the source of truth; this document is kept for history.
+
 **Status:** Draft v2
 **Last Updated:** 2026-04-14
 **Author:** James + Tersono

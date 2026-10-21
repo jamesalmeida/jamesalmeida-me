@@ -7,13 +7,16 @@ import { OFFER, SITE } from "@/data/site";
 const serif =
   "font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif]";
 
+const description =
+  "How I help individuals and small teams put AI to work: a free discovery call, then an audit, a build, and optional ongoing support.";
+
 export const metadata: Metadata = {
-  title: "AI consulting for small businesses",
-  description: SITE.description,
+  title: "How I can help",
+  description,
   alternates: { canonical: "/consulting" },
   openGraph: {
-    title: "AI consulting for small businesses",
-    description: SITE.description,
+    title: "How I can help",
+    description,
     url: "/consulting",
   },
 };
@@ -23,13 +26,11 @@ export default function ConsultingPage() {
     <SitePageShell current="consulting">
       <article className="space-y-12 pb-16">
         <header className="space-y-4">
-          <p className="eyebrow text-xs text-[var(--muted)]">Consulting</p>
+          <p className="eyebrow text-xs text-[var(--muted)]">How I can help</p>
           <h1 className={`max-w-xl text-4xl tracking-[-0.04em] sm:text-5xl ${serif}`}>
-            AI consulting for small businesses
+            AI for individuals and small teams
           </h1>
-          <p className="max-w-2xl text-base leading-7 text-[var(--muted)]">
-            {SITE.description}
-          </p>
+          <p className="max-w-2xl text-base leading-7 text-[var(--muted)]">{description}</p>
           <div className="flex flex-wrap items-center gap-3 pt-2">
             <BookingButton />
             <EmailLink />
@@ -54,7 +55,8 @@ export default function ConsultingPage() {
         <section className="space-y-4">
           <h2 className={`text-3xl tracking-[-0.03em] ${serif}`}>How it works</h2>
           <p className="text-sm leading-6 text-[var(--muted)] sm:text-base">
-            {OFFER.defaults.eachStepOptional}
+            {OFFER.defaults.introCall} For a team, the work then goes in three steps.{" "}
+            {OFFER.defaults.eachStepOptional} {OFFER.defaults.individuals}
           </p>
           <ol className="space-y-3">
             {OFFER.steps.map((step, index) => (
@@ -141,10 +143,11 @@ export default function ConsultingPage() {
 
         <section className="space-y-4 rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[0_16px_40px_rgba(0,0,0,0.06)]">
           <h2 className={`text-3xl tracking-[-0.03em] ${serif}`}>
-            Find out where your team&apos;s hours are going.
+            Find out where AI fits in your week.
           </h2>
           <p className="text-sm leading-6 text-[var(--muted)] sm:text-base">
-            {OFFER.defaults.introCall} If there&apos;s a fit, the next step is the audit.
+            {OFFER.defaults.introCall} Tell me what&apos;s on your plate, and we&apos;ll see where
+            AI can take some of it off.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <BookingButton />
@@ -152,12 +155,12 @@ export default function ConsultingPage() {
           </div>
           <p>
             <Link
-              href="/?thread=work-with-me"
+              href="/"
               className="text-sm text-[var(--foreground)] underline-offset-4 hover:underline"
               data-cuelume-hover="whisper"
               data-cuelume-press="tick"
             >
-              Prefer to ask questions first? Chat with me
+              Prefer to ask questions first? Chat with {SITE.assistant.name}, my AI assistant
             </Link>
           </p>
         </section>

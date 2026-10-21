@@ -1,10 +1,10 @@
-import { SiteNav } from "@/components/site-nav";
+import { SiteNav, type SitePage } from "@/components/site-nav";
 
 export function SitePageShell({
   current,
   children,
 }: {
-  current?: "work" | "consulting" | "privacy";
+  current?: SitePage;
   children: React.ReactNode;
 }) {
   return (

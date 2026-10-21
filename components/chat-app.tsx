@@ -3,42 +3,41 @@
 import type { UIMessage } from "ai";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Modal } from "@/components/modal";
+import { SiteHeader } from "@/components/site-header";
+import { SiteMenu } from "@/components/site-menu";
 import { Thread } from "@/components/thread";
-import { ThreadList } from "@/components/thread-list";
-import { SITE } from "@/data/site";
 import {
-  THREADS,
-  THREADS_BY_ID,
+  NEW_CHAT_ID,
   capHistoryThreads,
   clearStoredChats,
   createHistoryThread,
   getFirstUserText,
   getThreadMessages,
-  getThreadPreview,
   isStaticThreadId,
   pruneStoredThreads,
   readHistoryThreads,
   readStoredActiveThread,
   readStoredThreads,
+  resolveActiveThreadId,
   saveThreadMessages,
   writeHistoryThreads,
   writeStoredActiveThread,
   writeStoredThreads,
   type HistoryThread,
-  type PortfolioThread,
   type StoredThreads,
 } from "@/lib/threads";
 
 export function ChatApp({ fallback }: { fallback: ReactNode }) {
-  const [activeThreadId, setActiveThreadId] = useState<string>("new-chat");
+  const [activeThreadId, setActiveThreadId] = useState<string>(NEW_CHAT_ID);
   const [storedThreads, setStoredThreads] = useState<StoredThreads>({});
   const [historyThreads, setHistoryThreads] = useState<HistoryThread[]>([]);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   // Latest stored threads, so writes can happen synchronously (e.g. on pagehide).
   const storedThreadsRef = useRef<StoredThreads>({});
-  // Bumped by "Clear all chats". Remounts the thread, and saves from the old
-  // thread (e.g. its unmount flush) are ignored so cleared chats don't come back.
+  // Bumped by "New chat" and "Clear all chats". Remounts the thread, and saves from
+  // the old thread (e.g. its unmount flush) are ignored so cleared chats don't come back.
   const [chatGeneration, setChatGeneration] = useState(0);
   const chatGenerationRef = useRef(0);
   // History thread waiting for the delete confirmation.
@@ -48,7 +47,7 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
   const [announcement, setAnnouncement] = useState("");
 
   // Updates state and writes localStorage right away. If storage was full and
-  // history threads were evicted, drop them from the sidebar too.
+  // history threads were evicted, drop them from the menu too.
   const updateStoredThreads = useCallback(
     (update: (current: StoredThreads) => StoredThreads) => {
       const next = update(storedThreadsRef.current);
@@ -66,11 +65,9 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
     const nextStoredThreads = readStoredThreads();
     storedThreadsRef.current = nextStoredThreads;
     setStoredThreads(nextStoredThreads);
-    const requested = new URLSearchParams(window.location.search).get("thread");
-    setActiveThreadId(
-      requested && isStaticThreadId(requested) ? requested : readStoredActiveThread(),
-    );
-    setHistoryThreads(readHistoryThreads());
+    const history = readHistoryThreads();
+    setHistoryThreads(history);
+    setActiveThreadId(resolveActiveThreadId(readStoredActiveThread(), history));
     setIsHydrated(true);
   }, []);
 
@@ -98,50 +95,18 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
   useEffect(() => {
     if (!isHydrated) return;
     writeHistoryThreads(historyThreads);
-    // Drop stored messages for history threads that were capped out or deleted.
+    // Drop stored messages for history threads that were capped out or deleted,
+    // and for the old pinned threads.
     const historyIds = new Set(historyThreads.map((item) => item.id));
     if (pruneStoredThreads(storedThreadsRef.current, historyIds) !== storedThreadsRef.current) {
       updateStoredThreads((current) => pruneStoredThreads(current, historyIds));
     }
   }, [isHydrated, historyThreads, updateStoredThreads]);
 
-  const activeThread = useMemo((): PortfolioThread => {
-    if (THREADS_BY_ID[activeThreadId]) return THREADS_BY_ID[activeThreadId];
-    const history = historyThreads.find((item) => item.id === activeThreadId);
-    if (history) {
-      return {
-        id: history.id,
-        title: history.title,
-        icon: history.icon,
-        description: `Saved on ${new Date(history.createdAt).toLocaleDateString()}`,
-        seeded: false,
-        baseMessages: [],
-      };
-    }
-    return THREADS_BY_ID["new-chat"];
-  }, [activeThreadId, historyThreads]);
-
   const activeMessages = useMemo(
     () => getThreadMessages(activeThreadId, storedThreads),
     [activeThreadId, storedThreads],
   );
-
-  const previews = useMemo(
-    () => ({
-      ...Object.fromEntries(
-        THREADS.map((thread) => [thread.id, getThreadPreview(thread.id, storedThreads)]),
-      ),
-      ...Object.fromEntries(
-        historyThreads.map((item) => [item.id, getThreadPreview(item.id, storedThreads, item.title)]),
-      ),
-    }),
-    [storedThreads, historyThreads],
-  );
-
-  const handleThreadChange = (threadId: string) => {
-    setActiveThreadId(threadId);
-    setIsSidebarOpen(false);
-  };
 
   const handleMessagesChange = (threadId: string, messages: UIMessage[], generation: number) => {
     if (generation !== chatGenerationRef.current) return;
@@ -164,27 +129,53 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
       .catch(() => {});
   }, []);
 
-  const handleRunComplete = useCallback(
+  // Moves the new chat's messages into a history thread and empties the new chat.
+  const forkIntoHistory = useCallback(
     (messages: UIMessage[]) => {
-      if (!isStaticThreadId(activeThreadId)) return;
-      if (messages.length === 0) return;
-      const history = createHistoryThread(messages, activeThreadId);
+      const history = createHistoryThread(messages, NEW_CHAT_ID);
       updateStoredThreads((prev) => {
         const withHistory = saveThreadMessages(prev, history.id, messages);
-        return saveThreadMessages(withHistory, activeThreadId, []);
+        return saveThreadMessages(withHistory, NEW_CHAT_ID, []);
       });
       setHistoryThreads((prev) => capHistoryThreads([history, ...prev]));
-      setActiveThreadId(history.id);
       const firstText = getFirstUserText(messages);
       if (firstText) generateTitle(history.id, firstText);
+      return history.id;
     },
-    [activeThreadId, generateTitle, updateStoredThreads],
+    [generateTitle, updateStoredThreads],
   );
+
+  const handleRunComplete = useCallback(
+    (messages: UIMessage[]) => {
+      if (!isStaticThreadId(activeThreadId) || messages.length === 0) return;
+      setActiveThreadId(forkIntoHistory(messages));
+    },
+    [activeThreadId, forkIntoHistory],
+  );
+
+  // Shows a fresh landing. A new chat that never got a reply (e.g. an error) is
+  // kept in history rather than lost.
+  const handleNewChat = useCallback(() => {
+    setIsMenuOpen(false);
+    if (isStaticThreadId(activeThreadId)) {
+      const unsaved = storedThreadsRef.current[NEW_CHAT_ID]?.userMessages ?? [];
+      chatGenerationRef.current += 1;
+      if (unsaved.length > 0) forkIntoHistory(unsaved);
+      setChatGeneration(chatGenerationRef.current);
+      return;
+    }
+    setActiveThreadId(NEW_CHAT_ID);
+  }, [activeThreadId, forkIntoHistory]);
+
+  const handleSelectThread = useCallback((threadId: string) => {
+    setActiveThreadId(threadId);
+    setIsMenuOpen(false);
+  }, []);
 
   const handleDeleteThread = useCallback(
     (threadId: string) => {
       if (activeThreadId === threadId) {
-        setActiveThreadId("new-chat");
+        setActiveThreadId(NEW_CHAT_ID);
       }
       setHistoryThreads((prev) => prev.filter((item) => item.id !== threadId));
       updateStoredThreads((prev) => {
@@ -201,76 +192,52 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
     setPendingDeleteId(null);
   }, [handleDeleteThread, pendingDeleteId]);
 
-  const handleRestart = useCallback(
-    (messages: UIMessage[]) => {
-      if (messages.length === 0) return;
-      const history = createHistoryThread(messages, activeThreadId);
-      updateStoredThreads((prev) => {
-        const withHistory = saveThreadMessages(prev, history.id, messages);
-        return saveThreadMessages(withHistory, activeThreadId, []);
-      });
-      setHistoryThreads((prev) => capHistoryThreads([history, ...prev]));
-      const firstText = getFirstUserText(messages);
-      if (firstText) generateTitle(history.id, firstText);
-    },
-    [activeThreadId, generateTitle, updateStoredThreads],
-  );
-
   const handleClearAllChats = useCallback(() => {
     chatGenerationRef.current += 1;
     clearStoredChats();
     storedThreadsRef.current = {};
     setStoredThreads({});
     setHistoryThreads([]);
-    setActiveThreadId("new-chat");
+    setActiveThreadId(NEW_CHAT_ID);
     setChatGeneration(chatGenerationRef.current);
+    setIsMenuOpen(false);
   }, []);
-
-  const handleRenameThread = useCallback(
-    (newTitle: string) => {
-      setHistoryThreads((prev) =>
-        prev.map((item) => (item.id === activeThreadId ? { ...item, title: newTitle } : item)),
-      );
-    },
-    [activeThreadId],
-  );
 
   if (!isHydrated) {
     return fallback;
   }
 
+  const hasChats =
+    historyThreads.length > 0 || (storedThreads[NEW_CHAT_ID]?.userMessages.length ?? 0) > 0;
+
   return (
-    <div className="app-shell relative overflow-hidden px-3 sm:px-4 min-[431px]:py-4">
-      <div className="app-panel grain-panel flex overflow-hidden rounded-[2rem] border border-[var(--border)]">
-        <ThreadList
-          activeThreadId={activeThreadId}
-          historyThreads={historyThreads}
-          isOpen={isSidebarOpen}
-          onClearAllChats={handleClearAllChats}
-          onDeleteThread={setPendingDeleteId}
-          onOpenChange={setIsSidebarOpen}
-          onSelectThread={handleThreadChange}
-          previews={previews}
-          threads={THREADS}
+    <div className="app-shell flex flex-col overflow-hidden">
+      <SiteHeader menuButtonRef={menuButtonRef} onOpenMenu={() => setIsMenuOpen(true)} />
+      <main className="flex min-h-0 flex-1 flex-col">
+        <Thread
+          key={`${activeThreadId}:${chatGeneration}`}
+          initialMessages={activeMessages}
+          onMessagesChange={(messages) => handleMessagesChange(activeThreadId, messages, chatGeneration)}
+          onReply={setAnnouncement}
+          onRunComplete={handleRunComplete}
         />
-        <main className="flex min-w-0 flex-1 flex-col">
-          <h1 className="sr-only">{SITE.name}</h1>
-          <Thread
-            key={`${activeThreadId}:${chatGeneration}`}
-            initialMessages={activeMessages}
-            onDeleteThread={!isStaticThreadId(activeThreadId) ? () => setPendingDeleteId(activeThreadId) : undefined}
-            onMessagesChange={(messages) => handleMessagesChange(activeThreadId, messages, chatGeneration)}
-            onRenameThread={!isStaticThreadId(activeThreadId) ? handleRenameThread : undefined}
-            onReply={setAnnouncement}
-            onRestart={handleRestart}
-            onRunComplete={handleRunComplete}
-            thread={activeThread}
-          />
-          <div className="sr-only" aria-live="polite" aria-atomic="true">
-            {announcement}
-          </div>
-        </main>
-      </div>
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          {announcement}
+        </div>
+      </main>
+      {isMenuOpen ? (
+        <SiteMenu
+          activeThreadId={activeThreadId}
+          hasChats={hasChats}
+          historyThreads={historyThreads}
+          onClearAllChats={handleClearAllChats}
+          onClose={() => setIsMenuOpen(false)}
+          onDeleteThread={setPendingDeleteId}
+          onNewChat={handleNewChat}
+          onSelectThread={handleSelectThread}
+          returnFocusRef={menuButtonRef}
+        />
+      ) : null}
       {pendingDeleteId ? (
         <ConfirmDeleteDialog
           onCancel={() => setPendingDeleteId(null)}
@@ -293,7 +260,7 @@ function ConfirmDeleteDialog({
 
   return (
     <Modal labelledBy={titleId} onClose={onCancel} initialFocusRef={cancelRef}>
-      <div className="relative w-full max-w-sm rounded-[1.5rem] border border-[var(--border)] bg-[var(--panel-strong)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
+      <div className="relative w-full max-w-sm rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
         <h2
           id={titleId}
           className="font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif] text-2xl tracking-[-0.02em]"
@@ -316,7 +283,7 @@ function ConfirmDeleteDialog({
           <button
             type="button"
             onClick={onConfirm}
-            className="rounded-full bg-red-500 px-4 py-2 text-sm text-white transition hover:bg-red-600"
+            className="rounded-full bg-red-600 px-4 py-2 text-sm text-white transition hover:bg-red-700"
           >
             Delete
           </button>

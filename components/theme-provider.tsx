@@ -4,95 +4,89 @@ import { bind, play, setEnabled } from "cuelume";
 import { MotionConfig } from "framer-motion";
 import { createContext, useContext, useEffect, useState } from "react";
 import {
-  ACCENTS,
-  ACCENT_STORAGE_KEY,
-  DEFAULT_ACCENT,
   THEME_COLORS,
+  THEME_PREFERENCES,
   THEME_STORAGE_KEY,
-  type Accent,
   type Theme,
+  type ThemePreference,
 } from "@/lib/theme";
 
-export { ACCENTS, type Accent } from "@/lib/theme";
+export { THEME_PREFERENCES, type ThemePreference } from "@/lib/theme";
 
 const SOUNDS_STORAGE_KEY = "jamesalmeida-sounds";
+const DARK_QUERY = "(prefers-color-scheme: dark)";
 
 interface ThemeContextType {
+  /** The theme in effect: the preference, or the system theme for "system". */
   theme: Theme;
-  toggleTheme: () => void;
-  accent: Accent;
-  setAccent: (accent: Accent) => void;
+  preference: ThemePreference;
+  setPreference: (preference: ThemePreference) => void;
   soundsEnabled: boolean;
   toggleSounds: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+function readStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Storage may be disabled; the setting still applies for this visit.
+  }
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
-  const [accent, setAccentState] = useState<Accent>(DEFAULT_ACCENT);
+  const [preference, setPreferenceState] = useState<ThemePreference>("system");
+  const [systemTheme, setSystemTheme] = useState<Theme>("light");
   const [soundsEnabled, setSoundsEnabled] = useState(true);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-    if (storedTheme === "light" || storedTheme === "dark") {
-      setTheme(storedTheme);
-    } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      setTheme("dark");
-    }
+    const stored = readStorage(THEME_STORAGE_KEY);
+    const known = THEME_PREFERENCES.find((option) => option === stored);
+    if (known) setPreferenceState(known);
 
-    const storedAccent = localStorage.getItem(ACCENT_STORAGE_KEY);
-    const knownAccent = ACCENTS.find((option) => option === storedAccent);
-    if (knownAccent) {
-      setAccentState(knownAccent);
-    }
+    const query = window.matchMedia(DARK_QUERY);
+    const updateSystemTheme = () => setSystemTheme(query.matches ? "dark" : "light");
+    updateSystemTheme();
+    query.addEventListener("change", updateSystemTheme);
 
-    const storedSounds = localStorage.getItem(SOUNDS_STORAGE_KEY);
-    const enabled = storedSounds !== "off";
+    const enabled = readStorage(SOUNDS_STORAGE_KEY) !== "off";
     setSoundsEnabled(enabled);
     setEnabled(enabled);
     bind();
+
+    return () => query.removeEventListener("change", updateSystemTheme);
   }, []);
 
+  const theme = preference === "system" ? systemTheme : preference;
+
   useEffect(() => {
     if (!mounted) return;
-
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
-
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-
+    document.documentElement.classList.toggle("dark", theme === "dark");
     // Update iOS Safari theme-color meta tag for status bar / home indicator
-    const themeMeta = document.getElementById("theme-color-meta");
-    if (themeMeta) {
-      themeMeta.setAttribute("content", THEME_COLORS[theme]);
-    }
+    document.getElementById("theme-color-meta")?.setAttribute("content", THEME_COLORS[theme]);
   }, [theme, mounted]);
 
-  useEffect(() => {
-    if (!mounted) return;
-    localStorage.setItem(ACCENT_STORAGE_KEY, accent);
-    document.documentElement.dataset.accent = accent;
-  }, [accent, mounted]);
-
-  const toggleTheme = () => {
-    setTheme((current) => (current === "light" ? "dark" : "light"));
-  };
-
-  const setAccent = (next: Accent) => {
-    setAccentState(next);
+  const setPreference = (next: ThemePreference) => {
+    setPreferenceState(next);
+    writeStorage(THEME_STORAGE_KEY, next);
   };
 
   const toggleSounds = () => {
     setSoundsEnabled((current) => {
       const next = !current;
       setEnabled(next);
-      localStorage.setItem(SOUNDS_STORAGE_KEY, next ? "on" : "off");
+      writeStorage(SOUNDS_STORAGE_KEY, next ? "on" : "off");
       if (next) play("tick");
       return next;
     });
@@ -104,7 +98,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     <MotionConfig reducedMotion="user">
       {mounted ? (
         <ThemeContext.Provider
-          value={{ theme, toggleTheme, accent, setAccent, soundsEnabled, toggleSounds }}
+          value={{ theme, preference, setPreference, soundsEnabled, toggleSounds }}
         >
           {children}
         </ThemeContext.Provider>
