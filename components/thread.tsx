@@ -36,6 +36,7 @@ import {
 import { HEADLINES, PROMPT_EXAMPLES, SITE } from "@/data/site";
 import { toUIMessages } from "@/lib/message-convert";
 import { serif } from "./booking-button";
+import { MessageActions } from "./message-actions";
 import { ShowBookingCtaToolUI, ShowBriefToolUI } from "./tool-cards";
 
 type ThreadProps = {
@@ -282,6 +283,7 @@ function AssistantMessage() {
     (part) => (part.type === "text" && part.text.length > 0) || part.type === "tool-call",
   );
   const isWriting = message.status?.type === "running";
+  const hasText = message.content.some((part) => part.type === "text" && part.text.trim().length > 0);
 
   return (
     <MessagePrimitive.Root className="w-full">
@@ -312,6 +314,15 @@ function AssistantMessage() {
             <ErrorPrimitive.Message />
           </ErrorPrimitive.Root>
         </MessagePrimitive.Error>
+        {hasText && !isWriting ? (
+          <motion.div
+            initial={isNew ? { opacity: 0, y: 6 } : false}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+          >
+            <MessageActions />
+          </motion.div>
+        ) : null}
       </motion.div>
     </MessagePrimitive.Root>
   );

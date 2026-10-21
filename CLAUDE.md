@@ -85,6 +85,7 @@ components/
   chat-app.tsx                 # Full-screen chat shell (app-shell), header, menu, threads
   thread.tsx                   # Landing (headline + composer) until the first message, then the conversation
   tool-cards.tsx               # showBookingCta / showBrief cards
+  message-actions.tsx          # Thumbs up/down, feedback popover + form, copy (under each reply)
   booking-button.tsx           # BookingButton, EmailButton, EmailLink, BookingCard
   theme-provider.tsx           # theme preference (system/light/dark) + sound; MotionConfig reducedMotion="user"
   modal.tsx                    # Native <dialog> (showModal) wrapper; `layout="sheet"` for the menu
@@ -95,6 +96,7 @@ lib/
   chat-tools.ts                # showBookingCta, showBrief
   tool-results.ts              # Tool input schemas + pure output builders (shared)
   brief.ts                     # Brief fields, text, mailto and Cal links (client-safe)
+  feedback.ts                  # Feedback payload + submitFeedback() stub (sends nothing yet, issue #47)
   sanitize-messages.ts         # Untrusted chat body → last 20 UIMessages
   request-body.ts              # Body size cap (Content-Length, then UTF-8 bytes)
   rate-limit.ts                # In-memory per-IP / global fixed-window limiter
@@ -166,6 +168,7 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 - Landing (a thread with no messages): the h1 is `HEADLINES[0]`, then `SITE.subhead`, then a large composer that shows "Try “…”" with an example from `PROMPT_EXAMPLES`. The example slides out and the next slides in every 4.5 s until the visitor focuses the composer or types (an `aria-hidden` overlay, since a native placeholder can't animate). Sending an empty landing composer (button or Enter) sends the example shown. No suggestion chips, no project cards. The privacy notice sits at the bottom.
 - First send: the landing fades up and away (`AnimatePresence`), the composer glides to the dock (shared `layoutId="composer"`, `layout="position"`), the first message slides up into place and the reply fades in. Only messages that weren't there when the thread mounted animate (`InitialMessageIdsContext`), so restored chats don't replay.
 - Conversation: a centered column (`max-w-[760px]`), user messages in `--user-bubble` bubbles, assistant messages as plain text under the Skaffen label, the composer docked at the bottom with the privacy notice.
+- Under every finished reply with text: thumbs up/down (`aria-pressed`, one at a time, click again to clear) and a copy button whose icon turns into an animated check for 1.8 s. Rating shows a "Thank you" popover with "Share more feedback", which opens a form ("What was helpful?" with details, or "What could be better?" with `DOWN_REASONS` plus optional details). **Feedback is not sent anywhere yet:** `submitFeedback()` in `lib/feedback.ts` is a no-op until https://github.com/jamesalmeida/jamesalmeida-me/issues/47 picks a destination. Ratings live only in component state. When it does send, add rate limit + BotID + body cap to the new route and update the privacy page.
 - On phones the booking button lives only in the menu and in the booking/brief cards.
 - Menu (`SiteMenu`, a `Modal` with `layout="sheet"`: full screen on phones, a right-hand panel from `sm`) grows out of the Menu button (transform origin at its centre) and shrinks back into it on close; it draws its own fading backdrop. Closing (button, Escape, backdrop, or after New chat / a recent chat / Clear all) animates first and then calls `onClose`. theme chooser (System / Light / Dark, icon buttons with `aria-pressed`), an icon-only sound button, close; then New chat, How I can help, Why I do this, Email me, Privacy (large, slightly tight tracking, underlined on hover and focus); the booking button; and a Recent chats card with per-chat delete and "Clear all chats" (with a confirm step).
 - Before hydration, `StaticIntro` renders the same header and landing in the same frame (no layout shift) with the real h1 and crawlable links. No prices.
@@ -252,7 +255,7 @@ If `npm run dev` works but `npm run build` fails, fix the build errors **before*
 
 `.github/workflows/ci.yml` runs on every PR and on pushes to `main`, using Node from `.nvmrc`: `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`. The build needs no secrets.
 
-- `npm test` runs `vitest run` on `lib/**/*.test.ts`. The tests cover `sanitizeMessages` (including booking and brief output rebuilding), thread storage caps, quota eviction, corrupt-JSON reads and `resolveActiveThreadId` (`lib/threads.test.ts`, fake `window.localStorage` via `vi.stubGlobal`), the admin cookie (`signModel`, `verifyModelCookie`, `timingSafeEqualString`, including expiry and `ADMIN_COOKIE_SECRET`), `readBodyWithLimit`, the brief links (`lib/brief.test.ts`), `PROJECTS`, `getFirstUserText`, and `getKnowledge` / `getSystemPrompt` (no HTML comments or `PROVISIONAL`, all placeholders filled, Skaffen persona, no unshipped app names). They need no server and no API keys.
+- `npm test` runs `vitest run` on `lib/**/*.test.ts`. The tests cover `sanitizeMessages` (including booking and brief output rebuilding), thread storage caps, quota eviction, corrupt-JSON reads and `resolveActiveThreadId` (`lib/threads.test.ts`, fake `window.localStorage` via `vi.stubGlobal`), the admin cookie (`signModel`, `verifyModelCookie`, `timingSafeEqualString`, including expiry and `ADMIN_COOKIE_SECRET`), `readBodyWithLimit`, the brief links (`lib/brief.test.ts`), the feedback payload (`lib/feedback.test.ts`), `PROJECTS`, `getFirstUserText`, and `getKnowledge` / `getSystemPrompt` (no HTML comments or `PROVISIONAL`, all placeholders filled, Skaffen persona, no unshipped app names). They need no server and no API keys.
 - `lib/` files import `server-only`. `vitest.config.mts` aliases it to an empty stub, so tests can import them directly.
 - `npm run lint` runs `eslint .`, not the deprecated `next lint`. Unused vars prefixed with `_` are allowed (for example, `node: _node` to drop a prop).
 - `@ai-sdk/react` is declared but not imported directly. It stays because it is on the version lock list above and is what `@assistant-ui/react-ai-sdk` 1.1.21 is pinned against.
