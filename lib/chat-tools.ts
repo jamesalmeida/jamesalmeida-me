@@ -1,26 +1,24 @@
 import "server-only";
 
 import { tool } from "ai";
-import { PROJECTS } from "@/data/portfolio";
 import {
   bookingCtaInputSchema,
   bookingCtaOutput,
-  portfolioInputSchema,
-  portfolioOutput,
+  briefInputSchema,
+  briefOutput,
 } from "@/lib/tool-results";
-
-const projectIds = PROJECTS.map((project) => `${project.id} (${project.name})`).join(", ");
 
 export const chatTools = {
   showBookingCta: tool({
     description:
-      "Show the booking card with the intro-call link and email. Use when the visitor shows hiring or buying intent, asks about price, timing, availability, how to start, how to hire, or how to contact you. Do not mention a call length. Still write a short text reply.",
+      "Show the booking card with the discovery-call link and James' email. Use when the visitor asks how to book, contact or hire James, asks about price or timing, or wants to talk before you have enough for a brief. Do not mention a call length. Still write a short text reply.",
     inputSchema: bookingCtaInputSchema,
     execute: async () => bookingCtaOutput(),
   }),
-  showPortfolio: tool({
-    description: `Show project cards. Pass ids when the visitor asks about specific projects. Pass group "featured", "wip", "earlier", or "all" for a set. Known ids: ${projectIds}.`,
-    inputSchema: portfolioInputSchema,
-    execute: async (input) => portfolioOutput(input),
+  showBrief: tool({
+    description:
+      "Show the visitor's brief: a short summary of what they told you, with buttons to email it to James or book a discovery call with it attached. Use once you know who they are and what's in the way (usually after 2 to 4 questions), or sooner if they want to reach James. Each field is one short plain sentence in the visitor's own terms, at most 200 characters. Leave out fields you don't know; never guess. Nothing is sent until the visitor clicks. Still write a short text reply.",
+    inputSchema: briefInputSchema,
+    execute: async (input) => briefOutput(input),
   }),
 };

@@ -1,29 +1,25 @@
 export const SITE = {
   name: "James Almeida",
   url: "https://www.jamesalmeida.me",
-  title: "James Almeida — building with AI",
+  title: "James Almeida — AI for individuals and small teams",
   description:
-    "Power user turned builder. I run 40+ coordinated Grok Bot agents across my household, finances, and code, and I build the tools they use. Los Angeles, open to remote.",
-  heroLine:
-    "I'm a power user turned builder. I run 40+ coordinated Grok Bot agents across my household, finances, and code — and I build the tools they use.",
-  bio: "I'm James Almeida, a software engineer in Los Angeles, open to remote. I run 40+ coordinated Grok Bot agents across my household, finances, and code, and I build the tools they use. Before that I trained models at xAI and did product engineering at Leaf Group (Society6), iROKOtv, and Datadog. I'm looking for a remote building-with-AI role. I also consult with small businesses on automation.",
-  locationLine: "Los Angeles / open to remote",
+    "I help individuals and small teams find their place in a world with AI, at their own pace. Chat with my AI assistant about what's on your plate, then book a discovery call.",
+  // One line under the landing headline. Also the crawlable intro before the chat loads.
+  subhead:
+    "AI is slowly finding its way into all of our work. I've spent years deep in it, and I'd like to help you find your place in it, at your pace.",
   email: "james@gsv.to", // PROVISIONAL: public contact email (only email shown on the site)
-  bookingUrl: "https://cal.com/james-almeida/free-discovery-call", // PROVISIONAL: existing 30-min Cal event until a dedicated intro event exists
-  bookingLabel: "Book a free intro call", // PROVISIONAL: CTA label
-  bookingShortLabel: "Book a call",
-  hireLabel: "Hire me / Get in touch",
-  callLengthMinutes: undefined as number | undefined, // PROVISIONAL: intro-call length undecided. Do not render or state it anywhere while undefined
+  bookingUrl: "https://cal.com/james-almeida/free-discovery-call", // PROVISIONAL: existing 30-min Cal event until a dedicated discovery event exists
+  bookingLabel: "Book a discovery call",
+  callLengthMinutes: undefined as number | undefined, // PROVISIONAL: discovery-call length undecided. Do not render or state it anywhere while undefined
   linkedin: "https://linkedin.com/in/jamesworkswell",
   github: "https://github.com/jamesalmeida",
   x: "https://x.com/james_almeida",
   xHandle: "@james_almeida",
-  resumeUrl: "/resume.pdf",
-  // Drop a file in public/media and set src to its path (mp4/webm autoplay; gif/png/jpg/webp as an image).
-  // null shows a placeholder — never a broken embed.
-  konteksDemo: {
-    src: null as string | null,
-    poster: undefined as string | undefined,
+  // The chat assistant. It speaks about James in the third person.
+  assistant: {
+    name: "Skaffen",
+    initials: "SA",
+    role: "James' AI assistant",
   },
   company: {
     name: "General Systems Ventures",
@@ -33,13 +29,30 @@ export const SITE = {
   },
 } as const;
 
+// The landing question. The first entry is the default; the rest are A/B candidates.
+export const HEADLINES = [
+  "What can I do for you?",
+  "What's stopping you from using AI?",
+  "Where do you fit in a world with AI?",
+  "What would you do with an extra day a week?",
+] as const;
+
+// Rotating composer placeholders on the landing. Short enough for a phone.
+export const PROMPT_EXAMPLES = [
+  "Where do I start with AI?",
+  "Will AI change my job?",
+  "My team is buried in busywork",
+  "We tried ChatGPT and it didn't stick",
+  "I have an idea but no developer",
+] as const;
+
 const AUDIT_CREDIT =
   "The audit fee is credited toward your first build if you go ahead within 30 days."; // PROVISIONAL: audit-credit policy (30 days)
 
 export const OFFER = {
-  audience: ["Dental offices", "Property managers", "Law offices", "Agencies"],
+  audience: ["Individuals", "Small teams"],
   audienceLine:
-    "For small businesses whose teams lose hours to repetitive admin work.",
+    "For individuals and small teams who want AI to take real work off their plate, without becoming AI experts first.",
   steps: [
     {
       id: "audit",
@@ -67,7 +80,9 @@ export const OFFER = {
     },
   ],
   defaults: {
-    introCall: "Start with a free intro call.",
+    introCall: "Start with a free discovery call.",
+    individuals:
+      "If it's just you, the work is usually smaller. I scope it with you on the discovery call.", // PROVISIONAL: pricing for individuals is undecided; never quote a number for it
     reportIsYours: "The audit report is yours whether or not you go ahead.",
     oneOffFixes: "One-off fixes are available without a retainer.",
     auditCredit: AUDIT_CREDIT,
@@ -137,6 +152,11 @@ export const OFFER = {
     {
       question: "Do I have to sign up for the monthly plan?",
       answer: "No. Start with the audit. Each step is its own decision.",
+    },
+    {
+      question: "It's just me, not a business. Can you still help?",
+      answer:
+        "Yes. Helping one person find where AI fits in their week is exactly the kind of work I want to do. I scope it with you on the discovery call.",
     },
     {
       question: "Is the audit fee wasted if I go ahead?",

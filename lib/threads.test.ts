@@ -14,6 +14,7 @@ import {
   readHistoryThreads,
   readStoredActiveThread,
   readStoredThreads,
+  resolveActiveThreadId,
   saveThreadMessages,
   writeHistoryThreads,
   writeStoredActiveThread,
@@ -138,6 +139,23 @@ describe("pruneStoredThreads", () => {
   it("returns the same object when nothing is dropped", () => {
     const threads: StoredThreads = { "new-chat": stored(1), "history-1": stored(2) };
     expect(pruneStoredThreads(threads, new Set(["history-1"]))).toBe(threads);
+  });
+
+  it("drops messages stored under the old pinned thread ids", () => {
+    const threads: StoredThreads = { "new-chat": stored(1), projects: stored(2), "work-with-me": stored(3) };
+    expect(Object.keys(pruneStoredThreads(threads, new Set()))).toEqual(["new-chat"]);
+  });
+});
+
+describe("resolveActiveThreadId", () => {
+  it("keeps the new chat and existing history threads", () => {
+    expect(resolveActiveThreadId("new-chat", [])).toBe("new-chat");
+    expect(resolveActiveThreadId("h1", [history("h1", 1)])).toBe("h1");
+  });
+
+  it("falls back to a new chat for old pinned ids and deleted threads", () => {
+    expect(resolveActiveThreadId("projects", [history("h1", 1)])).toBe("new-chat");
+    expect(resolveActiveThreadId("h2", [history("h1", 1)])).toBe("new-chat");
   });
 });
 

@@ -10,6 +10,15 @@ type ModalProps = {
   onClose: () => void;
   /** Focused when the dialog closes. Defaults to whatever had focus when it opened. */
   returnFocusRef?: RefObject<HTMLElement | null>;
+  /** "center" for a dialog box; "sheet" for a full-screen panel that is a side panel from `sm`. */
+  layout?: "center" | "sheet";
+};
+
+// The sheet draws its own animated backdrop, so its ::backdrop is transparent.
+const LAYOUT_CLASSES = {
+  center:
+    "items-center justify-center px-4 backdrop:bg-[rgba(0,0,0,0.4)] backdrop:backdrop-blur-[8px]",
+  sheet: "items-stretch justify-end backdrop:bg-transparent sm:p-5",
 };
 
 // Native <dialog> opened with showModal(): the browser traps focus, closes on Escape
@@ -17,7 +26,14 @@ type ModalProps = {
 // box is transparent; clicking it outside the panel closes it, like the old overlay.
 // The backdrop uses literal values because older browsers do not pass :root
 // variables to ::backdrop.
-export function Modal({ children, initialFocusRef, labelledBy, onClose, returnFocusRef }: ModalProps) {
+export function Modal({
+  children,
+  initialFocusRef,
+  labelledBy,
+  onClose,
+  returnFocusRef,
+  layout = "center",
+}: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const pressStartedOnBackdrop = useRef(false);
   const onCloseRef = useRef(onClose);
@@ -31,14 +47,26 @@ export function Modal({ children, initialFocusRef, labelledBy, onClose, returnFo
     if (!dialog) return;
 
     const returnFocusTarget = returnFocusRef?.current ?? (document.activeElement as HTMLElement | null);
-    const handleClose = () => onCloseRef.current();
+    // The close event is async. In dev, StrictMode closes and reopens the dialog, and
+    // that first close event arrives once it's open again, so ignore it then.
+    const handleClose = () => {
+      if (!dialog.open) onCloseRef.current();
+    };
+
+    // Escape: let the owner close it (and animate out) instead of closing at once.
+    const handleCancel = (event: Event) => {
+      event.preventDefault();
+      onCloseRef.current();
+    };
 
     dialog.addEventListener("close", handleClose);
+    dialog.addEventListener("cancel", handleCancel);
     if (!dialog.open) dialog.showModal();
     initialFocusRef?.current?.focus();
 
     return () => {
       dialog.removeEventListener("close", handleClose);
+      dialog.removeEventListener("cancel", handleCancel);
       if (dialog.open) dialog.close();
       if (returnFocusTarget?.isConnected) returnFocusTarget.focus();
     };
@@ -48,7 +76,7 @@ export function Modal({ children, initialFocusRef, labelledBy, onClose, returnFo
     <dialog
       ref={dialogRef}
       aria-labelledby={labelledBy}
-      className="fixed inset-0 m-0 h-full max-h-none w-full max-w-none items-center justify-center overflow-y-auto border-0 bg-transparent p-0 px-4 text-[var(--foreground)] open:flex backdrop:bg-[rgba(0,0,0,0.4)] backdrop:backdrop-blur-[8px]"
+      className={`fixed inset-0 m-0 h-full max-h-none w-full max-w-none overflow-y-auto border-0 bg-transparent p-0 text-[var(--foreground)] open:flex ${LAYOUT_CLASSES[layout]}`}
       onMouseDown={(e) => {
         pressStartedOnBackdrop.current = e.target === e.currentTarget;
       }}

@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       model,
       maxOutputTokens: 20,
       system:
-        "You are a title generator. Given a user message, output 1–3 words that label the topic. No markdown, no hashtags, no quotes, no punctuation, no explanation. Never include \"James\" or \"James Almeida\". Examples: Tech Stack, Career Timeline, Product Work, Sheldn.ai, Consulting, Contact Info, AI Training, Frontend Rebuilds.",
+        "You are a title generator. Given a user message, output 1–3 words that label the topic. No markdown, no hashtags, no quotes, no punctuation, no explanation. Never include \"James\" or \"James Almeida\". Examples: Getting Started, Job Worries, Team Busywork, Bookkeeping Admin, App Idea, Pricing, Discovery Call, Email Overload.",
       prompt: `Label this message in 1–3 words: "${promptMessage}"`,
     }));
   } catch (error) {

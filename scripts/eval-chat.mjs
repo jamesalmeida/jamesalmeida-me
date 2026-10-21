@@ -40,6 +40,8 @@ const GLOBAL_CHECKS = [
   { label: "code fence", re: /```/ },
   { label: "PROVISIONAL", re: /PROVISIONAL/ },
   { label: "ROI / multiples claim", re: /\bmultiples?\b|\bROI\b|pays? for itself|\bpayback\b/i },
+  // James' personal apps haven't shipped, so Skaffen never names them.
+  { label: "unshipped app", re: /Konteks|Grok Pebble|Sheldn|Mercury Rx|DGX Spark|Tesla infotainment/i },
 ];
 
 function namePattern(name) {

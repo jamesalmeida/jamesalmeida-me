@@ -50,7 +50,7 @@ export default function OpenGraphImage() {
             maxWidth: 980,
           }}
         >
-          Power user turned builder. 40+ Grok Bot agents — and I build the tools they use.
+          What can I do for you? AI for individuals and small teams, at your pace.
         </div>
         <div
           style={{
@@ -60,7 +60,7 @@ export default function OpenGraphImage() {
             opacity: 0.62,
           }}
         >
-          Los Angeles / open to remote
+          Chat with Skaffen, my AI assistant
         </div>
       </div>
     ),

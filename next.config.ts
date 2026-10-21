@@ -3,6 +3,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // The portfolio page was removed when the site went client-first.
+  async redirects() {
+    return [{ source: "/work", destination: "/about", permanent: false }];
+  },
   // Do NOT put secrets in `env` here — that inlines them into the client bundle.
   // Keep ANTHROPIC_API_KEY, OPENAI_API_KEY, and ADMIN_PASSWORD in:
   //   - local:  .env.local
