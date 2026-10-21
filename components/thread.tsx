@@ -52,6 +52,7 @@ const CHAR_COUNTER_FROM = 1800;
 
 const BLOCKED_MESSAGE =
   "You're sending messages too fast. Please wait a minute and try again, or email james@gsv.to.";
+const GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again, or email james@gsv.to.";
 
 // The transport shows the raw response body as the error, so replace rate-limit (429)
 // and bot-check (403) responses with a short friendly message.
@@ -80,9 +81,17 @@ function useIsNewMessage() {
 const composerLayoutTransition = { type: "spring", stiffness: 320, damping: 34 } as const;
 
 export function Thread({ initialMessages, onMessagesChange, onReply, onRunComplete }: ThreadProps) {
+  // The AI SDK chat's error. A run that fails before any assistant content (a 429,
+  // a 403, or a stream that errors right after "start") creates no assistant
+  // message, so MessagePrimitive.Error has nothing to render in; RunErrorNotice does.
+  const [runError, setRunError] = useState<string | null>(null);
+  const clearRunError = useCallback(() => setRunError(null), []);
   const runtime = useChatRuntime({
     messages: initialMessages,
     transport: chatTransport,
+    onError: (error) => {
+      setRunError(error.message === BLOCKED_MESSAGE ? BLOCKED_MESSAGE : GENERIC_ERROR_MESSAGE);
+    },
   });
   // Set by the Stop button. A stopped run still ends with a "complete" status.
   const cancelledRef = useRef(false);
@@ -94,9 +103,14 @@ export function Thread({ initialMessages, onMessagesChange, onReply, onRunComple
       <ShowBookingCtaToolUI />
       <ShowBriefToolUI />
       <ThreadPersistence onMessagesChange={onMessagesChange} />
-      <RunCompleteDetector cancelledRef={cancelledRef} onReply={onReply} onRunComplete={onRunComplete} />
+      <RunCompleteDetector
+        cancelledRef={cancelledRef}
+        onReply={onReply}
+        onRunComplete={onRunComplete}
+        onRunStart={clearRunError}
+      />
       <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
-        <ThreadBody onCancel={() => { cancelledRef.current = true; }} />
+        <ThreadBody runError={runError} onCancel={() => { cancelledRef.current = true; }} />
       </ThreadPrimitive.Root>
       </InitialMessageIdsContext.Provider>
     </AssistantRuntimeProvider>
@@ -106,7 +120,7 @@ export function Thread({ initialMessages, onMessagesChange, onReply, onRunComple
 // The landing (a question and a big composer) until the first message, then the
 // conversation with the composer docked at the bottom. On the first send the landing
 // fades up and away while the composer glides down to the dock.
-function ThreadBody({ onCancel }: { onCancel: () => void }) {
+function ThreadBody({ onCancel, runError }: { onCancel: () => void; runError: string | null }) {
   const isEmpty = useThread((state) => state.messages.length === 0);
 
   return (
@@ -148,6 +162,7 @@ function ThreadBody({ onCancel }: { onCancel: () => void }) {
                     UserMessage: UserMessage,
                   }}
                 />
+                <RunErrorNotice error={runError} />
               </div>
             </ThreadPrimitive.Viewport>
             <ScrollToBottomButton />
@@ -198,10 +213,12 @@ function RunCompleteDetector({
   cancelledRef,
   onReply,
   onRunComplete,
+  onRunStart,
 }: {
   cancelledRef: RefObject<boolean>;
   onReply?: (text: string) => void;
   onRunComplete?: (messages: UIMessage[]) => void;
+  onRunStart?: () => void;
 }) {
   const isRunning = useThread((state) => state.isRunning);
   const messages = useThread((state) => state.messages);
@@ -213,7 +230,10 @@ function RunCompleteDetector({
     const justFinished = prevRunning.current && !isRunning;
     prevRunning.current = isRunning;
 
-    if (justStarted) cancelledRef.current = false;
+    if (justStarted) {
+      cancelledRef.current = false;
+      onRunStart?.();
+    }
     if (!justFinished || messages.length === 0) return;
 
     play("ready");
@@ -230,7 +250,7 @@ function RunCompleteDetector({
     if (hasFired.current || !onRunComplete) return;
     hasFired.current = true;
     onRunComplete(toUIMessages(messages));
-  }, [cancelledRef, isRunning, messages, onReply, onRunComplete]);
+  }, [cancelledRef, isRunning, messages, onReply, onRunComplete, onRunStart]);
 
   return null;
 }
@@ -260,6 +280,31 @@ function ScrollToBottomButton() {
   );
 }
 
+function hasVisibleContent(message: ThreadMessage) {
+  return message.content.some(
+    (part) => (part.type === "text" && part.text.length > 0) || part.type === "tool-call",
+  );
+}
+
+// Shows the last run's error under the last user message when the run failed
+// before the assistant produced any content. Errors after some content show
+// inside the assistant message (MessagePrimitive.Error).
+function RunErrorNotice({ error }: { error: string | null }) {
+  const isRunning = useThread((state) => state.isRunning);
+  const last = useThread((state) => state.messages[state.messages.length - 1]);
+  if (!error || isRunning || !last) return null;
+  if (last.role === "assistant" && hasVisibleContent(last)) return null;
+
+  return (
+    <p
+      role="alert"
+      className="self-start rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+    >
+      {error}
+    </p>
+  );
+}
+
 function AssistantLabel() {
   return (
     <div className="eyebrow flex items-center gap-2.5 text-xs tracking-[0.04em] text-[var(--muted)] sm:text-[13px]">
@@ -279,11 +324,13 @@ function AssistantLabel() {
 function AssistantMessage() {
   const message = useMessage();
   const isNew = useIsNewMessage();
-  const hasContent = message.content.some(
-    (part) => (part.type === "text" && part.text.length > 0) || part.type === "tool-call",
-  );
+  const hasContent = hasVisibleContent(message);
   const isWriting = message.status?.type === "running";
   const hasText = message.content.some((part) => part.type === "text" && part.text.trim().length > 0);
+
+  // An empty reply that is no longer running failed or was stopped: show nothing
+  // here (RunErrorNotice shows the error) instead of an empty labelled reply.
+  if (!hasContent && !isWriting) return null;
 
   return (
     <MessagePrimitive.Root className="w-full">
