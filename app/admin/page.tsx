@@ -1,7 +1,7 @@
 "use client";
 
 import { play } from "cuelume";
-import { Lock } from "lucide-react";
+import { ArrowLeft, Lock } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AdminAvatarSettings } from "@/components/admin-avatar-settings";
@@ -80,14 +80,23 @@ export default function AdminPage() {
             <p className="eyebrow text-xs text-[var(--muted)]">Admin</p>
             <h1 className={`text-4xl tracking-[-0.04em] ${serif}`}>jamesalmeida.me</h1>
           </div>
-          <button
-            type="button"
-            onClick={handleLock}
-            className="inline-flex items-center gap-2 rounded-full border border-[var(--border-strong)] px-4 py-2 text-sm font-medium transition hover:border-[var(--foreground)]"
-          >
-            <Lock size={14} aria-hidden />
-            Lock
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--border-strong)] px-4 py-2 text-sm font-medium transition hover:border-[var(--foreground)]"
+            >
+              <ArrowLeft size={14} aria-hidden />
+              Back to site
+            </Link>
+            <button
+              type="button"
+              onClick={handleLock}
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--border-strong)] px-4 py-2 text-sm font-medium transition hover:border-[var(--foreground)]"
+            >
+              <Lock size={14} aria-hidden />
+              Lock
+            </button>
+          </div>
         </div>
 
         <div role="tablist" aria-label="Admin sections" className="flex gap-1.5 px-1">
