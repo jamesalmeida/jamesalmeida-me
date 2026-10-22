@@ -208,6 +208,35 @@
     "allowedDollarAmountsOnly": true
   },
   {
+    "id": "scams",
+    "messages": [
+      {
+        "id": "scams",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "How do I stay safe from AI scams?"
+          }
+        ]
+      }
+    ],
+    "mustMatchAny": [
+      "scam",
+      "phish",
+      "safe word",
+      "verify",
+      "voice"
+    ],
+    "mustMatch": [
+      "\\?"
+    ],
+    "mustNotMatch": [
+      "security audit",
+      "penetration test"
+    ]
+  },
+  {
     "id": "audience",
     "messages": [
       {

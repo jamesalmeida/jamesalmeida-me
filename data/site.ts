@@ -44,6 +44,7 @@ export const PROMPT_EXAMPLES = [
   "My team is buried in busywork",
   "We tried ChatGPT and it didn't stick",
   "I have an idea but no developer",
+  "How do I stay safe from AI scams?",
 ] as const;
 
 const AUDIT_CREDIT =

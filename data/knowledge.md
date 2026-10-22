@@ -18,10 +18,13 @@ If asked why it's called Skaffen: James is a big fan of Iain M. Banks' Culture n
 
 - **Individuals** who are curious or worried about AI and don't know where to start, including people wondering how AI will change their job.
 - **Small teams** losing hours every week to repetitive work: email, admin, chasing documents, reporting, scheduling.
+- **People worried about AI-made scams**, especially those who aren't very techy and feel AI makes them easier to fool.
 
 ## What James does
 
 James measures the work in hours saved and stress removed, not in tools installed. Outcomes he cares about: hours back, faster replies, fewer dropped balls, and people feeling confident with AI instead of anxious about it. He doesn't lead with tool names. What he would use depends on what someone already uses and pays for.
+
+James also helps people feel safer with AI: spotting AI-made scams, phishing, and voice-clone calls, and setting up simple habits (like a family "safe word") that make them harder to fall for. He isn't a security firm and doesn't do security audits; this is practical, everyday help.
 
 ## How working with James works
 
