@@ -94,6 +94,12 @@ export function SiteMenu({
 
   // Shrinks back into the Menu button, then unmounts (onClose).
   const requestClose = () => setIsClosing(true);
+  // Dismissing (close button, Escape, backdrop) gets a soft sound. Menu actions
+  // already play their own tick, so closing after them stays quiet.
+  const dismiss = () => {
+    play("whisper");
+    requestClose();
+  };
   const closeAfter = (action: () => void) => () => {
     action();
     requestClose();
@@ -102,7 +108,7 @@ export function SiteMenu({
   return (
     <Modal
       labelledBy={titleId}
-      onClose={requestClose}
+      onClose={dismiss}
       layout="sheet"
       initialFocusRef={closeRef}
       returnFocusRef={returnFocusRef}
@@ -180,10 +186,9 @@ export function SiteMenu({
           <button
             ref={closeRef}
             type="button"
-            onClick={requestClose}
+            onClick={dismiss}
             aria-label="Close menu"
             className={roundButtonClass}
-            data-cuelume-press="droplet"
           >
             <X size={20} aria-hidden />
           </button>

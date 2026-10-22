@@ -48,8 +48,8 @@ function writeStorage(key: string, value: string) {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [preference, setPreferenceState] = useState<ThemePreference>("system");
   const [systemTheme, setSystemTheme] = useState<Theme>("light");
-  // Sounds are off until the visitor turns them on.
-  const [soundsEnabled, setSoundsEnabled] = useState(false);
+  // Sounds are on unless the visitor turned them off.
+  const [soundsEnabled, setSoundsEnabled] = useState(true);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -63,7 +63,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     updateSystemTheme();
     query.addEventListener("change", updateSystemTheme);
 
-    const enabled = readStorage(SOUNDS_STORAGE_KEY) === "on";
+    const enabled = readStorage(SOUNDS_STORAGE_KEY) !== "off";
     setSoundsEnabled(enabled);
     setEnabled(enabled);
     bind();

@@ -18,7 +18,6 @@ import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
-import Link from "next/link";
 import { play } from "cuelume";
 import { ArrowDown, ArrowUp, Square } from "lucide-react";
 import {
@@ -37,6 +36,7 @@ import { HEADLINES, PROMPT_EXAMPLES, SITE } from "@/data/site";
 import { toUIMessages } from "@/lib/message-convert";
 import { serif } from "./booking-button";
 import { MessageActions } from "./message-actions";
+import { PrivacyNotice } from "./privacy-notice";
 import { ShowBookingCtaToolUI, ShowBriefToolUI } from "./tool-cards";
 
 type ThreadProps = {
@@ -178,23 +178,6 @@ function ThreadBody({ onCancel, runError }: { onCancel: () => void; runError: st
         </div>
       )}
     </>
-  );
-}
-
-function PrivacyNotice({ className = "" }: { className?: string }) {
-  return (
-    <p className={`text-center text-[11px] leading-4 text-[var(--muted)] sm:text-xs ${className}`}>
-      Chats are processed by AI providers (OpenAI and Anthropic) and saved only in this browser.
-      Please don&apos;t share sensitive information.{" "}
-      <Link
-        href="/privacy"
-        className="underline underline-offset-2 transition hover:text-[var(--foreground)]"
-        data-cuelume-hover="whisper"
-        data-cuelume-press="tick"
-      >
-        Privacy
-      </Link>
-    </p>
   );
 }
 
