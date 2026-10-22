@@ -81,6 +81,17 @@ function useIsNewMessage() {
   return !initialIds.has(id);
 }
 
+// While the phone keyboard opens or closes, the visual viewport resizes for a few
+// hundred milliseconds. Re-run `scroll` after each resize for `ms`, two frames later
+// so the layout and assistant-ui's turn-anchor measurements have caught up.
+function followKeyboard(scroll: () => void, ms = 1000) {
+  const viewport = window.visualViewport;
+  if (!viewport) return;
+  const onResize = () => requestAnimationFrame(() => requestAnimationFrame(scroll));
+  viewport.addEventListener("resize", onResize);
+  window.setTimeout(() => viewport.removeEventListener("resize", onResize), ms);
+}
+
 // The composer moves from the landing to the bottom with a shared layout animation.
 const composerLayoutTransition = { type: "spring", stiffness: 320, damping: 34 } as const;
 
@@ -283,7 +294,7 @@ function ScrollToBottomButton() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="absolute -top-12 right-0 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
+          className="absolute -top-12 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
           aria-label="Scroll to latest message"
           data-cuelume-press="tick"
         >
@@ -452,22 +463,21 @@ function Composer({
     setHasFocused(true);
     if (isLanding) return;
     scrollToBottom({ behavior: "auto" });
-    const viewport = window.visualViewport;
-    if (!viewport) return;
-    const follow = () => scrollToBottom({ behavior: "auto" });
-    viewport.addEventListener("resize", follow);
-    window.setTimeout(() => viewport.removeEventListener("resize", follow), 1000);
+    followKeyboard(() => scrollToBottom({ behavior: "auto" }));
   };
 
   useEffect(() => {
     if (isRunning && !wasRunningRef.current) {
-      // Dismiss mobile keyboard once a message starts sending
+      // Dismiss the phone keyboard once a message starts sending. The run start
+      // already scrolled the new message to the top, but the viewport grows as the
+      // keyboard closes, so scroll again to keep the message anchored at the top.
       if (typeof document !== "undefined") {
         (document.activeElement as HTMLElement | null)?.blur();
+        followKeyboard(() => scrollToBottom({ behavior: "auto" }));
       }
     }
     wasRunningRef.current = isRunning;
-  }, [isRunning]);
+  }, [isRunning, scrollToBottom]);
 
   // On the landing, sending an empty composer sends the example being shown.
   const sendExample = () => {
