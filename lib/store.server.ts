@@ -56,7 +56,7 @@ export async function storeMutationQuietly(
 export function describeStoreError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (/Could not find (public )?function/i.test(message)) {
-    return "The Convex functions aren't deployed. The Vercel build must run `npm run vercel-build` with CONVEX_DEPLOY_KEY set.";
+    return "The Convex functions aren't deployed. Set CONVEX_DEPLOY_KEY (Production) in Vercel and redeploy; the build log should say '[build] CONVEX_DEPLOY_KEY is set'.";
   }
   if (/Unauthorized/.test(message)) {
     return "CONVEX_SERVER_SECRET doesn't match between Vercel and the Convex production deployment.";

@@ -5,8 +5,9 @@
   "packageManager": "npm@10.9.0",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "vercel-build": "node scripts/vercel-build.mjs",
+    "build": "node scripts/build.mjs",
+    "build:next": "next build",
+    "vercel-build": "npm run build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
