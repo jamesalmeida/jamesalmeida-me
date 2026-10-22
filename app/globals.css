@@ -66,6 +66,8 @@ body {
 
 .app-shell {
   height: var(--app-height, 100dvh);
+  /* Follows the visual viewport when the iOS keyboard pans it (see ChatApp). */
+  transform: translateY(var(--app-offset, 0px));
   background: var(--background);
 }
 
