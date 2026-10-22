@@ -40,7 +40,8 @@ export const SITE = {
 
 // The landing question. The first entry is the default; the rest are A/B candidates.
 export const HEADLINES = [
-  "What can I do for you?",
+  // The landing first reads "What can I do for you?", then an "A" slides in (LandingHeadline).
+  "What can AI do for you?",
   "What's stopping you from using AI?",
   "Where do you fit in a world with AI?",
   "What would you do with an extra day a week?",

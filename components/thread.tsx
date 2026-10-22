@@ -34,9 +34,10 @@ import {
   type KeyboardEvent,
   type RefObject,
 } from "react";
-import { HEADLINES, PROMPT_EXAMPLES, SITE } from "@/data/site";
+import { PROMPT_EXAMPLES, SITE } from "@/data/site";
 import { toUIMessages } from "@/lib/message-convert";
 import { serif } from "./booking-button";
+import { LandingHeadline } from "./landing-headline";
 import { MessageActions } from "./message-actions";
 import { PrivacyNotice } from "./privacy-notice";
 import { ShowBookingCtaToolUI, ShowBriefToolUI } from "./tool-cards";
@@ -164,7 +165,7 @@ function ThreadBody({
               <h1
                 className={`max-w-[1000px] text-center text-[44px] font-normal leading-[1.05] tracking-[-0.02em] sm:text-[72px] lg:text-[88px] lg:leading-[1.02] ${serif}`}
               >
-                {HEADLINES[0]}
+                <LandingHeadline />
               </h1>
               <p className="max-w-[720px] text-center text-[17px] leading-[1.5] text-[var(--muted)] sm:text-[22px]">
                 {SITE.subhead}
