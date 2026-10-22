@@ -508,7 +508,8 @@ function Composer({
         className={`flex items-end gap-2 rounded-[1.75rem] border border-[var(--border-strong)] bg-[var(--surface)] sm:gap-3 ${
           isLanding
             ? "py-1.5 pl-5 pr-1.5 shadow-[0_16px_48px_rgba(0,0,0,0.08)] sm:rounded-[2.25rem] sm:py-2.5 sm:pl-8 sm:pr-2.5 sm:shadow-[0_24px_80px_rgba(0,0,0,0.08)]"
-            : "py-1.5 pl-5 pr-1.5 sm:py-2 sm:pl-7 sm:pr-2"
+            : // Half its single-line height on desktop (8 + 48 + 8 px + borders), so the ends are round.
+              "py-1.5 pl-5 pr-1.5 sm:rounded-[2.125rem] sm:py-2 sm:pl-7 sm:pr-2"
         }`}
       >
         <div className="relative flex flex-1 self-center">
