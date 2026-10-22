@@ -20,7 +20,8 @@ export const SITE = {
     name: "Skaffen",
     initials: "SA",
     role: "James' AI assistant",
-    // The animated avatar next to every reply. Options are in lib/avatar.ts.
+    // The animated avatar next to every reply (@jamesalmeida/agent-avatars).
+    // Try options at https://jamesalmeida.github.io/agent-avatars/
     avatar: {
       shape: "squircle",
       color: "slate",

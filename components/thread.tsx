@@ -16,6 +16,7 @@ import {
   useThreadViewport,
 } from "@assistant-ui/react";
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
+import { AgentAvatar, useHappyMoment, type AvatarMood } from "@jamesalmeida/agent-avatars";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
@@ -34,12 +35,10 @@ import {
   type RefObject,
 } from "react";
 import { HEADLINES, PROMPT_EXAMPLES, SITE } from "@/data/site";
-import type { AvatarMood } from "@/lib/avatar";
 import { toUIMessages } from "@/lib/message-convert";
 import { serif } from "./booking-button";
 import { MessageActions } from "./message-actions";
 import { PrivacyNotice } from "./privacy-notice";
-import { SkaffenAvatar, useHappyMoment } from "./skaffen-avatar";
 import { ShowBookingCtaToolUI, ShowBriefToolUI } from "./tool-cards";
 
 type ThreadProps = {
@@ -294,7 +293,7 @@ function RunErrorNotice({ error }: { error: string | null }) {
 function AssistantLabel({ mood, animated }: { mood: AvatarMood; animated: boolean }) {
   return (
     <div className="eyebrow flex items-center gap-2.5 text-xs tracking-[0.04em] text-[var(--muted)] sm:text-[13px]">
-      <SkaffenAvatar mood={mood} animated={animated} />
+      <AgentAvatar {...SITE.assistant.avatar} mood={mood} animated={animated} size={28} />
       <span>
         {SITE.assistant.name} · {SITE.assistant.role}
       </span>
