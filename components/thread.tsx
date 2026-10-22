@@ -16,7 +16,7 @@ import {
   useThreadViewport,
 } from "@assistant-ui/react";
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
-import { AgentAvatar, useHappyMoment, type AvatarMood } from "@jamesalmeida/agent-avatars";
+import { useHappyMoment, type AvatarMood } from "@jamesalmeida/agent-avatars";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
@@ -46,6 +46,8 @@ type ThreadProps = {
   onMessagesChange: (messages: UIMessage[]) => void;
   onReply?: (text: string) => void;
   onRunComplete?: (messages: UIMessage[]) => void;
+  /** Skaffen's mood while the conversation is showing, or null on the landing. ChatApp shows it in the header. */
+  onPresenceChange?: (mood: AvatarMood | null) => void;
 };
 
 // Matches the server's per-part cap in lib/sanitize-messages.ts.
@@ -82,7 +84,7 @@ function useIsNewMessage() {
 // The composer moves from the landing to the bottom with a shared layout animation.
 const composerLayoutTransition = { type: "spring", stiffness: 320, damping: 34 } as const;
 
-export function Thread({ initialMessages, onMessagesChange, onReply, onRunComplete }: ThreadProps) {
+export function Thread({ initialMessages, onMessagesChange, onPresenceChange, onReply, onRunComplete }: ThreadProps) {
   // The AI SDK chat's error. A run that fails before any assistant content (a 429,
   // a 403, or a stream that errors right after "start") creates no assistant
   // message, so MessagePrimitive.Error has nothing to render in; RunErrorNotice does.
@@ -112,7 +114,11 @@ export function Thread({ initialMessages, onMessagesChange, onReply, onRunComple
         onRunStart={clearRunError}
       />
       <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
-        <ThreadBody runError={runError} onCancel={() => { cancelledRef.current = true; }} />
+        <ThreadBody
+          runError={runError}
+          onCancel={() => { cancelledRef.current = true; }}
+          onPresenceChange={onPresenceChange}
+        />
       </ThreadPrimitive.Root>
       </InitialMessageIdsContext.Provider>
     </AssistantRuntimeProvider>
@@ -120,75 +126,84 @@ export function Thread({ initialMessages, onMessagesChange, onReply, onRunComple
 }
 
 // The landing (a question and a big composer) until the first message, then the
-// conversation with the composer docked at the bottom. On the first send the landing
-// fades up and away while the composer glides down to the dock.
-function ThreadBody({ onCancel, runError }: { onCancel: () => void; runError: string | null }) {
+// conversation with the composer floating at the bottom. On the first send the
+// landing fades up and away while the composer glides down.
+function ThreadBody({
+  onCancel,
+  onPresenceChange,
+  runError,
+}: {
+  onCancel: () => void;
+  onPresenceChange?: (mood: AvatarMood | null) => void;
+  runError: string | null;
+}) {
   const isEmpty = useThread((state) => state.messages.length === 0);
 
   return (
-    <>
-      <div className="relative min-h-0 flex-1">
-        <AnimatePresence initial={false}>
-          {isEmpty ? (
-            <motion.div
-              key="landing"
-              className="absolute inset-0 flex flex-col overflow-y-auto"
-              exit={{ opacity: 0, y: -32, pointerEvents: "none" }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-            >
-              <div className="flex flex-1 flex-col items-center justify-center gap-5 px-4 pb-16 pt-4 sm:gap-7 sm:px-12 sm:pb-20">
-                <h1
-                  className={`max-w-[1000px] text-center text-[44px] font-normal leading-[1.05] tracking-[-0.02em] sm:text-[72px] lg:text-[88px] lg:leading-[1.02] ${serif}`}
-                >
-                  {HEADLINES[0]}
-                </h1>
-                <p className="max-w-[720px] text-center text-[17px] leading-[1.5] text-[var(--muted)] sm:text-[22px]">
-                  {SITE.subhead}
-                </p>
-                <div className="mt-3 w-full max-w-[780px] sm:mt-5">
-                  <Composer variant="landing" onCancel={onCancel} />
-                </div>
+    <div className="relative min-h-0 flex-1">
+      <AnimatePresence initial={false}>
+        {isEmpty ? (
+          <motion.div
+            key="landing"
+            className="absolute inset-0 flex flex-col overflow-y-auto"
+            exit={{ opacity: 0, y: -32, pointerEvents: "none" }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+          >
+            <div className="flex flex-1 flex-col items-center justify-center gap-5 px-4 pb-16 pt-4 sm:gap-7 sm:px-12 sm:pb-20">
+              <h1
+                className={`max-w-[1000px] text-center text-[44px] font-normal leading-[1.05] tracking-[-0.02em] sm:text-[72px] lg:text-[88px] lg:leading-[1.02] ${serif}`}
+              >
+                {HEADLINES[0]}
+              </h1>
+              <p className="max-w-[720px] text-center text-[17px] leading-[1.5] text-[var(--muted)] sm:text-[22px]">
+                {SITE.subhead}
+              </p>
+              <div className="mt-3 w-full max-w-[780px] sm:mt-5">
+                <Composer variant="landing" onCancel={onCancel} />
               </div>
-              <PrivacyNotice className="px-4 pb-5 sm:px-12 sm:pb-6" />
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-        {isEmpty ? null : (
-          <>
-            <h1 className="sr-only">Chat with {SITE.assistant.name}, {SITE.assistant.role}</h1>
-            {/* turnAnchor="top": each new message scrolls to the top of the viewport and
-                the reply streams in below it (MessagePrimitive.Root adds the room for it).
-                Spacing is padding on each message, not a flex gap, so the anchored
-                message's measured height includes it. */}
-            <ThreadPrimitive.Viewport turnAnchor="top" className="absolute inset-0 overflow-y-auto px-4 sm:px-12">
-              <div className="mx-auto flex w-full max-w-[760px] flex-col">
-                <ThreadPrimitive.Messages
-                  components={{
-                    AssistantMessage: AssistantMessage,
-                    UserMessage: UserMessage,
-                  }}
-                />
-                <RunErrorNotice error={runError} />
-              </div>
-              <ThreadPrimitive.ViewportFooter>
-                <PrivacyNotice className="pb-4 pt-8" />
-              </ThreadPrimitive.ViewportFooter>
-            </ThreadPrimitive.Viewport>
-            <ScrollToBottomButton />
-          </>
-        )}
-      </div>
-      {isEmpty ? null : (
-        <div className="px-4 pb-5 pt-2 sm:px-12 sm:pb-6">
-          <div className="mx-auto flex w-full max-w-[780px] flex-col items-start gap-2">
-            <SkaffenPresence />
-            <div className="w-full">
-              <Composer variant="dock" onCancel={onCancel} />
             </div>
-          </div>
-        </div>
+            <PrivacyNotice className="px-4 pb-5 sm:px-12 sm:pb-6" />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+      {isEmpty ? null : (
+        <>
+          <h1 className="sr-only">Chat with {SITE.assistant.name}, {SITE.assistant.role}</h1>
+          <SkaffenPresence onPresenceChange={onPresenceChange} />
+          {/* turnAnchor="top": each new message scrolls to the top of the viewport and
+              the reply streams in below it (MessagePrimitive.Root adds the room for it).
+              Spacing is padding on each message, not a flex gap, so the anchored
+              message's measured height includes it. The footers' heights count too:
+              the privacy notice scrolls with the messages, and the composer is sticky,
+              so messages slide behind it. The message column grows to push the
+              footers down; don't use mt-auto on a footer, because assistant-ui counts
+              a footer's top margin in its height. */}
+          <ThreadPrimitive.Viewport
+            turnAnchor="top"
+            className="absolute inset-0 flex flex-col overflow-y-auto"
+          >
+            <div className="mx-auto flex w-full max-w-[760px] shrink-0 grow flex-col px-4 sm:box-content sm:px-12">
+              <ThreadPrimitive.Messages
+                components={{
+                  AssistantMessage: AssistantMessage,
+                  UserMessage: UserMessage,
+                }}
+              />
+              <RunErrorNotice error={runError} />
+            </div>
+            <ThreadPrimitive.ViewportFooter className="shrink-0 px-4 sm:px-12">
+              <PrivacyNotice className="pb-3 pt-8" />
+            </ThreadPrimitive.ViewportFooter>
+            <ThreadPrimitive.ViewportFooter className="sticky bottom-0 shrink-0 bg-[linear-gradient(to_bottom,transparent,var(--background)_45%)] px-4 pb-5 pt-4 sm:px-12 sm:pb-6">
+              <div className="relative mx-auto w-full max-w-[780px]">
+                <ScrollToBottomButton />
+                <Composer variant="dock" onCancel={onCancel} />
+              </div>
+            </ThreadPrimitive.ViewportFooter>
+          </ThreadPrimitive.Viewport>
+        </>
       )}
-    </>
+    </div>
   );
 }
 
@@ -263,7 +278,7 @@ function ScrollToBottomButton() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="absolute bottom-4 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
+          className="absolute -top-12 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
           aria-label="Scroll to latest message"
           data-cuelume-press="tick"
         >
@@ -299,11 +314,10 @@ function RunErrorNotice({ error }: { error: string | null }) {
   );
 }
 
-// The one Skaffen on screen: its avatar floating above the docked composer, with no
-// name or label. Its mood follows the conversation: writing while a reply streams,
-// a happy moment when a new reply brings the brief, listening while the visitor
-// types, otherwise waiting.
-function SkaffenPresence() {
+// Works out Skaffen's mood and reports it to ChatApp, which shows the one Skaffen
+// on screen in the header: writing while a reply streams, a happy moment when a new
+// reply brings the brief, listening while the visitor types, otherwise waiting.
+function SkaffenPresence({ onPresenceChange }: { onPresenceChange?: (mood: AvatarMood | null) => void }) {
   const initialIds = useContext(InitialMessageIdsContext);
   const isRunning = useThread((state) => state.isRunning);
   const last = useThread((state) => state.messages[state.messages.length - 1]);
@@ -315,7 +329,12 @@ function SkaffenPresence() {
   const isHappy = useHappyMoment(lastBringsBrief && !isRunning);
   const mood: AvatarMood = isRunning ? "writing" : isHappy ? "happy" : isVisitorTyping ? "listening" : "idle";
 
-  return <AgentAvatar {...SITE.assistant.avatar} mood={mood} size={32} className="ml-1" />;
+  useEffect(() => {
+    onPresenceChange?.(mood);
+  }, [mood, onPresenceChange]);
+  useEffect(() => () => onPresenceChange?.(null), [onPresenceChange]);
+
+  return null;
 }
 
 function AssistantMessage() {
@@ -337,7 +356,7 @@ function AssistantMessage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: "easeOut", delay: isNew ? 0.15 : 0 }}
       >
-        {/* Replies have no avatar or label; Skaffen's avatar floats above the composer. */}
+        {/* Replies have no avatar or label; Skaffen's avatar is in the header. */}
         <h2 className="sr-only">{SITE.assistant.name} said:</h2>
         {hasContent ? (
           <div className="flex min-w-0 flex-col gap-4 text-base leading-[1.6] sm:text-lg">
@@ -348,7 +367,7 @@ function AssistantMessage() {
             />
           </div>
         ) : isWriting ? (
-          // The avatar above the composer looking up is the visual cue; this is for screen readers.
+          // The header avatar looking up is the visual cue; this is for screen readers.
           <p className="sr-only">Writing a reply</p>
         ) : null}
         <MessagePrimitive.Error>

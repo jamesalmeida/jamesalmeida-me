@@ -1,39 +1,104 @@
 "use client";
 
+import { AgentAvatar, type AvatarMood } from "@jamesalmeida/agent-avatars";
+import { AnimatePresence, motion } from "framer-motion";
 import { CalendarCheck, Menu } from "lucide-react";
 import Link from "next/link";
-import type { Ref } from "react";
+import { useEffect, useState, type Ref } from "react";
 import { SITE } from "@/data/site";
 import { serif } from "./booking-button";
 
-// The top bar on the chat: name, "Book a discovery call" (from `sm`; on phones it
-// lives in the menu) and Menu. Server-renderable: StaticIntro passes no handlers.
+// Skaffen matches the Menu button: 44 px on phones, 48 px from `sm`.
+function useAvatarSize() {
+  const [size, setSize] = useState(44);
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 640px)");
+    const update = () => setSize(query.matches ? 48 : 44);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return size;
+}
+
+const nameTransition = { type: "spring", stiffness: 360, damping: 34 } as const;
+
+// The top bar on the chat: name, then (in a conversation) Skaffen in the centre,
+// then "Book a discovery call" (from `sm`; on phones it lives in the menu) and Menu.
+// When a conversation starts, the name shrinks and stacks to the left and Skaffen
+// pops in. Server-renderable: StaticIntro passes no handlers and no mood.
 export function SiteHeader({
   menuButtonRef,
   onNewChat,
   onOpenMenu,
+  skaffenMood = null,
 }: {
   menuButtonRef?: Ref<HTMLButtonElement>;
   /** The name starts a new chat; the current one stays in Recent chats. */
   onNewChat?: () => void;
   onOpenMenu?: () => void;
+  /** Skaffen's mood in a conversation; null on the landing. */
+  skaffenMood?: AvatarMood | null;
 }) {
+  const isConversation = skaffenMood !== null;
+  const avatarSize = useAvatarSize();
+  const [first, ...rest] = SITE.name.split(" ");
+
   return (
-    <header className="flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-8 sm:py-6 lg:px-12">
-      <Link
-        href="/"
-        onClick={(event) => {
-          if (!onNewChat) return;
-          event.preventDefault();
-          onNewChat();
-        }}
-        title={onNewChat ? "Start a new chat" : undefined}
-        className={`text-[22px] tracking-[-0.01em] text-[var(--foreground)] sm:text-[26px] ${serif}`}
-        data-cuelume-press="tick"
-      >
-        {SITE.name}
-      </Link>
-      <div className="flex items-center gap-3">
+    <header className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-4 sm:px-8 sm:py-6 lg:px-12">
+      <div className="flex h-11 items-center justify-self-start sm:h-12">
+        <Link
+          href="/"
+          onClick={(event) => {
+            if (!onNewChat) return;
+            event.preventDefault();
+            onNewChat();
+          }}
+          title={onNewChat ? "Start a new chat" : undefined}
+          className={`text-[22px] tracking-[-0.01em] text-[var(--foreground)] sm:text-[26px] ${serif}`}
+          data-cuelume-press="tick"
+        >
+          {/* Scaled, not resized, so the shrink animates smoothly; the words move with layout animations. */}
+          <motion.span
+            className="block origin-left"
+            initial={false}
+            animate={{ scale: isConversation ? 0.68 : 1 }}
+            transition={nameTransition}
+          >
+            <span
+              className={`flex leading-[1.05] ${isConversation ? "flex-col" : "flex-row gap-x-[0.28em]"}`}
+            >
+              <motion.span layout="position" transition={nameTransition}>
+                {first}
+              </motion.span>
+              <motion.span layout="position" transition={nameTransition}>
+                {rest.join(" ")}
+              </motion.span>
+            </span>
+          </motion.span>
+        </Link>
+      </div>
+      <div className="flex h-11 w-11 items-center justify-center sm:h-12 sm:w-12">
+        <AnimatePresence>
+          {isConversation ? (
+            <motion.div
+              key="skaffen"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 420, damping: 22, delay: 0.1 }}
+            >
+              <AgentAvatar
+                {...SITE.assistant.avatar}
+                mood={skaffenMood}
+                size={avatarSize}
+                label={`${SITE.assistant.name}, ${SITE.assistant.role}`}
+              />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
+      <div className="flex items-center gap-3 justify-self-end">
         <a
           href={SITE.bookingUrl}
           target="_blank"
