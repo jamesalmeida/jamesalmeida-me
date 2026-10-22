@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/admin-auth";
 import { parseId } from "@/lib/analytics";
-import { storeApi, storeQuery } from "@/lib/store.server";
+import { describeStoreError, storeApi, storeQuery } from "@/lib/store.server";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +17,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ conversation });
   } catch (error) {
     console.error("Loading a conversation failed.", error);
-    return NextResponse.json({ error: "Could not load the conversation." }, { status: 503 });
+    return NextResponse.json({ error: "Could not load the conversation.", detail: describeStoreError(error) }, { status: 503 });
   }
 }

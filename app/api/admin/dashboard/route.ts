@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/admin-auth";
-import { isStoreConfigured, storeApi, storeQuery } from "@/lib/store.server";
+import { describeStoreError, isStoreConfigured, storeApi, storeQuery } from "@/lib/store.server";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +23,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ configured: true, days, dashboard, leads });
   } catch (error) {
     console.error("Loading the dashboard failed.", error);
-    return NextResponse.json({ error: "Could not load the dashboard." }, { status: 503 });
+    return NextResponse.json({ error: "Could not load the dashboard.", detail: describeStoreError(error) }, { status: 503 });
   }
 }

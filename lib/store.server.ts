@@ -51,3 +51,18 @@ export async function storeMutationQuietly(
     console.error("Storing analytics failed.", error);
   }
 }
+
+/** For admin screens only: what likely went wrong with a Convex call, in plain words. */
+export function describeStoreError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/Could not find (public )?function/i.test(message)) {
+    return "The Convex functions aren't deployed. The Vercel build must run `npm run vercel-build` with CONVEX_DEPLOY_KEY set.";
+  }
+  if (/Unauthorized/.test(message)) {
+    return "CONVEX_SERVER_SECRET doesn't match between Vercel and the Convex production deployment.";
+  }
+  if (/fetch failed|ENOTFOUND|ECONNREFUSED/i.test(message)) {
+    return "Couldn't reach Convex. Check CONVEX_URL.";
+  }
+  return message.slice(0, 300);
+}

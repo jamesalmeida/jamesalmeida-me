@@ -101,8 +101,12 @@ export function useAdminDashboard(onLocked: () => void) {
         dashboard?: Dashboard;
         leads?: Lead[];
         error?: string;
+        detail?: string;
       };
-      if (!response.ok) return setState({ status: "error", message: payload.error ?? "Could not load the dashboard." });
+      if (!response.ok) {
+        const message = [payload.error ?? "Could not load the dashboard.", payload.detail].filter(Boolean).join(" ");
+        return setState({ status: "error", message });
+      }
       if (!payload.configured || !payload.dashboard) return setState({ status: "unconfigured" });
       setState({ status: "ready", dashboard: payload.dashboard, leads: payload.leads ?? [] });
     } catch {
@@ -412,9 +416,11 @@ export function TranscriptDialog({ conversationId, onClose, onLocked }: { conver
     fetch(`/api/admin/conversation?id=${encodeURIComponent(conversationId)}`, { cache: "no-store" })
       .then(async (response) => {
         if (response.status === 401) return onLocked();
-        const payload = (await response.json()) as { conversation?: Transcript; error?: string };
+        const payload = (await response.json()) as { conversation?: Transcript; error?: string; detail?: string };
         if (cancelled) return;
-        if (!response.ok || !payload.conversation) setError(payload.error ?? "Could not load the chat.");
+        if (!response.ok || !payload.conversation) {
+          setError([payload.error ?? "Could not load the chat.", payload.detail].filter(Boolean).join(" "));
+        }
         else setTranscript(payload.conversation);
       })
       .catch(() => !cancelled && setError("Request failed."));
