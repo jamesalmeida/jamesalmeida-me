@@ -162,7 +162,7 @@ ADMIN_COOKIE_SECRET=...            # optional HMAC key for the admin cookie (fal
 DEFAULT_MODEL=gpt-5.4              # optional override; unknown ids fall back to gpt-5.4
 CONVEX_URL=https://<name>.convex.cloud  # storage; without it (and the secret) nothing is stored or read
 CONVEX_SERVER_SECRET=...           # must match the same variable in the Convex dashboard; every Convex function checks it
-CONVEX_DEPLOY_KEY=...              # Production only: `npm run vercel-build` runs `convex deploy` before the build
+CONVEX_DEPLOY_KEY=...              # Production only: the `npm run vercel-build` Build Command runs `convex deploy` before the build
 RESEND_API_KEY=... / LEAD_NOTIFY_FROM=... / LEAD_NOTIFY_TO=...  # optional lead email to James
 ```
 
@@ -290,7 +290,7 @@ If `npm run dev` works but `npm run build` fails, fix the build errors **before*
 `.github/workflows/ci.yml` runs on every PR and on pushes to `main`, using Node from `.nvmrc`: `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`. The build needs no secrets.
 
 - `npm test` runs `vitest run` on `lib/**/*.test.ts` and `test/**/*.test.ts`. The tests cover `sanitizeMessages` (including booking and brief output rebuilding), thread storage caps, quota eviction, corrupt-JSON reads and `resolveActiveThreadId` (`lib/threads.test.ts`, fake `window.localStorage` via `vi.stubGlobal`), the admin cookies (`signModel`, `verifyModelCookie`, `signAdminSession`, `verifyAdminSession`, `timingSafeEqualString`, including expiry and `ADMIN_COOKIE_SECRET`), `readBodyWithLimit`, the brief links (`lib/brief.test.ts`), the feedback payload (`lib/feedback.test.ts`), the avatar options, `parseAvatarSetting` and `AVATAR_OPTIONS` against the package (`lib/site-avatar.test.ts`), the analytics validators (`lib/analytics.test.ts`), the Convex functions with `convex-test` (`test/convex.test.ts`: server secret, funnel and dashboard, feedback upsert/clear, leads, 90-day purge; the test fakes a `_generated` path so convex-test can find the modules), `PROJECTS`, `getFirstUserText`, and `getKnowledge` / `getSystemPrompt` (no HTML comments or `PROVISIONAL`, all placeholders filled, Skaffen persona, no unshipped app names). They need no server and no API keys.
-- Vercel runs `npm run vercel-build` (`scripts/vercel-build.mjs`) instead of `build`: with `CONVEX_DEPLOY_KEY` (Production only) it runs `npx convex deploy --cmd "npm run build"`, so `convex/` deploys with the site; without it, it just builds. Leave Vercel's Build Command on the default for this to apply. CI runs plain `npm run build`.
+- Vercel's Build Command is overridden to `npm run vercel-build` (`scripts/vercel-build.mjs`; the Next.js preset's default runs `npm run build` and skips it). With `CONVEX_DEPLOY_KEY` (Production only) it runs `npx convex deploy --cmd "npm run build"`, so `convex/` deploys with the site; without it, it just builds. It logs which at the top of the build log. CI runs plain `npm run build`.
 - `convex-test` and `@edge-runtime/vm` are dev dependencies for `test/convex.test.ts` (`// @vitest-environment edge-runtime`).
 - `lib/` files import `server-only`. `vitest.config.mts` aliases it to an empty stub, so tests can import them directly.
 - `npm run lint` runs `eslint .`, not the deprecated `next lint`. Unused vars prefixed with `_` are allowed (for example, `node: _node` to drop a prop).
