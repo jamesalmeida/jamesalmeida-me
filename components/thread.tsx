@@ -16,7 +16,7 @@ import {
   useThreadViewport,
 } from "@assistant-ui/react";
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
-import { useHappyMoment, type AvatarMood } from "@jamesalmeida/agent-avatars";
+import { AgentAvatar, useHappyMoment, type AvatarMood } from "@jamesalmeida/agent-avatars";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
@@ -46,8 +46,6 @@ type ThreadProps = {
   onMessagesChange: (messages: UIMessage[]) => void;
   onReply?: (text: string) => void;
   onRunComplete?: (messages: UIMessage[]) => void;
-  /** Skaffen's mood while the conversation is showing, or null on the landing. ChatApp shows it in the header. */
-  onPresenceChange?: (mood: AvatarMood | null) => void;
 };
 
 // Matches the server's per-part cap in lib/sanitize-messages.ts.
@@ -84,7 +82,7 @@ function useIsNewMessage() {
 // The composer moves from the landing to the bottom with a shared layout animation.
 const composerLayoutTransition = { type: "spring", stiffness: 320, damping: 34 } as const;
 
-export function Thread({ initialMessages, onMessagesChange, onPresenceChange, onReply, onRunComplete }: ThreadProps) {
+export function Thread({ initialMessages, onMessagesChange, onReply, onRunComplete }: ThreadProps) {
   // The AI SDK chat's error. A run that fails before any assistant content (a 429,
   // a 403, or a stream that errors right after "start") creates no assistant
   // message, so MessagePrimitive.Error has nothing to render in; RunErrorNotice does.
@@ -114,11 +112,7 @@ export function Thread({ initialMessages, onMessagesChange, onPresenceChange, on
         onRunStart={clearRunError}
       />
       <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
-        <ThreadBody
-          runError={runError}
-          onCancel={() => { cancelledRef.current = true; }}
-          onPresenceChange={onPresenceChange}
-        />
+        <ThreadBody runError={runError} onCancel={() => { cancelledRef.current = true; }} />
       </ThreadPrimitive.Root>
       </InitialMessageIdsContext.Provider>
     </AssistantRuntimeProvider>
@@ -128,15 +122,7 @@ export function Thread({ initialMessages, onMessagesChange, onPresenceChange, on
 // The landing (a question and a big composer) until the first message, then the
 // conversation with the composer floating at the bottom. On the first send the
 // landing fades up and away while the composer glides down.
-function ThreadBody({
-  onCancel,
-  onPresenceChange,
-  runError,
-}: {
-  onCancel: () => void;
-  onPresenceChange?: (mood: AvatarMood | null) => void;
-  runError: string | null;
-}) {
+function ThreadBody({ onCancel, runError }: { onCancel: () => void; runError: string | null }) {
   const isEmpty = useThread((state) => state.messages.length === 0);
 
   return (
@@ -169,7 +155,6 @@ function ThreadBody({
       {isEmpty ? null : (
         <>
           <h1 className="sr-only">Chat with {SITE.assistant.name}, {SITE.assistant.role}</h1>
-          <SkaffenPresence onPresenceChange={onPresenceChange} />
           {/* turnAnchor="top": each new message scrolls to the top of the viewport and
               the reply streams in below it (MessagePrimitive.Root adds the room for it).
               Spacing is padding on each message, not a flex gap, so the anchored
@@ -190,9 +175,14 @@ function ThreadBody({
               />
               <RunErrorNotice error={runError} />
             </div>
-            <ThreadPrimitive.ViewportFooter className="sticky bottom-0 shrink-0 bg-[linear-gradient(to_bottom,transparent,var(--background)_45%)] px-4 pb-5 pt-4 sm:px-12 sm:pb-6">
-              <div className="relative mx-auto w-full max-w-[780px]">
-                <ScrollToBottomButton />
+            <ThreadPrimitive.ViewportFooter className="sticky bottom-0 shrink-0 bg-[linear-gradient(to_bottom,transparent,var(--background)_45%)] px-4 pb-2 pt-3 sm:px-12 sm:pb-6">
+              <div className="mx-auto w-full max-w-[780px]">
+                {/* Skaffen floats above the composer on the left; the scroll-to-latest
+                    button sits on the right. */}
+                <div className="mb-2 flex h-10 items-end justify-between pl-1">
+                  <SkaffenPresence />
+                  <ScrollToBottomButton />
+                </div>
                 <Composer variant="dock" onCancel={onCancel} />
                 {/* Under the composer on desktop only; phones keep the space for messages. */}
                 <div className="hidden sm:block">
@@ -278,7 +268,7 @@ function ScrollToBottomButton() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="absolute -top-12 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
           aria-label="Scroll to latest message"
           data-cuelume-press="tick"
         >
@@ -314,10 +304,11 @@ function RunErrorNotice({ error }: { error: string | null }) {
   );
 }
 
-// Works out Skaffen's mood and reports it to ChatApp, which shows the one Skaffen
-// on screen in the header: writing while a reply streams, a happy moment when a new
-// reply brings the brief, listening while the visitor types, otherwise waiting.
-function SkaffenPresence({ onPresenceChange }: { onPresenceChange?: (mood: AvatarMood | null) => void }) {
+// The one Skaffen on screen: its avatar floating above the composer, with no name or
+// label. Its mood follows the conversation: writing while a reply streams, a happy
+// moment when a new reply brings the brief, listening while the visitor types,
+// otherwise waiting.
+function SkaffenPresence() {
   const initialIds = useContext(InitialMessageIdsContext);
   const isRunning = useThread((state) => state.isRunning);
   const last = useThread((state) => state.messages[state.messages.length - 1]);
@@ -329,12 +320,7 @@ function SkaffenPresence({ onPresenceChange }: { onPresenceChange?: (mood: Avata
   const isHappy = useHappyMoment(lastBringsBrief && !isRunning);
   const mood: AvatarMood = isRunning ? "writing" : isHappy ? "happy" : isVisitorTyping ? "listening" : "idle";
 
-  useEffect(() => {
-    onPresenceChange?.(mood);
-  }, [mood, onPresenceChange]);
-  useEffect(() => () => onPresenceChange?.(null), [onPresenceChange]);
-
-  return null;
+  return <AgentAvatar {...SITE.assistant.avatar} mood={mood} size={40} />;
 }
 
 function AssistantMessage() {
@@ -356,7 +342,7 @@ function AssistantMessage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: "easeOut", delay: isNew ? 0.15 : 0 }}
       >
-        {/* Replies have no avatar or label; Skaffen's avatar is in the header. */}
+        {/* Replies have no avatar or label; Skaffen's avatar floats above the composer. */}
         <h2 className="sr-only">{SITE.assistant.name} said:</h2>
         {hasContent ? (
           <div className="flex min-w-0 flex-col gap-4 text-base leading-[1.6] sm:text-lg">
@@ -367,7 +353,7 @@ function AssistantMessage() {
             />
           </div>
         ) : isWriting ? (
-          // The header avatar looking up is the visual cue; this is for screen readers.
+          // The avatar above the composer looking up is the visual cue; this is for screen readers.
           <p className="sr-only">Writing a reply</p>
         ) : null}
         <MessagePrimitive.Error>
@@ -437,6 +423,21 @@ function Composer({
   const example = useRotatingExample(isLanding && !hasFocused && charCount === 0);
   const wasRunningRef = useRef(false);
   const charCounterId = useId();
+  const scrollToBottom = useThreadViewport((state) => state.scrollToBottom);
+
+  // Focusing the docked composer opens the phone keyboard, which shrinks the
+  // viewport. Jump to the latest message, and follow the resize while the
+  // keyboard animates in, so the scroll-to-latest button doesn't show while typing.
+  const handleFocus = () => {
+    setHasFocused(true);
+    if (isLanding) return;
+    scrollToBottom({ behavior: "auto" });
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const follow = () => scrollToBottom({ behavior: "auto" });
+    viewport.addEventListener("resize", follow);
+    window.setTimeout(() => viewport.removeEventListener("resize", follow), 1000);
+  };
 
   useEffect(() => {
     if (isRunning && !wasRunningRef.current) {
@@ -485,7 +486,7 @@ function Composer({
             rows={1}
             unstable_focusOnScrollToBottom={false}
             unstable_focusOnRunStart={false}
-            onFocus={() => setHasFocused(true)}
+            onFocus={handleFocus}
             onKeyDown={handleKeyDown}
             className={`max-h-[160px] w-full resize-none overflow-y-auto bg-transparent leading-6 outline-none placeholder:text-[var(--muted)] ${textClass}`}
             placeholder={isLanding ? "" : "Reply\u2026"}
