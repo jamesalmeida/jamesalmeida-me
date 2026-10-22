@@ -76,3 +76,30 @@ export function verifyModelCookie(value?: string | null, now = Date.now()): Mode
 export function resolveAdminModel(cookieValue?: string | null): ModelId {
   return verifyModelCookie(cookieValue) ?? getDefaultModelId();
 }
+
+// The /admin session: an httpOnly cookie set by POST /api/admin/verify after the
+// password checks out, so saves and the dashboard don't send the password again.
+export const ADMIN_SESSION_COOKIE_NAME = "jamesalmeida-admin";
+export const ADMIN_SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
+const ADMIN_SESSION_PREFIX = "admin-session";
+
+/** Returns `admin-session.${issuedAtSeconds}.${base64url HMAC}`. */
+export function signAdminSession(now = Date.now()): string {
+  const key = signingKey();
+  if (!key) {
+    throw new Error("ADMIN_PASSWORD is not configured.");
+  }
+  const payload = `${ADMIN_SESSION_PREFIX}.${Math.floor(now / 1000)}`;
+  return `${payload}.${sign(key, payload)}`;
+}
+
+export function verifyAdminSession(value?: string | null, now = Date.now()): boolean {
+  const key = signingKey();
+  if (!key || !value) return false;
+  const match = /^admin-session\.(\d{1,12})\.([A-Za-z0-9_-]+)$/.exec(value);
+  if (!match) return false;
+  const [, issuedAtRaw, signature] = match;
+  if (!timingSafeEqualString(signature, sign(key, `${ADMIN_SESSION_PREFIX}.${issuedAtRaw}`))) return false;
+  const age = Math.floor(now / 1000) - Number(issuedAtRaw);
+  return age <= ADMIN_SESSION_MAX_AGE_SECONDS && age >= -MAX_CLOCK_SKEW_SECONDS;
+}

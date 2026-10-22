@@ -1,12 +1,20 @@
 import { NextResponse } from "next/server";
-import { readAdminRequest } from "@/lib/admin-auth";
+import { endAdminSession, hasAdminSession, startAdminSession } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
-// Unlocks /admin: checks the password and nothing else. The page keeps the password
-// in memory and sends it again with each save, so nothing is stored here.
+// Whether this browser is signed in to /admin (the session cookie is httpOnly).
+export async function GET() {
+  return NextResponse.json({ signedIn: await hasAdminSession() });
+}
+
+// Unlocks /admin: checks the password and sets the signed session cookie.
 export async function POST(request: Request) {
-  const result = await readAdminRequest(request);
-  if ("response" in result) return result.response;
+  return startAdminSession(request);
+}
+
+// "Lock" in /admin.
+export async function DELETE() {
+  await endAdminSession();
   return NextResponse.json({ ok: true });
 }

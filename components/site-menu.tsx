@@ -204,7 +204,7 @@ export function SiteMenu({
           <Link href="/about" className={menuLinkClass} data-cuelume-press="tick">
             Why I do this
           </Link>
-          <a href={`mailto:${SITE.email}`} className={menuLinkClass} data-cuelume-press="tick">
+          <a href={`mailto:${SITE.email}`} className={menuLinkClass} data-track="email_clicked" data-cuelume-press="tick">
             Email me
           </a>
           <Link href="/privacy" className={menuLinkClass} data-cuelume-press="tick">

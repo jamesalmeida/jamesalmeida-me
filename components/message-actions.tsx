@@ -1,6 +1,6 @@
 "use client";
 
-import { useMessage } from "@assistant-ui/react";
+import { useMessage, useThread } from "@assistant-ui/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Copy, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
@@ -27,6 +27,20 @@ export function MessageActions() {
       .join("\n\n")
       .trim(),
   );
+  // Stored with the feedback: the conversation (its first message id, as in
+  // /api/chat) and the visitor's message this reply answered.
+  const conversationId = useThread((thread) => thread.messages[0]?.id);
+  const userText = useThread((thread) => {
+    const index = thread.messages.findIndex((message) => message.id === messageId);
+    for (let i = index - 1; i >= 0; i -= 1) {
+      const message = thread.messages[i];
+      if (message.role !== "user") continue;
+      return message.content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n\n");
+    }
+    return "";
+  });
+  const feedback = (input: { rating: FeedbackRating | null; reasons?: string[]; details?: string }) =>
+    buildFeedbackPayload({ ...input, messageId, conversationId, replyText: text, userText });
   const [rating, setRating] = useState<FeedbackRating | null>(null);
   const [isThanksOpen, setIsThanksOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -36,12 +50,13 @@ export function MessageActions() {
     if (rating === next) {
       setRating(null);
       setIsThanksOpen(false);
+      submitFeedback(feedback({ rating: null }));
       return;
     }
     setRating(next);
     setHasSentDetails(false);
     setIsThanksOpen(true);
-    void submitFeedback(buildFeedbackPayload({ messageId, rating: next, replyText: text }));
+    submitFeedback(feedback({ rating: next }));
   };
 
   return (
@@ -85,9 +100,7 @@ export function MessageActions() {
           rating={rating}
           onClose={() => setIsFormOpen(false)}
           onSubmit={(reasons, details) => {
-            void submitFeedback(
-              buildFeedbackPayload({ messageId, rating, reasons, details, replyText: text }),
-            );
+            submitFeedback(feedback({ rating, reasons, details }));
             setHasSentDetails(true);
             setIsFormOpen(false);
             setIsThanksOpen(true);

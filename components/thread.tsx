@@ -36,6 +36,7 @@ import {
 } from "react";
 import { PROMPT_EXAMPLES, SITE } from "@/data/site";
 import { toUIMessages } from "@/lib/message-convert";
+import { getVisitContext, getVisitId } from "@/lib/visit";
 import { serif } from "./booking-button";
 import { LandingHeadline } from "./landing-headline";
 import { MessageActions } from "./message-actions";
@@ -69,8 +70,25 @@ const chatFetch: typeof fetch = async (input, init) => {
   return response;
 };
 
-// Created once: a new transport per render is wasted work.
-const chatTransport = new DefaultChatTransport({ api: "/api/chat", fetch: chatFetch });
+// Created once: a new transport per render is wasted work. Each request also carries
+// the conversation id (the chat's first message id, stable when the new chat forks
+// into history) and the visit, for the stored transcript (lib/visit.ts).
+const chatTransport = new DefaultChatTransport({
+  api: "/api/chat",
+  fetch: chatFetch,
+  prepareSendMessagesRequest: ({ id, messages, body, trigger, messageId }) => ({
+    body: {
+      ...body,
+      id,
+      messages,
+      trigger,
+      messageId,
+      conversationId: messages[0]?.id,
+      visitId: getVisitId(),
+      context: getVisitContext(),
+    },
+  }),
+});
 
 // Ids of the messages the thread mounted with. Only messages sent or received after
 // that animate in, so a restored chat doesn't replay its whole history.

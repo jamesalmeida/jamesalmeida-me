@@ -1,10 +1,13 @@
 import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  ADMIN_SESSION_MAX_AGE_SECONDS,
   MODEL_COOKIE_MAX_AGE_SECONDS,
   resolveAdminModel,
+  signAdminSession,
   signModel,
   timingSafeEqualString,
+  verifyAdminSession,
   verifyModelCookie,
 } from "./admin-cookie";
 
@@ -143,5 +146,38 @@ describe("legacy model ids", () => {
   it("falls back to gpt-5.4 for unknown DEFAULT_MODEL values", () => {
     vi.stubEnv("DEFAULT_MODEL", "not-a-model");
     expect(resolveAdminModel(undefined)).toBe("gpt-5.4");
+  });
+});
+
+describe("admin session cookie", () => {
+  beforeEach(() => {
+    vi.stubEnv("ADMIN_PASSWORD", "hunter2");
+    vi.stubEnv("ADMIN_COOKIE_SECRET", "");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("verifies a fresh session and rejects tampered or expired ones", () => {
+    const now = Date.now();
+    const session = signAdminSession(now);
+    expect(verifyAdminSession(session, now)).toBe(true);
+    expect(verifyAdminSession(`${session}x`, now)).toBe(false);
+    expect(verifyAdminSession(session.replace(/\.\d+\./, ".1."), now)).toBe(false);
+    expect(verifyAdminSession(session, now + (ADMIN_SESSION_MAX_AGE_SECONDS + 1) * 1000)).toBe(false);
+    expect(verifyAdminSession(undefined, now)).toBe(false);
+  });
+
+  it("is not interchangeable with the model cookie", () => {
+    expect(verifyAdminSession(signModel("gpt-5.4"))).toBe(false);
+    expect(verifyModelCookie(signAdminSession())).toBeNull();
+  });
+
+  it("is not honoured without ADMIN_PASSWORD, or after the key changes", () => {
+    const session = signAdminSession();
+    vi.stubEnv("ADMIN_COOKIE_SECRET", "rotated");
+    expect(verifyAdminSession(session)).toBe(false);
+    vi.stubEnv("ADMIN_PASSWORD", "");
+    expect(verifyAdminSession(session)).toBe(false);
   });
 });

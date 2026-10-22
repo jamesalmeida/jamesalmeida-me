@@ -2,7 +2,7 @@ import { COLORS, EYES, EYE_COLORS, SHAPES, resolveConfig } from "@jamesalmeida/a
 import { describe, expect, it, vi } from "vitest";
 import { SITE } from "@/data/site";
 import { AVATAR_OPTIONS, DEFAULT_SITE_AVATAR, parseAvatarSetting, storedAvatarOrDefault } from "@/lib/avatar-settings";
-import { canSaveAvatar, getSiteAvatar, parseEdgeConfig } from "@/lib/avatar-settings.server";
+import { getSiteAvatar } from "@/lib/avatar-settings.server";
 
 describe("SITE.assistant.avatar", () => {
   it("only uses options agent-avatars knows (unknown ones would silently fall back)", () => {
@@ -49,29 +49,11 @@ describe("parseAvatarSetting", () => {
   });
 });
 
-describe("Edge Config connection", () => {
-  it("parses the id and builds item URLs", () => {
-    const edgeConfig = parseEdgeConfig("https://edge-config.vercel.com/ecfg_abc123?token=t0k");
-    expect(edgeConfig?.id).toBe("ecfg_abc123");
-    expect(edgeConfig?.itemUrl("avatar")).toBe("https://edge-config.vercel.com/ecfg_abc123/item/avatar?token=t0k");
-  });
-
-  it("rejects missing or malformed connection strings", () => {
-    expect(parseEdgeConfig(undefined)).toBeNull();
-    expect(parseEdgeConfig("not a url")).toBeNull();
-    expect(parseEdgeConfig("https://edge-config.vercel.com/ecfg_abc123")).toBeNull();
-    expect(parseEdgeConfig("https://edge-config.vercel.com/other?token=t")).toBeNull();
-  });
-
-  it("only allows saving with both EDGE_CONFIG and VERCEL_API_TOKEN", () => {
-    const connection = "https://edge-config.vercel.com/ecfg_abc123?token=t0k";
-    expect(canSaveAvatar({ EDGE_CONFIG: connection, VERCEL_API_TOKEN: "x" })).toBe(true);
-    expect(canSaveAvatar({ EDGE_CONFIG: connection })).toBe(false);
-    expect(canSaveAvatar({ VERCEL_API_TOKEN: "x" })).toBe(false);
-  });
-
-  it("uses the default without EDGE_CONFIG", async () => {
-    vi.stubEnv("EDGE_CONFIG", "");
+describe("getSiteAvatar", () => {
+  it("uses the default when storage isn't configured", async () => {
+    vi.stubEnv("CONVEX_URL", "");
+    vi.stubEnv("NEXT_PUBLIC_CONVEX_URL", "");
+    vi.stubEnv("CONVEX_SERVER_SECRET", "");
     await expect(getSiteAvatar()).resolves.toEqual({ avatar: DEFAULT_SITE_AVATAR, source: "default" });
     vi.unstubAllEnvs();
   });

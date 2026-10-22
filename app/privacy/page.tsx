@@ -6,7 +6,7 @@ const serif =
   "font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif]";
 
 const description =
-  "How the chat on this site handles what you type: who processes it, where it's stored, and how to delete it.";
+  "How the chat on this site handles what you type: who processes it, what's stored, and for how long.";
 
 export const metadata: Metadata = {
   title: "Privacy",
@@ -32,11 +32,53 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
           API terms.
         </p>
         <p>
-          My server doesn&apos;t save your messages. This site has no database, and my code
-          doesn&apos;t keep chat transcripts or write chat content to logs.
+          I save a copy of each chat, your messages and the assistant&apos;s replies, in my
+          database (hosted by Convex), so I can see what&apos;s useful and where the assistant
+          falls short. Saved chats are deleted automatically after 90 days. They aren&apos;t
+          linked to your name or email unless you leave your email on a brief. If you&apos;d like
+          a chat deleted sooner, email me.
         </p>
         <p>Please don&apos;t share sensitive information, such as patient or customer details.</p>
       </>
+    ),
+  },
+  {
+    title: "Ratings and feedback",
+    body: (
+      <p>
+        If you rate a reply with the thumbs up or down, I save the rating, any reason or comment
+        you add, the reply and the message it answered. Feedback is deleted after 90 days too.
+      </p>
+    ),
+  },
+  {
+    title: "Usage analytics",
+    body: (
+      <>
+        <p>
+          To learn what works, I record a few events: that the chat page loaded, that a chat
+          started, that the assistant wrote a brief, and clicks on the booking and email links.
+          With them I keep the headline you saw, the website that sent you here (just its
+          domain), any campaign tags in the link, and whether you&apos;re on a phone, tablet or
+          desktop. A random id, kept in your browser tab until you close it, ties one visit&apos;s
+          events together. These events are deleted after 90 days.
+        </p>
+        <p>
+          Vercel Web Analytics also counts page views. It doesn&apos;t use cookies and doesn&apos;t
+          store your IP address.
+        </p>
+      </>
+    ),
+  },
+  {
+    title: "Leaving your email",
+    body: (
+      <p>
+        If you leave your email on your brief, I save it with your name (if you give it), the
+        brief and the chat it came from, so I can follow up, and I may get an email about it. I
+        keep it until you ask me to delete it or I no longer need it. I won&apos;t add you to a
+        mailing list or share it.
+      </p>
     ),
   },
   {
@@ -47,10 +89,11 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
           Your chats are saved in your browser&apos;s localStorage so they&apos;re still there
           when you come back. That includes your messages, the replies (including any brief
           the assistant writes for you), your recent chats list and which chat you had open.
-          Your theme and sound settings are saved there too. It&apos;s stored as plain text, so anyone using this browser profile can
-          read it.
+          Your theme and sound settings are saved there too. It&apos;s stored as plain text, so
+          anyone using this browser profile can read it. The visit id above is kept in
+          sessionStorage and is gone when you close the tab.
         </p>
-        <p>To delete it:</p>
+        <p>To delete what&apos;s in your browser:</p>
         <ul className="list-disc space-y-1 pl-5">
           <li>
             Open the <strong>Menu</strong> on the chat and choose <strong>Clear all chats</strong>.
@@ -67,24 +110,24 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
       <>
         <p>
           The site is hosted on Vercel, which processes standard request data such as your IP
-          address to serve pages.
+          address to serve pages. I don&apos;t store IP addresses.
         </p>
         <p>
-          To limit abuse of the chat, my server counts requests per IP address in memory over a
-          10-minute window. Those counts aren&apos;t written to storage and reset whenever the
-          server restarts. When you send a message, Vercel BotID also runs a check in your
-          browser and on the server to tell people from bots.
+          To limit abuse, my server counts requests per IP address in memory over a short
+          window. Those counts aren&apos;t written to storage and reset whenever the server
+          restarts. When you send a message, rate a reply or leave your email, Vercel BotID also
+          runs a check in your browser and on the server to tell people from bots.
         </p>
       </>
     ),
   },
   {
-    title: "Cookies and tracking",
+    title: "Cookies",
     body: (
       <p>
-        There are no ads, no analytics and no tracking cookies. The only cookie my code sets is
-        one that picks which AI model the chat uses, and it&apos;s only set for me through a
-        password-protected admin page.
+        There are no ads and no tracking cookies. The only cookies my code sets are for me: one
+        that signs me in to a password-protected admin page, and one that picks which AI model
+        the chat uses in my own browser.
       </p>
     ),
   },
@@ -97,10 +140,8 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
           me, the message goes to my inbox.
         </p>
         <p>
-          If the assistant writes you a brief, it stays in your browser. It only reaches me if
-          you choose to send it: the email button puts it in a new email in your own mail app,
-          and the booking button puts it in the notes on the Cal.com booking page. You can edit
-          it first.
+          The booking button puts your brief in the notes on the Cal.com booking page, and the
+          email button puts it in a new email in your own mail app. You can edit it first.
         </p>
       </>
     ),
