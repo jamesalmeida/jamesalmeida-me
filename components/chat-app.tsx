@@ -71,19 +71,27 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
     setIsHydrated(true);
   }, []);
 
+  // Fit the app to the visible area. When the iOS keyboard opens, the visual
+  // viewport shrinks and also pans down the page (offsetTop), so the shell follows
+  // it; otherwise the whole site slides up out of view.
   useEffect(() => {
+    const root = document.documentElement;
     const updateAppHeight = () => {
-      const height = window.visualViewport?.height ?? window.innerHeight;
-      document.documentElement.style.setProperty("--app-height", `${height}px`);
+      const viewport = window.visualViewport;
+      root.style.setProperty("--app-height", `${viewport?.height ?? window.innerHeight}px`);
+      root.style.setProperty("--app-offset", `${Math.max(0, viewport?.offsetTop ?? 0)}px`);
     };
     updateAppHeight();
     window.visualViewport?.addEventListener("resize", updateAppHeight);
+    window.visualViewport?.addEventListener("scroll", updateAppHeight);
     window.addEventListener("resize", updateAppHeight);
     window.addEventListener("orientationchange", updateAppHeight);
     return () => {
       window.visualViewport?.removeEventListener("resize", updateAppHeight);
+      window.visualViewport?.removeEventListener("scroll", updateAppHeight);
       window.removeEventListener("resize", updateAppHeight);
       window.removeEventListener("orientationchange", updateAppHeight);
+      root.style.removeProperty("--app-offset");
     };
   }, []);
 
