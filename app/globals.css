@@ -221,6 +221,169 @@ body {
   border-bottom-color: rgba(245, 245, 245, 0.1);
 }
 
+/* Skaffen's avatar (components/skaffen-avatar.tsx), drawn on a 200px stage and
+   scaled down. Moods: idle, listening, writing, happy. Each mood's still pose is
+   the base transform, so it still reads with reduced motion. */
+.skaffen-avatar {
+  --skaffen-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: 0 0;
+}
+
+.skaffen-frame {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: 50% 90%;
+  transition:
+    width 0.6s var(--skaffen-spring),
+    height 0.6s var(--skaffen-spring);
+}
+
+.skaffen-body {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  transition:
+    background-color 0.5s ease,
+    border-radius 0.6s var(--skaffen-spring),
+    clip-path 0.6s var(--skaffen-spring),
+    transform 0.6s var(--skaffen-spring);
+}
+
+/* The gradient is a light/shade overlay, so colour changes can fade underneath. */
+.skaffen-shine {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    120% 120% at 28% 22%,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0) 50%,
+    rgba(0, 0, 0, 0.34) 100%
+  );
+  transition: opacity 0.45s ease;
+}
+
+.skaffen-look {
+  position: relative;
+  display: flex;
+  align-items: center;
+  transition:
+    gap 0.45s var(--skaffen-spring),
+    margin-top 0.6s var(--skaffen-spring),
+    transform 0.6s var(--skaffen-spring);
+}
+
+.skaffen-eye {
+  display: block;
+  flex-shrink: 0;
+  transform-origin: 50% 50%;
+  transition:
+    width 0.45s var(--skaffen-spring),
+    height 0.45s var(--skaffen-spring),
+    border-radius 0.45s ease,
+    background-color 0.45s ease;
+  animation: skaffen-blink 4.6s ease-in-out infinite;
+}
+
+.skaffen-arc {
+  display: block;
+  box-sizing: border-box;
+  width: 32px;
+  height: 17px;
+  border: 7px solid;
+  border-bottom: 0;
+  border-radius: 32px 32px 0 0;
+}
+
+.skaffen-listening .skaffen-look {
+  transform: translate(-3px, 10px);
+}
+
+.skaffen-writing .skaffen-look {
+  transform: translate(0, -10px);
+}
+
+.skaffen-idle .skaffen-frame,
+.skaffen-listening .skaffen-frame {
+  animation: skaffen-squish 4.6s ease-in-out infinite;
+}
+
+.skaffen-idle .skaffen-look {
+  animation: skaffen-glance 9s ease-in-out infinite;
+}
+
+.skaffen-listening .skaffen-look {
+  animation: skaffen-listen 2.4s ease-in-out infinite;
+}
+
+.skaffen-writing .skaffen-frame {
+  animation: skaffen-bob 1.4s ease-in-out infinite;
+}
+
+.skaffen-writing .skaffen-look {
+  animation: skaffen-read 2.2s ease-in-out infinite;
+}
+
+.skaffen-happy .skaffen-frame {
+  animation: skaffen-hop 1.4s ease-out 2;
+}
+
+.skaffen-avatar.is-still * {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skaffen-avatar * {
+    animation: none !important;
+  }
+}
+
+@keyframes skaffen-blink {
+  0%, 90%, 96%, 100% { transform: scaleY(1); }
+  93% { transform: scaleY(0.1); }
+}
+
+@keyframes skaffen-squish {
+  0%, 89%, 100% { transform: scale(1, 1); }
+  92% { transform: scale(1.05, 0.94); }
+  95% { transform: scale(0.98, 1.03); }
+}
+
+@keyframes skaffen-glance {
+  0%, 28%, 78%, 100% { transform: translate(0, 0); }
+  34%, 50% { transform: translate(-8px, 1px); }
+  56%, 72% { transform: translate(7px, -3px); }
+}
+
+@keyframes skaffen-listen {
+  0%, 100% { transform: translate(-3px, 10px); }
+  50% { transform: translate(-1px, 12px); }
+}
+
+@keyframes skaffen-read {
+  0%, 100% { transform: translate(-9px, -10px); }
+  50% { transform: translate(9px, -10px); }
+}
+
+@keyframes skaffen-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes skaffen-hop {
+  0%, 60%, 100% { transform: translateY(0) scale(1, 1); }
+  10% { transform: translateY(2px) scale(1.08, 0.9); }
+  25% { transform: translateY(-12px) scale(0.95, 1.06); }
+  40% { transform: translateY(0) scale(1.04, 0.96); }
+}
+
 /* Added briefly by ThemeProvider when the theme changes, so colours fade instead of
    jumping. Only without reduced motion. */
 @media (prefers-reduced-motion: no-preference) {

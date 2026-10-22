@@ -20,6 +20,14 @@ export const SITE = {
     name: "Skaffen",
     initials: "SA",
     role: "James' AI assistant",
+    // The animated avatar next to every reply. Options are in lib/avatar.ts.
+    avatar: {
+      shape: "squircle",
+      color: "slate",
+      fill: "gradient",
+      eyes: "tall",
+      eyeColor: "white",
+    },
   },
   company: {
     name: "General Systems Ventures",
