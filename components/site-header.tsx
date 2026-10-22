@@ -8,25 +8,26 @@ import { useEffect, useState, type Ref } from "react";
 import { SITE } from "@/data/site";
 import { serif } from "./booking-button";
 
-// Skaffen matches the Menu button: 44 px on phones, 48 px from `sm`.
-function useAvatarSize() {
-  const [size, setSize] = useState(44);
+// True from the `sm` breakpoint (640 px). False on the server and phones.
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(false);
   useEffect(() => {
     const query = window.matchMedia("(min-width: 640px)");
-    const update = () => setSize(query.matches ? 48 : 44);
+    const update = () => setIsDesktop(query.matches);
     update();
     query.addEventListener("change", update);
     return () => query.removeEventListener("change", update);
   }, []);
-  return size;
+  return isDesktop;
 }
 
 const nameTransition = { type: "spring", stiffness: 360, damping: 34 } as const;
 
 // The top bar on the chat: name, then (in a conversation) Skaffen in the centre,
 // then "Book a discovery call" (from `sm`; on phones it lives in the menu) and Menu.
-// When a conversation starts, the name shrinks and stacks to the left and Skaffen
-// pops in. Server-renderable: StaticIntro passes no handlers and no mood.
+// When a conversation starts, Skaffen pops in; on phones the name also shrinks and
+// stacks to the left to make room. Skaffen matches the Menu button (44 px on phones,
+// 48 px from `sm`). Server-renderable: StaticIntro passes no handlers and no mood.
 export function SiteHeader({
   menuButtonRef,
   onNewChat,
@@ -41,7 +42,8 @@ export function SiteHeader({
   skaffenMood?: AvatarMood | null;
 }) {
   const isConversation = skaffenMood !== null;
-  const avatarSize = useAvatarSize();
+  const isDesktop = useIsDesktop();
+  const isCompactName = isConversation && !isDesktop;
   const [first, ...rest] = SITE.name.split(" ");
 
   return (
@@ -62,11 +64,11 @@ export function SiteHeader({
           <motion.span
             className="block origin-left"
             initial={false}
-            animate={{ scale: isConversation ? 0.68 : 1 }}
+            animate={{ scale: isCompactName ? 0.68 : 1 }}
             transition={nameTransition}
           >
             <span
-              className={`flex leading-[1.05] ${isConversation ? "flex-col" : "flex-row gap-x-[0.28em]"}`}
+              className={`flex leading-[1.05] ${isCompactName ? "flex-col" : "flex-row gap-x-[0.28em]"}`}
             >
               <motion.span layout="position" transition={nameTransition}>
                 {first}
@@ -91,7 +93,7 @@ export function SiteHeader({
               <AgentAvatar
                 {...SITE.assistant.avatar}
                 mood={skaffenMood}
-                size={avatarSize}
+                size={isDesktop ? 48 : 44}
                 label={`${SITE.assistant.name}, ${SITE.assistant.role}`}
               />
             </motion.div>

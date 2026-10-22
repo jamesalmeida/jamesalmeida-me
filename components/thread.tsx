@@ -173,11 +173,10 @@ function ThreadBody({
           {/* turnAnchor="top": each new message scrolls to the top of the viewport and
               the reply streams in below it (MessagePrimitive.Root adds the room for it).
               Spacing is padding on each message, not a flex gap, so the anchored
-              message's measured height includes it. The footers' heights count too:
-              the privacy notice scrolls with the messages, and the composer is sticky,
-              so messages slide behind it. The message column grows to push the
-              footers down; don't use mt-auto on a footer, because assistant-ui counts
-              a footer's top margin in its height. */}
+              message's measured height includes it. The composer is a sticky footer,
+              so messages slide behind it, and its height counts too. The message
+              column grows to push the footer down; don't use mt-auto on a footer,
+              because assistant-ui counts a footer's top margin in its height. */}
           <ThreadPrimitive.Viewport
             turnAnchor="top"
             className="absolute inset-0 flex flex-col overflow-y-auto"
@@ -191,13 +190,14 @@ function ThreadBody({
               />
               <RunErrorNotice error={runError} />
             </div>
-            <ThreadPrimitive.ViewportFooter className="shrink-0 px-4 sm:px-12">
-              <PrivacyNotice className="pb-3 pt-8" />
-            </ThreadPrimitive.ViewportFooter>
             <ThreadPrimitive.ViewportFooter className="sticky bottom-0 shrink-0 bg-[linear-gradient(to_bottom,transparent,var(--background)_45%)] px-4 pb-5 pt-4 sm:px-12 sm:pb-6">
               <div className="relative mx-auto w-full max-w-[780px]">
                 <ScrollToBottomButton />
                 <Composer variant="dock" onCancel={onCancel} />
+                {/* Under the composer on desktop only; phones keep the space for messages. */}
+                <div className="hidden sm:block">
+                  <PrivacyNotice className="mt-2.5" />
+                </div>
               </div>
             </ThreadPrimitive.ViewportFooter>
           </ThreadPrimitive.Viewport>
