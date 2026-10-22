@@ -181,6 +181,7 @@ function ThreadBody({
         <>
           <h1 className="sr-only">Chat with {SITE.assistant.name}, {SITE.assistant.role}</h1>
           <SkaffenPresence onPresenceChange={onPresenceChange} />
+          <KeepAnchorOnRunEnd />
           {/* turnAnchor="top": each new message scrolls to the top of the viewport and
               the reply streams in below it (MessagePrimitive.Root adds the room for it).
               Spacing is padding on each message, not a flex gap, so the anchored
@@ -276,6 +277,40 @@ function RunCompleteDetector({
     hasFired.current = true;
     onRunComplete(toUIMessages(messages));
   }, [cancelledRef, isRunning, messages, onReply, onRunComplete, onRunStart]);
+
+  return null;
+}
+
+// When a reply finishes, assistant-ui swaps the streamed message for the final one.
+// For a moment the room it keeps below the reply (turnAnchor="top") is gone, so the
+// browser clamps the scroll position and the chat jumps up. If the visitor was still
+// anchored at the bottom when the run ended, put them back once the layout settles.
+function KeepAnchorOnRunEnd() {
+  const isRunning = useThread((state) => state.isRunning);
+  const isAtBottom = useThreadViewport((state) => state.isAtBottom);
+  const scrollToBottom = useThreadViewport((state) => state.scrollToBottom);
+  const wasRunningRef = useRef(isRunning);
+  const wasAtBottomRef = useRef(isAtBottom);
+
+  useEffect(() => {
+    const justFinished = wasRunningRef.current && !isRunning;
+    wasRunningRef.current = isRunning;
+    if (justFinished && wasAtBottomRef.current) {
+      let second = 0;
+      const first = requestAnimationFrame(() => {
+        second = requestAnimationFrame(() => scrollToBottom({ behavior: "auto" }));
+      });
+      return () => {
+        cancelAnimationFrame(first);
+        cancelAnimationFrame(second);
+      };
+    }
+  }, [isRunning, scrollToBottom]);
+
+  // Read in the effect above: the value from before the run ended, not after the jump.
+  useEffect(() => {
+    if (isRunning) wasAtBottomRef.current = isAtBottom;
+  }, [isRunning, isAtBottom]);
 
   return null;
 }
