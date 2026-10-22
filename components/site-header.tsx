@@ -1,6 +1,6 @@
 "use client";
 
-import { AgentAvatar, type AvatarMood } from "@jamesalmeida/agent-avatars";
+import { AgentAvatar, type AvatarConfig, type AvatarMood } from "@jamesalmeida/agent-avatars";
 import { AnimatePresence, motion } from "framer-motion";
 import { CalendarCheck, Menu } from "lucide-react";
 import Link from "next/link";
@@ -20,11 +20,14 @@ const swapTransition = { type: "spring", stiffness: 420, damping: 34 } as const;
 // conversation the last name swaps to "AI Assistant" and "James" gains an apostrophe;
 // New chat swaps it back. Server-renderable: StaticIntro passes no handlers and no mood.
 export function SiteHeader({
+  avatar = SITE.assistant.avatar,
   menuButtonRef,
   onNewChat,
   onOpenMenu,
   skaffenMood = null,
 }: {
+  /** Skaffen's look: the saved site setting, else SITE.assistant.avatar. */
+  avatar?: AvatarConfig;
   menuButtonRef?: Ref<HTMLButtonElement>;
   /** The name starts a new chat; the current one stays in Recent chats. */
   onNewChat?: () => void;
@@ -52,7 +55,7 @@ export function SiteHeader({
             the first client render agree). */}
         <span className="block h-13 w-13 shrink-0 sm:h-14 sm:w-14">
           <span className="block origin-top-left scale-[0.9286] sm:scale-100">
-            <AgentAvatar {...SITE.assistant.avatar} mood={skaffenMood ?? "idle"} size={56} />
+            <AgentAvatar {...avatar} mood={skaffenMood ?? "idle"} size={56} />
           </span>
         </span>
         <span
