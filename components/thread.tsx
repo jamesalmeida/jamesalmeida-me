@@ -156,8 +156,12 @@ function ThreadBody({ onCancel, runError }: { onCancel: () => void; runError: st
         {isEmpty ? null : (
           <>
             <h1 className="sr-only">Chat with {SITE.assistant.name}, {SITE.assistant.role}</h1>
-            <ThreadPrimitive.Viewport className="absolute inset-0 overflow-y-auto px-4 pb-10 pt-4 sm:px-12 sm:pt-6">
-              <div className="mx-auto flex w-full max-w-[760px] flex-col gap-7">
+            {/* turnAnchor="top": each new message scrolls to the top of the viewport and
+                the reply streams in below it (MessagePrimitive.Root adds the room for it).
+                Spacing is padding on each message, not a flex gap, so the anchored
+                message's measured height includes it. */}
+            <ThreadPrimitive.Viewport turnAnchor="top" className="absolute inset-0 overflow-y-auto px-4 sm:px-12">
+              <div className="mx-auto flex w-full max-w-[760px] flex-col">
                 <ThreadPrimitive.Messages
                   components={{
                     AssistantMessage: AssistantMessage,
@@ -166,17 +170,22 @@ function ThreadBody({ onCancel, runError }: { onCancel: () => void; runError: st
                 />
                 <RunErrorNotice error={runError} />
               </div>
+              <ThreadPrimitive.ViewportFooter>
+                <PrivacyNotice className="pb-4 pt-8" />
+              </ThreadPrimitive.ViewportFooter>
             </ThreadPrimitive.Viewport>
             <ScrollToBottomButton />
           </>
         )}
       </div>
       {isEmpty ? null : (
-        <div className="border-t border-[var(--border)] px-4 pb-5 pt-3 sm:px-12 sm:pb-6 sm:pt-6">
-          <div className="mx-auto w-full max-w-[780px]">
-            <Composer variant="dock" onCancel={onCancel} />
+        <div className="px-4 pb-5 pt-2 sm:px-12 sm:pb-6">
+          <div className="mx-auto flex w-full max-w-[780px] flex-col items-start gap-2">
+            <SkaffenPresence />
+            <div className="w-full">
+              <Composer variant="dock" onCancel={onCancel} />
+            </div>
           </div>
-          <PrivacyNotice className="mt-2.5" />
         </div>
       )}
     </>
@@ -283,22 +292,30 @@ function RunErrorNotice({ error }: { error: string | null }) {
   return (
     <p
       role="alert"
-      className="self-start rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+      className="mt-7 self-start rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
     >
       {error}
     </p>
   );
 }
 
-function AssistantLabel({ mood, animated }: { mood: AvatarMood; animated: boolean }) {
-  return (
-    <div className="eyebrow flex items-center gap-2.5 text-xs tracking-[0.04em] text-[var(--muted)] sm:text-[13px]">
-      <AgentAvatar {...SITE.assistant.avatar} mood={mood} animated={animated} size={28} />
-      <span>
-        {SITE.assistant.name} · {SITE.assistant.role}
-      </span>
-    </div>
-  );
+// The one Skaffen on screen: its avatar floating above the docked composer, with no
+// name or label. Its mood follows the conversation: writing while a reply streams,
+// a happy moment when a new reply brings the brief, listening while the visitor
+// types, otherwise waiting.
+function SkaffenPresence() {
+  const initialIds = useContext(InitialMessageIdsContext);
+  const isRunning = useThread((state) => state.isRunning);
+  const last = useThread((state) => state.messages[state.messages.length - 1]);
+  const isVisitorTyping = useThreadComposer((state) => state.text.trim().length > 0);
+  const lastBringsBrief =
+    last?.role === "assistant" &&
+    !initialIds.has(last.id) &&
+    last.content.some((part) => part.type === "tool-call" && part.toolName === "showBrief");
+  const isHappy = useHappyMoment(lastBringsBrief && !isRunning);
+  const mood: AvatarMood = isRunning ? "writing" : isHappy ? "happy" : isVisitorTyping ? "listening" : "idle";
+
+  return <AgentAvatar {...SITE.assistant.avatar} mood={mood} size={32} className="ml-1" />;
 }
 
 function AssistantMessage() {
@@ -307,32 +324,21 @@ function AssistantMessage() {
   const hasContent = hasVisibleContent(message);
   const isWriting = message.status?.type === "running";
   const hasText = message.content.some((part) => part.type === "text" && part.text.trim().length > 0);
-  const isLast = useMessage((state) => state.isLast);
-  const isVisitorTyping = useThreadComposer((state) => state.text.trim().length > 0);
-  const hasBrief = message.content.some((part) => part.type === "tool-call" && part.toolName === "showBrief");
-  // A happy squint when a new reply arrives with the brief, then back to waiting.
-  const isHappy = useHappyMoment(isLast && isNew && hasBrief && !isWriting);
-  const mood: AvatarMood = isWriting
-    ? "writing"
-    : isHappy
-      ? "happy"
-      : isLast && isVisitorTyping
-        ? "listening"
-        : "idle";
 
   // An empty reply that is no longer running failed or was stopped: show nothing
-  // here (RunErrorNotice shows the error) instead of an empty labelled reply.
+  // here (RunErrorNotice shows the error) instead of an empty reply.
   if (!hasContent && !isWriting) return null;
 
   return (
-    <MessagePrimitive.Root className="w-full">
+    <MessagePrimitive.Root className="w-full pt-7">
       <motion.div
         className="flex w-full flex-col gap-3"
         initial={isNew ? { opacity: 0, y: 12 } : false}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: "easeOut", delay: isNew ? 0.15 : 0 }}
       >
-        <AssistantLabel mood={mood} animated={isLast} />
+        {/* Replies have no avatar or label; Skaffen's avatar floats above the composer. */}
+        <h2 className="sr-only">{SITE.assistant.name} said:</h2>
         {hasContent ? (
           <div className="flex min-w-0 flex-col gap-4 text-base leading-[1.6] sm:text-lg">
             <MessagePrimitive.Parts
@@ -342,7 +348,7 @@ function AssistantMessage() {
             />
           </div>
         ) : isWriting ? (
-          // The avatar looking up is the visual cue; this is for screen readers.
+          // The avatar above the composer looking up is the visual cue; this is for screen readers.
           <p className="sr-only">Writing a reply</p>
         ) : null}
         <MessagePrimitive.Error>
@@ -368,7 +374,7 @@ function UserMessage() {
   const isNew = useIsNewMessage();
 
   return (
-    <MessagePrimitive.Root className="flex w-full justify-end">
+    <MessagePrimitive.Root className="flex w-full justify-end pt-7">
       <motion.div
         className="max-w-[85%] rounded-[1.4rem] bg-[var(--user-bubble)] px-[18px] py-3 text-base leading-[1.55] sm:max-w-[560px] sm:rounded-[1.5rem] sm:px-[22px] sm:py-3.5 sm:text-lg"
         initial={isNew ? { opacity: 0, y: 48 } : false}
