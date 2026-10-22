@@ -48,11 +48,11 @@ export function SiteHeader({
         className="flex items-center gap-2 text-[var(--foreground)]"
         data-cuelume-press="tick"
       >
-        {/* Matches the Menu button: drawn at 48 px and scaled to 44 px on phones (CSS,
-            so the server render and the first client render agree). */}
-        <span className="block h-11 w-11 shrink-0 sm:h-12 sm:w-12">
-          <span className="block origin-top-left scale-[0.9167] sm:scale-100">
-            <AgentAvatar {...SITE.assistant.avatar} mood={skaffenMood ?? "idle"} size={48} />
+        {/* Drawn at 56 px and scaled to 52 px on phones (CSS, so the server render and
+            the first client render agree). */}
+        <span className="block h-13 w-13 shrink-0 sm:h-14 sm:w-14">
+          <span className="block origin-top-left scale-[0.9286] sm:scale-100">
+            <AgentAvatar {...SITE.assistant.avatar} mood={skaffenMood ?? "idle"} size={56} />
           </span>
         </span>
         <span
