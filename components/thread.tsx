@@ -11,6 +11,7 @@ import {
   useComposerRuntime,
   useMessage,
   useThread,
+  useThreadComposer,
   type ThreadMessage,
   useThreadViewport,
 } from "@assistant-ui/react";
@@ -33,10 +34,12 @@ import {
   type RefObject,
 } from "react";
 import { HEADLINES, PROMPT_EXAMPLES, SITE } from "@/data/site";
+import type { AvatarMood } from "@/lib/avatar";
 import { toUIMessages } from "@/lib/message-convert";
 import { serif } from "./booking-button";
 import { MessageActions } from "./message-actions";
 import { PrivacyNotice } from "./privacy-notice";
+import { SkaffenAvatar, useHappyMoment } from "./skaffen-avatar";
 import { ShowBookingCtaToolUI, ShowBriefToolUI } from "./tool-cards";
 
 type ThreadProps = {
@@ -288,15 +291,10 @@ function RunErrorNotice({ error }: { error: string | null }) {
   );
 }
 
-function AssistantLabel() {
+function AssistantLabel({ mood, animated }: { mood: AvatarMood; animated: boolean }) {
   return (
     <div className="eyebrow flex items-center gap-2.5 text-xs tracking-[0.04em] text-[var(--muted)] sm:text-[13px]">
-      <span
-        aria-hidden
-        className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] tracking-normal text-[var(--accent-foreground)]"
-      >
-        {SITE.assistant.initials}
-      </span>
+      <SkaffenAvatar mood={mood} animated={animated} />
       <span>
         {SITE.assistant.name} · {SITE.assistant.role}
       </span>
@@ -310,6 +308,18 @@ function AssistantMessage() {
   const hasContent = hasVisibleContent(message);
   const isWriting = message.status?.type === "running";
   const hasText = message.content.some((part) => part.type === "text" && part.text.trim().length > 0);
+  const isLast = useMessage((state) => state.isLast);
+  const isVisitorTyping = useThreadComposer((state) => state.text.trim().length > 0);
+  const hasBrief = message.content.some((part) => part.type === "tool-call" && part.toolName === "showBrief");
+  // A happy squint when a new reply arrives with the brief, then back to waiting.
+  const isHappy = useHappyMoment(isLast && isNew && hasBrief && !isWriting);
+  const mood: AvatarMood = isWriting
+    ? "writing"
+    : isHappy
+      ? "happy"
+      : isLast && isVisitorTyping
+        ? "listening"
+        : "idle";
 
   // An empty reply that is no longer running failed or was stopped: show nothing
   // here (RunErrorNotice shows the error) instead of an empty labelled reply.
@@ -323,7 +333,7 @@ function AssistantMessage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: "easeOut", delay: isNew ? 0.15 : 0 }}
       >
-        <AssistantLabel />
+        <AssistantLabel mood={mood} animated={isLast} />
         {hasContent ? (
           <div className="flex min-w-0 flex-col gap-4 text-base leading-[1.6] sm:text-lg">
             <MessagePrimitive.Parts
@@ -333,11 +343,8 @@ function AssistantMessage() {
             />
           </div>
         ) : isWriting ? (
-          <div className="flex h-6 items-center gap-1" aria-label="Writing a reply">
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--muted)] [animation-delay:0ms]" />
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--muted)] [animation-delay:150ms]" />
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--muted)] [animation-delay:300ms]" />
-          </div>
+          // The avatar looking up is the visual cue; this is for screen readers.
+          <p className="sr-only">Writing a reply</p>
         ) : null}
         <MessagePrimitive.Error>
           <ErrorPrimitive.Root className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
