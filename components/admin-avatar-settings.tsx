@@ -89,8 +89,8 @@ function ColorField({
   );
 }
 
-// Skaffen's look for every visitor. Saved to Edge Config by POST /api/admin/avatar.
-export function AdminAvatarSettings({ password, onLocked }: { password: string; onLocked: () => void }) {
+// Skaffen's look for every visitor. Saved by POST /api/admin/avatar (Convex).
+export function AdminAvatarSettings({ onLocked }: { onLocked: () => void }) {
   const [saved, setSaved] = useState<AvatarConfig>(DEFAULT_SITE_AVATAR);
   const [draft, setDraft] = useState<AvatarConfig>(DEFAULT_SITE_AVATAR);
   const [canSave, setCanSave] = useState(true);
@@ -133,7 +133,7 @@ export function AdminAvatarSettings({ password, onLocked }: { password: string; 
       const response = await fetch("/api/admin/avatar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatar: draft, password }),
+        body: JSON.stringify({ avatar: draft }),
       });
       const payload = (await response.json()) as { error?: string };
       if (response.status === 401) {
@@ -148,7 +148,7 @@ export function AdminAvatarSettings({ password, onLocked }: { password: string; 
       }
       play("success");
       setSaved(draft);
-      setStatus("Saved. Visitors see the new avatar within a minute.");
+      setStatus("Saved. Visitors see the new avatar on their next visit.");
     } catch {
       play("error");
       setStatus("Request failed before the avatar could be saved.");
@@ -247,9 +247,8 @@ export function AdminAvatarSettings({ password, onLocked }: { password: string; 
 
         {!canSave ? (
           <p className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm leading-6 text-[var(--muted)]">
-            Saving is off on this deployment. Connect an Edge Config store to the Vercel
-            project (it adds <code>EDGE_CONFIG</code>) and set <code>VERCEL_API_TOKEN</code>{" "}
-            (and <code>VERCEL_TEAM_ID</code>), then redeploy.
+            Saving is off on this deployment. Set <code>CONVEX_URL</code> and{" "}
+            <code>CONVEX_SERVER_SECRET</code> in Vercel (see CLAUDE.md), then redeploy.
           </p>
         ) : null}
 

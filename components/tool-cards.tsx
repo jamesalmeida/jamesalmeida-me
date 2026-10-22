@@ -1,7 +1,8 @@
 "use client";
 
-import { makeAssistantToolUI } from "@assistant-ui/react";
-import { useId, useState } from "react";
+import { makeAssistantToolUI, useThread } from "@assistant-ui/react";
+import { play } from "cuelume";
+import { useId, useState, type FormEvent } from "react";
 import { SITE } from "@/data/site";
 import {
   BRIEF_FIELDS,
@@ -11,7 +12,7 @@ import {
   briefMailtoHref,
   type Brief,
 } from "@/lib/brief";
-import { BookingButton, BookingCard, EmailButton, serif } from "./booking-button";
+import { BookingButton, BookingCard, EmailButton, outlineButtonClass, serif } from "./booking-button";
 
 // Only known string fields are kept, each capped like the server does.
 function toBrief(value: unknown): Brief {
@@ -27,7 +28,13 @@ function toBrief(value: unknown): Brief {
   return brief;
 }
 
+// The conversation id the server uses: the thread's first message id (see /api/chat).
+function useConversationId() {
+  return useThread((thread) => thread.messages[0]?.id);
+}
+
 function BriefCard({ initial }: { initial: Brief }) {
+  const conversationId = useConversationId();
   const [brief, setBrief] = useState(initial);
   const [isEditing, setIsEditing] = useState(false);
   const titleId = useId();
@@ -37,6 +44,7 @@ function BriefCard({ initial }: { initial: Brief }) {
   return (
     <section
       aria-labelledby={titleId}
+      data-conversation-id={conversationId}
       className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)] sm:p-7"
     >
       <div className="flex items-baseline justify-between gap-4">
@@ -87,10 +95,118 @@ function BriefCard({ initial }: { initial: Brief }) {
         <BookingButton href={briefBookingHref(SITE.bookingUrl, brief)} />
         <EmailButton href={briefMailtoHref(SITE.email, brief)} />
       </div>
+      <FollowUpForm brief={brief} conversationId={conversationId} />
       <p className="mt-4 text-[13px] leading-5 text-[var(--muted)]">
-        Nothing is sent until you choose. The brief goes into your email or booking notes.
+        Nothing is sent until you choose. The brief goes into your email or booking notes, or
+        to James with your email address if you leave it.
       </p>
     </section>
+  );
+}
+
+// Optional: the visitor leaves their email so James can follow up. Saved as a lead
+// (POST /api/leads) with the brief as it reads now.
+function FollowUpForm({ brief, conversationId }: { brief: Brief; conversationId?: string }) {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const fieldId = useId();
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setStatus("sending");
+    setError(null);
+    try {
+      const response = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name, brief, conversationId }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(response.status === 400 && payload.error ? payload.error : "");
+      }
+      play("success");
+      setStatus("sent");
+    } catch (caught) {
+      play("error");
+      setStatus("idle");
+      setError(
+        caught instanceof Error && caught.message
+          ? caught.message
+          : `That didn't go through. You can email ${SITE.email} instead.`,
+      );
+    }
+  };
+
+  if (status === "sent") {
+    return (
+      <p role="status" className="mt-6 rounded-[1rem] bg-[var(--surface-muted)] px-4 py-3 text-[15px] leading-6">
+        Thanks. James has your email and this brief.
+      </p>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-6 border-t border-[var(--border)] pt-5" aria-describedby={`${fieldId}-hint`}>
+      <p id={`${fieldId}-hint`} className="text-[15px] leading-6">
+        Not ready to book? Leave your email and James can follow up.
+      </p>
+      <div className="mt-3 flex flex-col gap-2.5 sm:flex-row">
+        <label className="sr-only" htmlFor={`${fieldId}-name`}>
+          Name (optional)
+        </label>
+        <input
+          id={`${fieldId}-name`}
+          type="text"
+          autoComplete="name"
+          maxLength={100}
+          placeholder="Name (optional)"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          className="h-12 min-w-0 rounded-full border border-[var(--border)] bg-[var(--background)] px-4 text-[15px] outline-none transition focus:border-[var(--border-strong)] sm:w-40"
+        />
+        <label className="sr-only" htmlFor={`${fieldId}-email`}>
+          Email
+        </label>
+        <input
+          id={`${fieldId}-email`}
+          type="email"
+          required
+          autoComplete="email"
+          maxLength={254}
+          placeholder="you@example.com"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          aria-invalid={error !== null}
+          aria-describedby={error ? `${fieldId}-error` : undefined}
+          className="h-12 min-w-0 rounded-full border border-[var(--border)] bg-[var(--background)] px-4 text-[15px] outline-none transition focus:border-[var(--border-strong)] sm:flex-1"
+        />
+        <button
+          type="submit"
+          disabled={status === "sending"}
+          className={`${outlineButtonClass} disabled:opacity-60`}
+          data-cuelume-press="tick"
+        >
+          {status === "sending" ? "Sending..." : "Send"}
+        </button>
+      </div>
+      {error ? (
+        <p id={`${fieldId}-error`} role="alert" className="mt-2 text-[13px] leading-5 text-[var(--muted)]">
+          {error}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+function BookingToolCard() {
+  const conversationId = useConversationId();
+  return (
+    <div data-conversation-id={conversationId}>
+      <BookingCard />
+    </div>
   );
 }
 
@@ -99,7 +215,7 @@ export const ShowBookingCtaToolUI = makeAssistantToolUI<
   { bookingUrl: string; bookingLabel: string; email: string }
 >({
   toolName: "showBookingCta",
-  render: () => <BookingCard />,
+  render: () => <BookingToolCard />,
 });
 
 export const ShowBriefToolUI = makeAssistantToolUI<Brief, { brief: Brief }>({

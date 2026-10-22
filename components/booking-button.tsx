@@ -1,6 +1,9 @@
 import { CalendarCheck, Mail } from "lucide-react";
 import { SITE } from "@/data/site";
 
+// Booking and email links carry data-track; components/click-tracker.tsx reports
+// those clicks as funnel events.
+
 export const serif =
   "font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif]";
 
@@ -25,6 +28,7 @@ export function BookingButton({
       target="_blank"
       rel="noopener noreferrer"
       className={`${primaryButtonClass} ${className}`}
+      data-track="booking_clicked"
       data-cuelume-hover="whisper"
       data-cuelume-press="tick"
     >
@@ -47,6 +51,7 @@ export function EmailButton({
     <a
       href={href}
       className={`${outlineButtonClass} ${className}`}
+      data-track="email_clicked"
       data-cuelume-hover="whisper"
       data-cuelume-press="tick"
     >
@@ -67,6 +72,7 @@ export function EmailLink({
     <a
       href={`mailto:${SITE.email}`}
       className={`text-sm text-[var(--muted)] underline-offset-4 transition hover:text-[var(--foreground)] hover:underline ${className}`}
+      data-track="email_clicked"
       data-cuelume-hover="whisper"
       data-cuelume-press="tick"
     >

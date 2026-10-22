@@ -27,6 +27,9 @@ import {
   type HistoryThread,
   type StoredThreads,
 } from "@/lib/threads";
+import { trackEvent } from "@/lib/visit";
+
+let landingTracked = false;
 
 export function ChatApp({ avatar, fallback }: { avatar?: AvatarConfig; fallback: ReactNode }) {
   const [activeThreadId, setActiveThreadId] = useState<string>(NEW_CHAT_ID);
@@ -63,6 +66,13 @@ export function ChatApp({ avatar, fallback }: { avatar?: AvatarConfig; fallback:
     },
     [],
   );
+
+  // One funnel event per page load: someone reached the chat.
+  useEffect(() => {
+    if (landingTracked) return;
+    landingTracked = true;
+    trackEvent("landing_view");
+  }, []);
 
   useEffect(() => {
     const nextStoredThreads = readStoredThreads();

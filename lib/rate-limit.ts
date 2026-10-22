@@ -66,6 +66,10 @@ export const chatIpLimiter = new RateLimiter({ limit: 30, windowMs: TEN_MINUTES 
 // Crude per-instance circuit breaker across all visitors.
 export const chatGlobalLimiter = new RateLimiter({ limit: 600, windowMs: 60 * 60 * 1000 });
 export const titleIpLimiter = new RateLimiter({ limit: 20, windowMs: TEN_MINUTES });
+// Funnel events and feedback from the chat page.
+export const analyticsIpLimiter = new RateLimiter({ limit: 60, windowMs: TEN_MINUTES });
+// The email field on the brief card.
+export const leadIpLimiter = new RateLimiter({ limit: 5, windowMs: TEN_MINUTES });
 // Throttles admin password guesses.
 export const adminIpLimiter = new RateLimiter({ limit: 10, windowMs: 15 * 60 * 1000 });
 

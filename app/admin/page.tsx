@@ -3,8 +3,16 @@
 import { play } from "cuelume";
 import { Lock } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AdminAvatarSettings } from "@/components/admin-avatar-settings";
+import {
+  Insights,
+  Leads,
+  NotConfiguredNotice,
+  RangePicker,
+  TranscriptDialog,
+  useAdminDashboard,
+} from "@/components/admin-dashboard";
 import { serif } from "@/components/booking-button";
 import { Modal } from "@/components/modal";
 import {
@@ -28,46 +36,146 @@ function Section({ title, description, children }: { title: string; description:
   );
 }
 
-// Loads locked: the settings sit blurred behind a password dialog. Unlocking checks the
-// password (POST /api/admin/verify) and keeps it in memory only, to send with each save.
+type Tab = "insights" | "leads" | "settings";
+const TABS: { id: Tab; label: string }[] = [
+  { id: "insights", label: "Insights" },
+  { id: "leads", label: "Leads" },
+  { id: "settings", label: "Settings" },
+];
+
+// Loads locked: the page sits blurred behind a password dialog until this browser
+// has an admin session (POST /api/admin/verify sets a signed httpOnly cookie for 12
+// hours). A 401 from any admin route locks it again.
 export default function AdminPage() {
-  const [password, setPassword] = useState<string | null>(null);
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  const [tab, setTab] = useState<Tab>("insights");
+  const [openConversation, setOpenConversation] = useState<string | null>(null);
+  const lock = useCallback(() => setSignedIn(false), []);
+
+  useEffect(() => {
+    fetch("/api/admin/verify", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload: { signedIn?: boolean }) => setSignedIn(payload.signedIn === true))
+      .catch(() => setSignedIn(false));
+  }, []);
+
+  const handleLock = async () => {
+    await fetch("/api/admin/verify", { method: "DELETE" }).catch(() => {});
+    setSignedIn(false);
+  };
+
+  const isLocked = signedIn !== true;
 
   return (
     <main className="site-page px-4 py-6 sm:px-6 sm:py-10">
       <div
-        inert={password === null}
-        aria-hidden={password === null}
-        className={`mx-auto max-w-4xl space-y-6 transition-[filter] duration-500 ${
-          password === null ? "pointer-events-none select-none blur-md" : ""
+        inert={isLocked}
+        aria-hidden={isLocked}
+        className={`mx-auto max-w-6xl space-y-6 transition-[filter] duration-500 ${
+          isLocked ? "pointer-events-none select-none blur-md" : ""
         }`}
       >
-        <div className="space-y-2 px-1">
-          <p className="eyebrow text-xs text-[var(--muted)]">Admin</p>
-          <h1 className={`text-4xl tracking-[-0.04em] ${serif}`}>Site settings</h1>
+        <div className="flex flex-wrap items-end justify-between gap-4 px-1">
+          <div className="space-y-2">
+            <p className="eyebrow text-xs text-[var(--muted)]">Admin</p>
+            <h1 className={`text-4xl tracking-[-0.04em] ${serif}`}>jamesalmeida.me</h1>
+          </div>
+          <button
+            type="button"
+            onClick={handleLock}
+            className="inline-flex items-center gap-2 rounded-full border border-[var(--border-strong)] px-4 py-2 text-sm font-medium transition hover:border-[var(--foreground)]"
+          >
+            <Lock size={14} aria-hidden />
+            Lock
+          </button>
         </div>
 
-        <Section
-          title="Skaffen’s avatar"
-          description="The avatar every visitor sees in the header. Saved to Vercel Edge Config; until something is saved, the site uses SITE.assistant.avatar."
-        >
-          <AdminAvatarSettings password={password ?? ""} onLocked={() => setPassword(null)} />
-        </Section>
+        <div role="tablist" aria-label="Admin sections" className="flex gap-1.5 px-1">
+          {TABS.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => setTab(id)}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                tab === id ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--muted)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-        <Section
-          title="Model"
-          description="Which model the assistant uses in this browser only. Saving stores a signed httpOnly cookie for 30 days. Every other visitor keeps the default model (set with DEFAULT_MODEL)."
-        >
-          <ModelSwitcher password={password ?? ""} onLocked={() => setPassword(null)} />
-        </Section>
+        {signedIn ? (
+          tab === "settings" ? (
+            <>
+              <Section
+                title="Skaffen’s avatar"
+                description="The avatar every visitor sees in the header. Saved to the site database; until something is saved, the site uses SITE.assistant.avatar."
+              >
+                <AdminAvatarSettings onLocked={lock} />
+              </Section>
+              <Section
+                title="Model"
+                description="Which model the assistant uses in this browser only. Saving stores a signed httpOnly cookie for 30 days. Every other visitor keeps the default model (set with DEFAULT_MODEL)."
+              >
+                <ModelSwitcher onLocked={lock} />
+              </Section>
+            </>
+          ) : (
+            <DashboardTabs tab={tab} onLocked={lock} onOpenConversation={setOpenConversation} />
+          )
+        ) : (
+          <div className="h-[60dvh] rounded-[2rem] border border-[var(--border)] bg-[var(--panel)]" />
+        )}
       </div>
 
-      {password === null ? <UnlockDialog onUnlock={setPassword} /> : null}
+      {signedIn === false ? <UnlockDialog onUnlock={() => setSignedIn(true)} /> : null}
+      {openConversation && signedIn ? (
+        <TranscriptDialog conversationId={openConversation} onClose={() => setOpenConversation(null)} onLocked={lock} />
+      ) : null}
     </main>
   );
 }
 
-function UnlockDialog({ onUnlock }: { onUnlock: (password: string) => void }) {
+function DashboardTabs({
+  tab,
+  onLocked,
+  onOpenConversation,
+}: {
+  tab: Tab;
+  onLocked: () => void;
+  onOpenConversation: (id: string) => void;
+}) {
+  const { days, setDays, state, reload } = useAdminDashboard(onLocked);
+
+  if (state.status === "loading") return <p className="px-1 text-sm text-[var(--muted)]">Loading…</p>;
+  if (state.status === "unconfigured") return <NotConfiguredNotice />;
+  if (state.status === "error") {
+    return (
+      <p role="alert" className="px-1 text-sm text-[var(--muted)]">
+        {state.message}{" "}
+        <button type="button" onClick={reload} className="underline underline-offset-4">
+          Retry
+        </button>
+      </p>
+    );
+  }
+  if (tab === "leads") {
+    return <Leads leads={state.leads} onOpenConversation={onOpenConversation} onDeleted={reload} />;
+  }
+  return (
+    <div className="space-y-4">
+      <div className="px-1">
+        <RangePicker days={days} onChange={setDays} />
+      </div>
+      <Insights dashboard={state.dashboard} onOpenConversation={onOpenConversation} />
+    </div>
+  );
+}
+
+function UnlockDialog({ onUnlock }: { onUnlock: () => void }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
@@ -85,7 +193,7 @@ function UnlockDialog({ onUnlock }: { onUnlock: (password: string) => void }) {
       });
       if (response.ok) {
         play("success");
-        onUnlock(value);
+        onUnlock();
         return;
       }
       const payload = (await response.json().catch(() => ({}))) as { error?: string };
@@ -113,9 +221,9 @@ function UnlockDialog({ onUnlock }: { onUnlock: (password: string) => void }) {
             <Lock size={18} aria-hidden />
           </span>
           <h2 id="admin-unlock-title" className={`text-2xl tracking-[-0.02em] ${serif}`}>
-            Site settings
+            Admin
           </h2>
-          <p className="text-sm leading-6 text-[var(--muted)]">Enter the admin password to change site settings.</p>
+          <p className="text-sm leading-6 text-[var(--muted)]">Enter the admin password to see insights and change site settings.</p>
         </div>
         <label className="block space-y-2">
           <span className="sr-only">Admin password</span>
@@ -154,7 +262,7 @@ function UnlockDialog({ onUnlock }: { onUnlock: (password: string) => void }) {
   );
 }
 
-function ModelSwitcher({ password, onLocked }: { password: string; onLocked: () => void }) {
+function ModelSwitcher({ onLocked }: { onLocked: () => void }) {
   const [model, setModel] = useState<ModelId>(getDefaultModelId());
   const [isOverride, setIsOverride] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -193,7 +301,7 @@ function ModelSwitcher({ password, onLocked }: { password: string; onLocked: () 
       const response = await fetch("/api/admin/model", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model, password }),
+        body: JSON.stringify({ model }),
       });
 
       const payload = (await response.json()) as { error?: string };

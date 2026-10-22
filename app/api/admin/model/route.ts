@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { readAdminRequest } from "@/lib/admin-auth";
+import { readAdminJson, requireAdminSession } from "@/lib/admin-auth";
 import { MODEL_COOKIE_MAX_AGE_SECONDS, signModel, verifyModelCookie } from "@/lib/admin-cookie";
 import { getDefaultModelId, isModelId, MODEL_COOKIE_NAME } from "@/lib/models";
 
@@ -16,7 +16,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const result = await readAdminRequest(request);
+  const unauthorized = await requireAdminSession();
+  if (unauthorized) return unauthorized;
+  const result = await readAdminJson(request);
   if ("response" in result) return result.response;
   const { model } = result.body;
 

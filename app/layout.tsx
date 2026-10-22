@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
+import { ClickTracker } from "@/components/click-tracker";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SITE } from "@/data/site";
 import { themeInitScript } from "@/lib/theme";
@@ -81,6 +83,10 @@ export default function RootLayout({
           }}
         />
         <ThemeProvider>{children}</ThemeProvider>
+        {/* Vercel Web Analytics (page views, no cookies) and the funnel events
+            for booking and email clicks (lib/visit.ts). */}
+        <Analytics />
+        <ClickTracker />
       </body>
     </html>
   );

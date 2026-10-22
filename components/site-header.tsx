@@ -98,6 +98,7 @@ export function SiteHeader({
       <div className="flex items-center gap-3">
         <a
           href={SITE.bookingUrl}
+          data-track="booking_clicked"
           target="_blank"
           rel="noopener noreferrer"
           className="hidden h-12 items-center gap-2.5 rounded-full bg-[var(--accent)] px-5 text-[15px] font-semibold text-[var(--accent-foreground)] transition hover:opacity-90 sm:inline-flex"

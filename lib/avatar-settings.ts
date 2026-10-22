@@ -1,5 +1,5 @@
 // Skaffen's avatar options as a site setting. Client-safe: the admin page and the
-// server both use these. Stored in Vercel Edge Config under AVATAR_SETTING_KEY;
+// server both use these. Stored in Convex (settings table) under AVATAR_SETTING_KEY;
 // SITE.assistant.avatar (data/site.ts) is the default until something is saved.
 //
 // agent-avatars ships as one "use client" bundle, so the server can't call its

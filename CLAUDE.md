@@ -18,7 +18,7 @@ This file gives you (Claude, Codex, or any other coding agent) the critical cont
 - **UI**: React 19, Tailwind v4, `@assistant-ui/react` for chat primitives
 - **AI**: Vercel AI SDK v5 (`ai`, `@ai-sdk/react`, `@ai-sdk/anthropic`, `@ai-sdk/openai`)
 - **Default Model**: `gpt-5.4` unless `DEFAULT_MODEL` is a known id (production sets `claude-sonnet-5-5`). A signed admin cookie overrides that.
-- **Persistence**: localStorage only (no database)
+- **Persistence**: chats live in the visitor's localStorage. The server stores transcripts, funnel events, feedback and leads in **Convex** (90-day retention except leads), plus site settings. Vercel Web Analytics counts page views.
 - **Node**: 24 (see `.nvmrc`)
 
 ## ⚠️ CRITICAL: Dependency Version Lock
@@ -59,16 +59,22 @@ const runtime = useChatRuntime({
 
 ## Architecture
 
-Routes: `/`, `/consulting`, `/about`, `/privacy`, `/admin`, `/api/chat`, `/api/generate-title`, `/api/admin/model`, `/api/admin/avatar`, `/api/admin/verify`. `/work` redirects to `/about` (`next.config.ts`).
+Routes: `/`, `/consulting`, `/about`, `/privacy`, `/admin`, `/api/chat`, `/api/generate-title`, `/api/events`, `/api/feedback`, `/api/leads`, `/api/admin/verify`, `/api/admin/model`, `/api/admin/avatar`, `/api/admin/dashboard`, `/api/admin/conversation`, `/api/admin/leads`. `/work` redirects to `/about` (`next.config.ts`).
 
 ```
 app/
   api/chat/route.ts            # POST, sanitized messages, streamText + tools
   api/generate-title/route.ts  # short title for a forked history thread
   api/admin/model/route.ts     # GET current model; POST password + signed cookie
-  api/admin/avatar/route.ts    # GET site avatar + canSave; POST password + avatar → Edge Config
-  api/admin/verify/route.ts    # POST password: unlocks /admin, stores nothing
-  admin/page.tsx               # Site settings, blurred behind a password dialog (noindex)
+  api/events/route.ts          # POST funnel events from the browser (landing_view, booking/email clicks)
+  api/feedback/route.ts        # POST thumbs up/down + feedback form
+  api/leads/route.ts           # POST the brief card's email field (+ optional Resend notification)
+  api/admin/verify/route.ts    # GET signed in?; POST password → session cookie; DELETE = Lock
+  api/admin/avatar/route.ts    # GET site avatar + canSave; POST avatar (session) → Convex settings
+  api/admin/dashboard/route.ts # GET funnel, drop-off, feedback, recent chats, leads (session)
+  api/admin/conversation/route.ts # GET one transcript (session)
+  api/admin/leads/route.ts     # DELETE a lead (session)
+  admin/page.tsx               # Insights / Leads / Settings tabs, blurred behind a password dialog (noindex)
   page.tsx                     # Full-screen chat: <ChatApp fallback={<StaticIntro />} />
   consulting/page.tsx          # "How I can help", rendered from OFFER
   about/page.tsx               # "Why I do this": the story, past work from PROJECTS, Skaffen
@@ -88,6 +94,8 @@ components/
   chat-app.tsx                 # Full-screen chat shell (app-shell), header, menu, threads
   thread.tsx                   # Landing (headline + composer) until the first message, then the conversation
   admin-avatar-settings.tsx    # /admin avatar pickers, live preview, save
+  admin-dashboard.tsx          # /admin Insights (funnel, bars, feedback, recent chats), Leads, transcript dialog
+  click-tracker.tsx            # Root-layout listener: clicks on [data-track] links → funnel events
   tool-cards.tsx               # showBookingCta / showBrief cards
   message-actions.tsx          # Thumbs up/down, feedback popover + form, copy (under each reply)
   booking-button.tsx           # BookingButton, EmailButton, EmailLink, BookingCard
@@ -106,9 +114,14 @@ lib/
   rate-limit.ts                # In-memory per-IP / global fixed-window limiter
   bot-protection.ts            # Vercel BotID checkBotId() wrapper (403 on bots)
   admin-cookie.ts              # HMAC-signed model cookie
-  admin-auth.ts                # readAdminRequest: limiter → JSON → password, for admin POSTs
+  admin-auth.ts                # startAdminSession (limiter → JSON → password → cookie), requireAdminSession
+  analytics.ts                 # Client-safe validators for visit context, events, feedback, leads
+  visit.ts                     # Browser: visit id (sessionStorage), visit context, trackEvent, postQuietly
+  store.server.ts              # ConvexHttpClient wrapper (CONVEX_URL + CONVEX_SERVER_SECRET); no-op when unset
+  public-request.ts            # readPublicJson: rate limit → BotID → body cap → JSON for public POSTs
+  lead-notify.server.ts        # Optional Resend email to James for a new lead
   avatar-settings.ts           # Avatar setting validation + AVATAR_OPTIONS (client-safe)
-  avatar-settings.server.ts    # getSiteAvatar (cached Edge Config read), saveSiteAvatar (Vercel API)
+  avatar-settings.server.ts    # getSiteAvatar (cached Convex read), saveSiteAvatar
   message-convert.ts           # assistant-ui messages → UIMessage (keeps tools)
   threads.ts                   # New chat + history threads; storage, caps, getFirstUserText
   theme.ts                     # Theme keys + inline pre-paint script (client-safe)
@@ -120,7 +133,9 @@ data/
 
 public/
   resume.pdf                   # Not linked anywhere since the site went client-first
-instrumentation-client.ts      # initBotId() for POST /api/chat and /api/generate-title
+convex/                        # Convex backend: schema, chats, events, feedback, leads, settings, admin queries,
+                               #   retention + crons (90 days). No _generated: lib.ts types the builders.
+instrumentation-client.ts      # initBotId() for the public POST routes
 next.config.ts                 # wrapped with withBotId
 scripts/
   eval-chat.mjs                # npm run eval
@@ -128,6 +143,7 @@ scripts/
   eval-private.example.json    # shape for gitignored eval-private.json
 
 lib/*.test.ts                  # Vitest unit tests (npm test)
+test/convex.test.ts            # convex-test: the Convex functions against an in-memory backend
 test/server-only-stub.ts       # Vitest alias for `server-only`
 vitest.config.mts              # `@/` and `server-only` aliases
 eslint.config.mjs              # ESLint 9 flat config (next/core-web-vitals + next/typescript)
@@ -144,9 +160,10 @@ ANTHROPIC_API_KEY=sk-ant-...       # only needed for Claude models
 ADMIN_PASSWORD=...                 # for admin panel access
 ADMIN_COOKIE_SECRET=...            # optional HMAC key for the admin cookie (falls back to ADMIN_PASSWORD)
 DEFAULT_MODEL=gpt-5.4              # optional override; unknown ids fall back to gpt-5.4
-EDGE_CONFIG=https://edge-config.vercel.com/ecfg_...?token=...  # optional: added by connecting an Edge Config store; holds the saved avatar
-VERCEL_API_TOKEN=...               # optional: lets /admin save the avatar (Edge Config writes go through the Vercel API)
-VERCEL_TEAM_ID=team_...            # optional: needed when the Edge Config store belongs to a team
+CONVEX_URL=https://<name>.convex.cloud  # storage; without it (and the secret) nothing is stored or read
+CONVEX_SERVER_SECRET=...           # must match the same variable in the Convex dashboard; every Convex function checks it
+CONVEX_DEPLOY_KEY=...              # Production only: `npm run vercel-build` runs `convex deploy` before the build
+RESEND_API_KEY=... / LEAD_NOTIFY_FROM=... / LEAD_NOTIFY_TO=...  # optional lead email to James
 ```
 
 Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model there before its provider retirement date. A cookie or `DEFAULT_MODEL` that names a removed id falls back to the default, unless the id is listed in `LEGACY_MODEL_IDS` (`lib/models.ts`), which maps it to its replacement. `claude-sonnet-4-5` (deprecated by Anthropic, retires 2026-11-30) maps to `claude-sonnet-5-5`.
@@ -179,8 +196,8 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 - First send: the landing fades up and away (`AnimatePresence`), the composer glides to the dock (shared `layoutId="composer"`, `layout="position"`), the first message slides up into place and the reply fades in. Only messages that weren't there when the thread mounted animate (`InitialMessageIdsContext`), so restored chats don't replay.
 - Conversation: a centered column (`max-w-[760px]`), user messages in `--user-bubble` bubbles, assistant messages as plain text (a visually hidden "Skaffen said:" heading for screen readers). The composer floats at the bottom inside the viewport (a sticky `ThreadPrimitive.ViewportFooter` with a fade to the background), so messages slide behind it, and a matching fade at the top of the message area lets messages fade out under the header. The scroll-to-latest button sits just above the composer, centred. Focusing the docked composer scrolls to the latest message, and sending a message blurs the composer (closing the phone keyboard); both re-scroll after each visual-viewport resize for a second (`followKeyboard`), so the scroll button doesn't show while typing and a sent message stays anchored at the top once the keyboard has closed. The footer's bottom padding is small on phones (`pb-2`) to sit close to Safari's toolbar. In a conversation the privacy notice sits under the composer on desktop and is hidden on phones (the landing shows it on both). The message column grows to push the footers down: never put `mt-auto` on a `ViewportFooter`, because assistant-ui counts a footer's top margin in its height and the turn anchoring breaks.
 - Scrolling: the viewport uses `turnAnchor="top"`. When the visitor sends a message, it scrolls to the top of the viewport and the reply streams in below it; earlier messages sit above the fold and stay reachable by scrolling up. `MessagePrimitive.Root` gives the last reply the room for this, so spacing between messages is top padding on each message (`pt-7`), not a flex gap: the anchored message's measured height must include it. When a reply finishes, assistant-ui swaps the streamed message for the final one and that room briefly disappears, which clamps the scroll position and makes the chat jump up; `KeepAnchorOnRunEnd` scrolls back to the bottom two frames later if the visitor was anchored at the bottom when the run ended (not if they had scrolled up).
-- Skaffen's avatar is `<AgentAvatar>` from James' own package [`@jamesalmeida/agent-avatars`](https://github.com/jamesalmeida/agent-avatars) (playground: https://jamesalmeida.github.io/agent-avatars/), configured by a site setting: shape, colour, fill, eyes, eye colour. `SITE.assistant.avatar` is the default; a look saved in `/admin` lives in Vercel Edge Config (key `avatar`) and wins. `app/page.tsx` reads it with `getSiteAvatar()` (a cached fetch, tag `site-avatar`, revalidated on save and every 60 s, so `/` stays static) and passes it to `ChatApp` and `StaticIntro`, then `SiteHeader`. Without `EDGE_CONFIG`, or if the read fails, the default is used. The package is one `"use client"` bundle, so the server can't call its `resolveConfig`: `lib/avatar-settings.ts` keeps its own copy of the option names (`AVATAR_OPTIONS`), and `lib/site-avatar.test.ts` fails if they drift. It is rendered once, in `SiteHeader`. `SkaffenPresence` in `components/thread.tsx` works out the mood in a conversation and reports it through `Thread`'s `onPresenceChange` to `ChatApp`, which passes it to the header (`null` on the landing, where the avatar is `idle` and the name is "James Almeida"). The mood follows the conversation: `writing` while a run streams (it replaces the old typing dots; the empty reply keeps a visually hidden "Writing a reply"), `happy` for 2.8 s when a new reply brings `showBrief` (`useHappyMoment`), `listening` while the visitor types in the composer, otherwise `idle` (blinks with a squish, glances around). The package injects its own stylesheet and respects reduced motion. To change the avatar's behaviour, change and release the package, then bump it here.
-- Under every finished reply with text: thumbs up/down (`aria-pressed`, one at a time, click again to clear) and a copy button whose icon turns into an animated check for 1.8 s. Rating shows a "Thank you" popover with "Share more feedback", which opens a form ("What was helpful?" with details, or "What could be better?" with `DOWN_REASONS` plus optional details). **Feedback is not sent anywhere yet:** `submitFeedback()` in `lib/feedback.ts` is a no-op until https://github.com/jamesalmeida/jamesalmeida-me/issues/47 picks a destination. Ratings live only in component state. When it does send, add rate limit + BotID + body cap to the new route and update the privacy page.
+- Skaffen's avatar is `<AgentAvatar>` from James' own package [`@jamesalmeida/agent-avatars`](https://github.com/jamesalmeida/agent-avatars) (playground: https://jamesalmeida.github.io/agent-avatars/), configured by a site setting: shape, colour, fill, eyes, eye colour. `SITE.assistant.avatar` is the default; a look saved in `/admin` lives in Convex (`settings`, key `avatar`) and wins. `app/page.tsx` reads it with `getSiteAvatar()` (`unstable_cache`, tag `site-avatar`, revalidated on save and hourly, so `/` stays static; a failed read throws inside the cache so the fallback isn't cached) and passes it to `ChatApp` and `StaticIntro`, then `SiteHeader`. Without Convex configured, or if the read fails, the default is used. The package is one `"use client"` bundle, so the server can't call its `resolveConfig`: `lib/avatar-settings.ts` keeps its own copy of the option names (`AVATAR_OPTIONS`), and `lib/site-avatar.test.ts` fails if they drift. It is rendered once, in `SiteHeader`. `SkaffenPresence` in `components/thread.tsx` works out the mood in a conversation and reports it through `Thread`'s `onPresenceChange` to `ChatApp`, which passes it to the header (`null` on the landing, where the avatar is `idle` and the name is "James Almeida"). The mood follows the conversation: `writing` while a run streams (it replaces the old typing dots; the empty reply keeps a visually hidden "Writing a reply"), `happy` for 2.8 s when a new reply brings `showBrief` (`useHappyMoment`), `listening` while the visitor types in the composer, otherwise `idle` (blinks with a squish, glances around). The package injects its own stylesheet and respects reduced motion. To change the avatar's behaviour, change and release the package, then bump it here.
+- Under every finished reply with text: thumbs up/down (`aria-pressed`, one at a time, click again to clear) and a copy button whose icon turns into an animated check for 1.8 s. Rating shows a "Thank you" popover with "Share more feedback", which opens a form ("What was helpful?" with details, or "What could be better?" with `DOWN_REASONS` plus optional details). `submitFeedback()` (`lib/feedback.ts`) posts to `POST /api/feedback` with the reply, the visitor's message before it and the conversation id; clicking a rating again sends `rating: null`, which deletes it. One row per reply (`messageId`); rating again or adding details updates it.
 - On phones the booking button lives only in the menu and in the booking/brief cards.
 - Menu (`SiteMenu`, a `Modal` with `layout="sheet"`: full screen on phones, a right-hand panel from `sm`) grows out of the Menu button (transform origin at its centre) and shrinks back into it on close; it draws its own fading backdrop. Closing (button, Escape, backdrop, or after New chat / a recent chat / Clear all) animates first and then calls `onClose`. theme chooser (System / Light / Dark, icon buttons with `aria-pressed`), an icon-only sound button, close; then New chat, How I can help, Why I do this, Email me, Privacy (large, slightly tight tracking, underlined on hover and focus); the booking button; and a Recent chats card with per-chat delete and "Clear all chats" (with a confirm step).
 - Before hydration, `StaticIntro` renders the same header and landing in the same frame (no layout shift) with the real h1 and crawlable links. No prices.
@@ -197,7 +214,9 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 - The landing composer (and `StaticIntro`), and the docked composer from `sm` up, show a one-line notice (`components/privacy-notice.tsx`): a lock icon, a dotted-underlined "Your privacy" link to `/privacy`, and "Please don't share sensitive information." The providers and storage details live on `/privacy`. If you change providers, storage, logging, cookies or abuse protection, update `app/privacy/page.tsx` and that notice to match.
 - The new chat forks into a history thread (and requests a title, shown in Recent chats) only after its first run ends with a completed assistant message that has content. Errored runs and runs stopped with the Stop button don't fork. The Stop button sets a flag, because a stopped AI SDK run still reports a `complete` status.
 - Deleting a chat from Recent chats opens a confirm dialog in `ChatApp`.
-- **Never** persist chats to a database.
+- Server-side storage (Convex, `convex/`): `/api/chat` records each visitor message and, after the stream, Skaffen's reply (text and tool names) with `after()`, keyed by `conversationId` = the chat's first message id (sent by the transport's `prepareSendMessagesRequest`, so it survives the fork into history). Transcripts, events and feedback get `expiresAt` = 90 days and a daily cron (`convex/crons.ts`, `retention.purgeExpired`) deletes them. Leads and settings are kept. **Clear all chats only clears the browser; the server copy expires on its own. Don't add copy about this in the app.** Never store IP addresses or user agents.
+- Funnel events: `landing_view` (once per page load, `ChatApp`), `chat_started` (first message, server), `brief_shown` (server, from the reply's tools), `booking_clicked` / `email_clicked` (`ClickTracker`, any link with `data-track`; `data-conversation-id` on the brief/booking cards ties the click to a chat). Each carries the visit id (random, sessionStorage, ends with the tab) and the visit context (headline, referrer host, UTM tags, phone/tablet/desktop).
+- Analytics never block or break the page: client posts are fire-and-forget (`keepalive`), server writes run in `after()` and only log on failure. Without `CONVEX_URL` + `CONVEX_SERVER_SECRET` (dev, CI, previews) nothing is stored and `/api/leads` returns 503.
 
 ### Theme, motion and accessibility
 - `app/layout.tsx` runs `themeInitScript` (`lib/theme.ts`) in `<head>`. It sets the `dark` class and the theme-color meta before first paint. A stored `light` or `dark` wins; `system` (or nothing stored) follows `prefers-color-scheme`, and `ThemeProvider` keeps following it live. Keep the two in line.
@@ -213,7 +232,7 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 
 ### Chat tools and abuse caps
 - `showBookingCta` renders a booking card from `SITE` (how to book or contact, price, timing). It takes no input. Old stored parts with a `reason` field still validate, because the key is stripped.
-- `showBrief` renders "Your brief": optional `who`, `challenge`, `tried`, `hopingFor`, `timing` strings (trimmed, at most 200 characters each; `who` or `challenge` required). The card waits for the tool result, can be edited in place, and its buttons carry the brief: "Book a discovery call" adds it as Cal's `notes` query parameter, "Email James" puts it in a `mailto:` body (`lib/brief.ts`). Nothing is sent unless the visitor clicks.
+- `showBrief` renders "Your brief": optional `who`, `challenge`, `tried`, `hopingFor`, `timing` strings (trimmed, at most 200 characters each; `who` or `challenge` required). The card waits for the tool result, can be edited in place, and its buttons carry the brief: "Book a discovery call" adds it as Cal's `notes` query parameter, "Email James" puts it in a `mailto:` body (`lib/brief.ts`). Nothing is sent unless the visitor clicks. Under the buttons, an optional "Not ready to book? Leave your email" form (name optional) posts the email, name, current brief and conversation id to `/api/leads`; it shows "Thanks. James has your email and this brief." Skaffen points to it but never asks for an email or name in the chat.
 - `showPortfolio` was removed. Stored `tool-showPortfolio` parts are dropped by `sanitizeMessages` and render nothing.
 - `POST /api/chat` rejects bodies over 200 KB (413) and bad JSON (400). `sanitizeMessages` drops system roles and unknown parts, keeps the last 20 user/assistant messages, truncates each text part to 2,000 characters, and requires the last message to be from the user.
 - Client-sent tool parts are never trusted. `sanitizeMessages` discards their `output`, validates `input` with the schemas in `lib/tool-results.ts` (also used by `lib/chat-tools.ts`), and rebuilds the output with the same pure functions the tools' `execute` uses. Parts are dropped if input is invalid, over 1.5 KB serialized, or has a malformed `toolCallId`. Max 4 tool parts per message and 8 KB of tool input per request. Assistant text parts are still accepted as sent (2,000-char cap); signing them is not done.
@@ -222,18 +241,19 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 - `POST /api/generate-title` rejects bodies over 10 KB and truncates the message to 500 characters. A provider error returns `{ title: null }` (200).
 
 ### Abuse protection
-- Both model routes run, in order: rate limit → BotID → body parsing.
-- `lib/rate-limit.ts` keys on the first `x-forwarded-for` IP, then `x-real-ip`, then `"unknown"`. Limits: `/api/chat` 30 per 10 min per IP plus 600 per hour across all visitors; `/api/generate-title` 20 per 10 min per IP. Over the limit returns 429 JSON with `Retry-After` (seconds). The map is capped (expired entries swept, then oldest evicted). State is **per serverless instance** (cold starts reset it, instances don't share it), which is accepted: no external storage.
+- Both model routes run, in order: rate limit → BotID → body parsing. So do `/api/events` (2 KB), `/api/feedback` (12 KB) and `/api/leads` (4 KB), through `readPublicJson` (`lib/public-request.ts`).
+- `lib/rate-limit.ts` keys on the first `x-forwarded-for` IP, then `x-real-ip`, then `"unknown"`. Limits: `/api/chat` 30 per 10 min per IP plus 600 per hour across all visitors; `/api/generate-title` 20 per 10 min per IP; `/api/events` + `/api/feedback` 60 per 10 min per IP (shared); `/api/leads` 5 per 10 min per IP. Over the limit returns 429 JSON with `Retry-After` (seconds). The map is capped (expired entries swept, then oldest evicted). State is **per serverless instance** (cold starts reset it, instances don't share it), which is accepted: no external storage.
 - BotID (`botid` package, `basic` check level) is set up in `instrumentation-client.ts` and checked in `lib/bot-protection.ts`. Keep paths and check level in sync. Bots get 403. It returns `isBot: false` in dev. If `checkBotId()` throws (for example, no Vercel OIDC token under a local `next start`), the request is allowed and the error is logged.
 - `components/thread.tsx` turns a 429/403 from `/api/chat` into a short friendly error (`BLOCKED_MESSAGE`); any other chat error shows a generic "Something went wrong" message. A run that fails before any assistant content (429, 403, or a stream that errors right after `start`) creates no assistant message, so `Thread` catches the error with `useChatRuntime`'s `onError` and `RunErrorNotice` shows it under the last user message until the next run starts. Errors after some content still show inside the assistant message (`MessagePrimitive.Error`). Title generation failures stay silent.
 - Spend caps in the OpenAI and Anthropic dashboards are the backstop.
 - Running `npm run eval` against a deployed URL: BotID may 403 requests that come from Node, because they lack the browser's BotID headers. Run it against `npm run dev`.
 
 ### Admin panel
-- Route: `/admin` (noindex), titled "Site settings". It loads blurred and `inert` behind a password dialog (`Modal`; Escape and the backdrop don't close it, "Back to the site" leaves). Unlocking calls `POST /api/admin/verify`; the page then keeps the password in memory only and sends it with each save. A 401 on a save locks the page again. Reloading asks again.
-- Every admin POST (`verify`, `model`, `avatar`) runs `readAdminRequest` (`lib/admin-auth.ts`): `adminIpLimiter` (10 per 15 min per IP, shared, every attempt counts, 429 with `Retry-After`), then JSON (400), then a timing-safe compare against `ADMIN_PASSWORD` (500 if unset, 401 if wrong).
-- Skaffen's avatar section: shape tiles, colour and eye-colour swatches plus a custom colour picker, fill, eyes, a live preview with a mood switcher, "Save for everyone" and "Reset to default". `POST /api/admin/avatar` validates strictly (`parseAvatarSetting`: every field, presets or hex colours, no extra keys), upserts it through the Vercel API (`PATCH /v1/edge-config/{id}/items`, needs `VERCEL_API_TOKEN`), then revalidates the `site-avatar` tag and `/`. `GET /api/admin/avatar` returns `{ avatar, source, canSave }`; without `EDGE_CONFIG` and `VERCEL_API_TOKEN` the page says saving is off.
-- On success the route sets httpOnly cookie `jamesalmeida-model` (30 days) to `${model}.${issuedAtSeconds}.${base64url HMAC-SHA256}`. The key is `ADMIN_COOKIE_SECRET` if set, else `ADMIN_PASSWORD`. No cookie is signed or honoured without `ADMIN_PASSWORD`. Unsigned, unknown-model, old-format and expired (older than 30 days) cookies are ignored, and the default model is used.
+- Route: `/admin` (noindex): tabs Insights, Leads, Settings, and a Lock button. It loads blurred and `inert` behind a password dialog (`Modal`; Escape and the backdrop don't close it, "Back to the site" leaves) until `GET /api/admin/verify` says the browser is signed in.
+- `POST /api/admin/verify` (`startAdminSession`, `lib/admin-auth.ts`): `adminIpLimiter` (10 per 15 min per IP, every attempt counts, 429 with `Retry-After`), JSON (400), timing-safe compare against `ADMIN_PASSWORD` (500 if unset, 401 if wrong), then sets the httpOnly, `sameSite: strict` cookie `jamesalmeida-admin` = `admin-session.${issuedAtSeconds}.${HMAC}` for 12 hours (same key as the model cookie; the two can't be swapped). `DELETE` clears it. Every other admin route calls `requireAdminSession()` (401 without it), and a 401 locks the page again.
+- Insights (`components/admin-dashboard.tsx`, `convex/admin.ts`): 7/30/90-day range; funnel stats (distinct visits per step, plus leads); "How far chats went" and "Where they ended" bars; sources and headlines; feedback with reasons, comments, the reply and the visitor's message; recent chats that open a transcript dialog. Leads: email (mailto), name, brief, View chat, Delete. Without Convex it shows how to set it up.
+- Settings → Skaffen's avatar: shape tiles, colour and eye-colour swatches plus a custom colour picker, fill, eyes, a live preview with a mood switcher, "Save for everyone" and "Reset to default". `POST /api/admin/avatar` validates strictly (`parseAvatarSetting`: every field, presets or hex colours, no extra keys), saves to Convex `settings`, then revalidates the `site-avatar` tag and `/`. `GET /api/admin/avatar` returns `{ avatar, source, canSave }`.
+- Settings → Model: `POST /api/admin/model` sets httpOnly cookie `jamesalmeida-model` (30 days) to `${model}.${issuedAtSeconds}.${base64url HMAC-SHA256}`. The key is `ADMIN_COOKIE_SECRET` if set, else `ADMIN_PASSWORD`. No cookie is signed or honoured without `ADMIN_PASSWORD`. Unsigned, unknown-model, old-format and expired (older than 30 days) cookies are ignored, and the default model is used.
 - The override only applies to the admin's own browser. Every other visitor gets the default model.
 - The admin page loads the current model from `GET /api/admin/model` because the cookie is not readable in the browser.
 - Chat and title routes both use `resolveAdminModel`.
@@ -269,7 +289,9 @@ If `npm run dev` works but `npm run build` fails, fix the build errors **before*
 
 `.github/workflows/ci.yml` runs on every PR and on pushes to `main`, using Node from `.nvmrc`: `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`. The build needs no secrets.
 
-- `npm test` runs `vitest run` on `lib/**/*.test.ts`. The tests cover `sanitizeMessages` (including booking and brief output rebuilding), thread storage caps, quota eviction, corrupt-JSON reads and `resolveActiveThreadId` (`lib/threads.test.ts`, fake `window.localStorage` via `vi.stubGlobal`), the admin cookie (`signModel`, `verifyModelCookie`, `timingSafeEqualString`, including expiry and `ADMIN_COOKIE_SECRET`), `readBodyWithLimit`, the brief links (`lib/brief.test.ts`), the feedback payload (`lib/feedback.test.ts`), the avatar options, `parseAvatarSetting`, `AVATAR_OPTIONS` against the package, and the Edge Config connection parsing (`lib/site-avatar.test.ts`), `PROJECTS`, `getFirstUserText`, and `getKnowledge` / `getSystemPrompt` (no HTML comments or `PROVISIONAL`, all placeholders filled, Skaffen persona, no unshipped app names). They need no server and no API keys.
+- `npm test` runs `vitest run` on `lib/**/*.test.ts` and `test/**/*.test.ts`. The tests cover `sanitizeMessages` (including booking and brief output rebuilding), thread storage caps, quota eviction, corrupt-JSON reads and `resolveActiveThreadId` (`lib/threads.test.ts`, fake `window.localStorage` via `vi.stubGlobal`), the admin cookies (`signModel`, `verifyModelCookie`, `signAdminSession`, `verifyAdminSession`, `timingSafeEqualString`, including expiry and `ADMIN_COOKIE_SECRET`), `readBodyWithLimit`, the brief links (`lib/brief.test.ts`), the feedback payload (`lib/feedback.test.ts`), the avatar options, `parseAvatarSetting` and `AVATAR_OPTIONS` against the package (`lib/site-avatar.test.ts`), the analytics validators (`lib/analytics.test.ts`), the Convex functions with `convex-test` (`test/convex.test.ts`: server secret, funnel and dashboard, feedback upsert/clear, leads, 90-day purge; the test fakes a `_generated` path so convex-test can find the modules), `PROJECTS`, `getFirstUserText`, and `getKnowledge` / `getSystemPrompt` (no HTML comments or `PROVISIONAL`, all placeholders filled, Skaffen persona, no unshipped app names). They need no server and no API keys.
+- Vercel runs `npm run vercel-build` (`scripts/vercel-build.mjs`) instead of `build`: with `CONVEX_DEPLOY_KEY` (Production only) it runs `npx convex deploy --cmd "npm run build"`, so `convex/` deploys with the site; without it, it just builds. Leave Vercel's Build Command on the default for this to apply. CI runs plain `npm run build`.
+- `convex-test` and `@edge-runtime/vm` are dev dependencies for `test/convex.test.ts` (`// @vitest-environment edge-runtime`).
 - `lib/` files import `server-only`. `vitest.config.mts` aliases it to an empty stub, so tests can import them directly.
 - `npm run lint` runs `eslint .`, not the deprecated `next lint`. Unused vars prefixed with `_` are allowed (for example, `node: _node` to drop a prop).
 - `@ai-sdk/react` is declared but not imported directly. It stays because it is on the version lock list above and is what `@assistant-ui/react-ai-sdk` 1.1.21 is pinned against.

@@ -1,19 +1,22 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
-import { readAdminRequest } from "@/lib/admin-auth";
+import { readAdminJson, requireAdminSession } from "@/lib/admin-auth";
 import { parseAvatarSetting } from "@/lib/avatar-settings";
-import { SITE_AVATAR_TAG, canSaveAvatar, getSiteAvatar, saveSiteAvatar } from "@/lib/avatar-settings.server";
+import { SITE_AVATAR_TAG, getSiteAvatar, saveSiteAvatar } from "@/lib/avatar-settings.server";
+import { isStoreConfigured } from "@/lib/store.server";
 
 export const dynamic = "force-dynamic";
 
 // The avatar every visitor sees, and whether this deployment can save a new one.
 export async function GET() {
   const { avatar, source } = await getSiteAvatar();
-  return NextResponse.json({ avatar, source, canSave: canSaveAvatar() });
+  return NextResponse.json({ avatar, source, canSave: isStoreConfigured() });
 }
 
 export async function POST(request: Request) {
-  const result = await readAdminRequest(request);
+  const unauthorized = await requireAdminSession();
+  if (unauthorized) return unauthorized;
+  const result = await readAdminJson(request);
   if ("response" in result) return result.response;
 
   const avatar = parseAvatarSetting(result.body.avatar);

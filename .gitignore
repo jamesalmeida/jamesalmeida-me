@@ -36,3 +36,6 @@ next-env.d.ts
 # Eval output
 scripts/eval-results.json
 scripts/eval-private.json
+
+# Convex codegen (this repo uses convex/lib.ts instead)
+convex/_generated
