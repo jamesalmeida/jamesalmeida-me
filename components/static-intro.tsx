@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { HEADLINES, PROMPT_EXAMPLES, SITE } from "@/data/site";
 import { serif } from "./booking-button";
+import { PrivacyNotice } from "./privacy-notice";
 import { SiteHeader } from "./site-header";
 
 // Server-rendered before the chat hydrates. Same layout as the chat's landing, so
@@ -33,13 +34,7 @@ export function StaticIntro() {
             <a href={`mailto:${SITE.email}`}>Email me</a>
           </nav>
         </div>
-        <p className="px-4 pb-5 text-center text-[11px] leading-4 text-[var(--muted)] sm:px-12 sm:pb-6 sm:text-xs">
-          Chats are processed by AI providers (OpenAI and Anthropic) and saved only in this browser.
-          Please don&apos;t share sensitive information.{" "}
-          <Link href="/privacy" className="underline underline-offset-2">
-            Privacy
-          </Link>
-        </p>
+        <PrivacyNotice className="px-4 pb-5 sm:px-12 sm:pb-6" />
       </main>
     </div>
   );
