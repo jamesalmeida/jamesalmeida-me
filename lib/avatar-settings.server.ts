@@ -3,7 +3,7 @@ import "server-only";
 import type { AvatarConfig } from "@jamesalmeida/agent-avatars";
 import { unstable_cache } from "next/cache";
 import { AVATAR_SETTING_KEY, DEFAULT_SITE_AVATAR, storedAvatarOrDefault } from "@/lib/avatar-settings";
-import { isStoreConfigured, storeApi, storeMutation, storeQuery } from "@/lib/store.server";
+import { describeStoreError, isStoreConfigured, storeApi, storeMutation, storeQuery } from "@/lib/store.server";
 
 /** Next's data cache tag for the saved avatar. Saving revalidates it. */
 export const SITE_AVATAR_TAG = "site-avatar";
@@ -39,6 +39,6 @@ export async function saveSiteAvatar(avatar: AvatarConfig): Promise<string | nul
     return saved ? null : "Saving needs CONVEX_URL and CONVEX_SERVER_SECRET to be set.";
   } catch (error) {
     console.error("Saving the avatar setting failed.", error);
-    return "Could not save to the database.";
+    return `Could not save to the database. ${describeStoreError(error)}`;
   }
 }
