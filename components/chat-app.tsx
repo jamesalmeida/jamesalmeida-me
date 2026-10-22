@@ -1,5 +1,6 @@
 "use client";
 
+import type { AvatarMood } from "@jamesalmeida/agent-avatars";
 import type { UIMessage } from "ai";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Modal } from "@/components/modal";
@@ -45,6 +46,8 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
   // Latest finished reply, read out by the polite live region. It lives here, not
   // in Thread, because the first reply forks the thread and remounts it.
   const [announcement, setAnnouncement] = useState("");
+  // Skaffen's mood in a conversation; null on the landing. Shown by the header avatar.
+  const [skaffenMood, setSkaffenMood] = useState<AvatarMood | null>(null);
 
   // Updates state and writes localStorage right away. If storage was full and
   // history threads were evicted, drop them from the menu too.
@@ -222,12 +225,14 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
         menuButtonRef={menuButtonRef}
         onOpenMenu={() => setIsMenuOpen(true)}
         onNewChat={handleNewChat}
+        skaffenMood={skaffenMood}
       />
       <main className="flex min-h-0 flex-1 flex-col">
         <Thread
           key={`${activeThreadId}:${chatGeneration}`}
           initialMessages={activeMessages}
           onMessagesChange={(messages) => handleMessagesChange(activeThreadId, messages, chatGeneration)}
+          onPresenceChange={setSkaffenMood}
           onReply={setAnnouncement}
           onRunComplete={handleRunComplete}
         />

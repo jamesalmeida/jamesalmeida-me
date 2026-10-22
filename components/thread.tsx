@@ -16,7 +16,7 @@ import {
   useThreadViewport,
 } from "@assistant-ui/react";
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
-import { AgentAvatar, useHappyMoment, type AvatarMood } from "@jamesalmeida/agent-avatars";
+import { useHappyMoment, type AvatarMood } from "@jamesalmeida/agent-avatars";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
@@ -46,6 +46,8 @@ type ThreadProps = {
   onMessagesChange: (messages: UIMessage[]) => void;
   onReply?: (text: string) => void;
   onRunComplete?: (messages: UIMessage[]) => void;
+  /** Skaffen's mood in a conversation, or null on the landing. ChatApp passes it to the header. */
+  onPresenceChange?: (mood: AvatarMood | null) => void;
 };
 
 // Matches the server's per-part cap in lib/sanitize-messages.ts.
@@ -82,7 +84,7 @@ function useIsNewMessage() {
 // The composer moves from the landing to the bottom with a shared layout animation.
 const composerLayoutTransition = { type: "spring", stiffness: 320, damping: 34 } as const;
 
-export function Thread({ initialMessages, onMessagesChange, onReply, onRunComplete }: ThreadProps) {
+export function Thread({ initialMessages, onMessagesChange, onPresenceChange, onReply, onRunComplete }: ThreadProps) {
   // The AI SDK chat's error. A run that fails before any assistant content (a 429,
   // a 403, or a stream that errors right after "start") creates no assistant
   // message, so MessagePrimitive.Error has nothing to render in; RunErrorNotice does.
@@ -112,7 +114,11 @@ export function Thread({ initialMessages, onMessagesChange, onReply, onRunComple
         onRunStart={clearRunError}
       />
       <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
-        <ThreadBody runError={runError} onCancel={() => { cancelledRef.current = true; }} />
+        <ThreadBody
+          runError={runError}
+          onCancel={() => { cancelledRef.current = true; }}
+          onPresenceChange={onPresenceChange}
+        />
       </ThreadPrimitive.Root>
       </InitialMessageIdsContext.Provider>
     </AssistantRuntimeProvider>
@@ -122,7 +128,15 @@ export function Thread({ initialMessages, onMessagesChange, onReply, onRunComple
 // The landing (a question and a big composer) until the first message, then the
 // conversation with the composer floating at the bottom. On the first send the
 // landing fades up and away while the composer glides down.
-function ThreadBody({ onCancel, runError }: { onCancel: () => void; runError: string | null }) {
+function ThreadBody({
+  onCancel,
+  onPresenceChange,
+  runError,
+}: {
+  onCancel: () => void;
+  onPresenceChange?: (mood: AvatarMood | null) => void;
+  runError: string | null;
+}) {
   const isEmpty = useThread((state) => state.messages.length === 0);
 
   return (
@@ -155,6 +169,7 @@ function ThreadBody({ onCancel, runError }: { onCancel: () => void; runError: st
       {isEmpty ? null : (
         <>
           <h1 className="sr-only">Chat with {SITE.assistant.name}, {SITE.assistant.role}</h1>
+          <SkaffenPresence onPresenceChange={onPresenceChange} />
           {/* turnAnchor="top": each new message scrolls to the top of the viewport and
               the reply streams in below it (MessagePrimitive.Root adds the room for it).
               Spacing is padding on each message, not a flex gap, so the anchored
@@ -176,13 +191,8 @@ function ThreadBody({ onCancel, runError }: { onCancel: () => void; runError: st
               <RunErrorNotice error={runError} />
             </div>
             <ThreadPrimitive.ViewportFooter className="sticky bottom-0 shrink-0 bg-[linear-gradient(to_bottom,transparent,var(--background)_45%)] px-4 pb-2 pt-3 sm:px-12 sm:pb-6">
-              <div className="mx-auto w-full max-w-[780px]">
-                {/* Skaffen floats above the composer on the left; the scroll-to-latest
-                    button sits on the right. */}
-                <div className="mb-2 flex h-10 items-end justify-between pl-1">
-                  <SkaffenPresence />
-                  <ScrollToBottomButton />
-                </div>
+              <div className="relative mx-auto w-full max-w-[780px]">
+                <ScrollToBottomButton />
                 <Composer variant="dock" onCancel={onCancel} />
                 {/* Under the composer on desktop only; phones keep the space for messages. */}
                 <div className="hidden sm:block">
@@ -191,6 +201,11 @@ function ThreadBody({ onCancel, runError }: { onCancel: () => void; runError: st
               </div>
             </ThreadPrimitive.ViewportFooter>
           </ThreadPrimitive.Viewport>
+          {/* Messages fade out under the header, like they do into the composer. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 z-10 h-7 bg-[linear-gradient(to_bottom,var(--background),transparent)]"
+          />
         </>
       )}
     </div>
@@ -268,7 +283,7 @@ function ScrollToBottomButton() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
+          className="absolute -top-12 right-0 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
           aria-label="Scroll to latest message"
           data-cuelume-press="tick"
         >
@@ -304,11 +319,11 @@ function RunErrorNotice({ error }: { error: string | null }) {
   );
 }
 
-// The one Skaffen on screen: its avatar floating above the composer, with no name or
-// label. Its mood follows the conversation: writing while a reply streams, a happy
+// Works out Skaffen's mood and reports it to ChatApp, which shows the one Skaffen on
+// screen in the header, left of the name: writing while a reply streams, a happy
 // moment when a new reply brings the brief, listening while the visitor types,
-// otherwise waiting.
-function SkaffenPresence() {
+// otherwise waiting. Unmounting (back to the landing) reports null.
+function SkaffenPresence({ onPresenceChange }: { onPresenceChange?: (mood: AvatarMood | null) => void }) {
   const initialIds = useContext(InitialMessageIdsContext);
   const isRunning = useThread((state) => state.isRunning);
   const last = useThread((state) => state.messages[state.messages.length - 1]);
@@ -320,7 +335,12 @@ function SkaffenPresence() {
   const isHappy = useHappyMoment(lastBringsBrief && !isRunning);
   const mood: AvatarMood = isRunning ? "writing" : isHappy ? "happy" : isVisitorTyping ? "listening" : "idle";
 
-  return <AgentAvatar {...SITE.assistant.avatar} mood={mood} size={40} />;
+  useEffect(() => {
+    onPresenceChange?.(mood);
+  }, [mood, onPresenceChange]);
+  useEffect(() => () => onPresenceChange?.(null), [onPresenceChange]);
+
+  return null;
 }
 
 function AssistantMessage() {
@@ -342,7 +362,7 @@ function AssistantMessage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: "easeOut", delay: isNew ? 0.15 : 0 }}
       >
-        {/* Replies have no avatar or label; Skaffen's avatar floats above the composer. */}
+        {/* Replies have no avatar or label; Skaffen's avatar is in the header. */}
         <h2 className="sr-only">{SITE.assistant.name} said:</h2>
         {hasContent ? (
           <div className="flex min-w-0 flex-col gap-4 text-base leading-[1.6] sm:text-lg">
@@ -353,7 +373,7 @@ function AssistantMessage() {
             />
           </div>
         ) : isWriting ? (
-          // The avatar above the composer looking up is the visual cue; this is for screen readers.
+          // The header avatar looking up is the visual cue; this is for screen readers.
           <p className="sr-only">Writing a reply</p>
         ) : null}
         <MessagePrimitive.Error>
