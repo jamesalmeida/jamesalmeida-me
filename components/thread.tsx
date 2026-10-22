@@ -181,6 +181,7 @@ function ThreadBody({
         <>
           <h1 className="sr-only">Chat with {SITE.assistant.name}, {SITE.assistant.role}</h1>
           <SkaffenPresence onPresenceChange={onPresenceChange} />
+          <KeepAnchorOnRunEnd />
           {/* turnAnchor="top": each new message scrolls to the top of the viewport and
               the reply streams in below it (MessagePrimitive.Root adds the room for it).
               Spacing is padding on each message, not a flex gap, so the anchored
@@ -276,6 +277,40 @@ function RunCompleteDetector({
     hasFired.current = true;
     onRunComplete(toUIMessages(messages));
   }, [cancelledRef, isRunning, messages, onReply, onRunComplete, onRunStart]);
+
+  return null;
+}
+
+// When a reply finishes, assistant-ui swaps the streamed message for the final one.
+// For a moment the room it keeps below the reply (turnAnchor="top") is gone, so the
+// browser clamps the scroll position and the chat jumps up. If the visitor was still
+// anchored at the bottom when the run ended, put them back once the layout settles.
+function KeepAnchorOnRunEnd() {
+  const isRunning = useThread((state) => state.isRunning);
+  const isAtBottom = useThreadViewport((state) => state.isAtBottom);
+  const scrollToBottom = useThreadViewport((state) => state.scrollToBottom);
+  const wasRunningRef = useRef(isRunning);
+  const wasAtBottomRef = useRef(isAtBottom);
+
+  useEffect(() => {
+    const justFinished = wasRunningRef.current && !isRunning;
+    wasRunningRef.current = isRunning;
+    if (justFinished && wasAtBottomRef.current) {
+      let second = 0;
+      const first = requestAnimationFrame(() => {
+        second = requestAnimationFrame(() => scrollToBottom({ behavior: "auto" }));
+      });
+      return () => {
+        cancelAnimationFrame(first);
+        cancelAnimationFrame(second);
+      };
+    }
+  }, [isRunning, scrollToBottom]);
+
+  // Read in the effect above: the value from before the run ended, not after the jump.
+  useEffect(() => {
+    if (isRunning) wasAtBottomRef.current = isAtBottom;
+  }, [isRunning, isAtBottom]);
 
   return null;
 }
@@ -508,7 +543,8 @@ function Composer({
         className={`flex items-end gap-2 rounded-[1.75rem] border border-[var(--border-strong)] bg-[var(--surface)] sm:gap-3 ${
           isLanding
             ? "py-1.5 pl-5 pr-1.5 shadow-[0_16px_48px_rgba(0,0,0,0.08)] sm:rounded-[2.25rem] sm:py-2.5 sm:pl-8 sm:pr-2.5 sm:shadow-[0_24px_80px_rgba(0,0,0,0.08)]"
-            : "py-1.5 pl-5 pr-1.5 sm:py-2 sm:pl-7 sm:pr-2"
+            : // Half its single-line height on desktop (8 + 48 + 8 px + borders), so the ends are round.
+              "py-1.5 pl-5 pr-1.5 sm:rounded-[2.125rem] sm:py-2 sm:pl-7 sm:pr-2"
         }`}
       >
         <div className="relative flex flex-1 self-center">
