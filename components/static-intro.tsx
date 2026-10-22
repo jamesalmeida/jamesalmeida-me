@@ -1,3 +1,4 @@
+import type { AvatarConfig } from "@jamesalmeida/agent-avatars";
 import Link from "next/link";
 import { HEADLINES, PROMPT_EXAMPLES, SITE } from "@/data/site";
 import { serif } from "./booking-button";
@@ -6,10 +7,10 @@ import { SiteHeader } from "./site-header";
 
 // Server-rendered before the chat hydrates. Same layout as the chat's landing, so
 // there is no layout shift, and crawlers get the real h1, copy and links.
-export function StaticIntro() {
+export function StaticIntro({ avatar }: { avatar?: AvatarConfig }) {
   return (
     <div className="app-shell flex flex-col overflow-hidden">
-      <SiteHeader />
+      <SiteHeader avatar={avatar} />
       <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         <div className="flex flex-1 flex-col items-center justify-center gap-5 px-4 pb-16 pt-4 sm:gap-7 sm:px-12 sm:pb-20">
           <h1

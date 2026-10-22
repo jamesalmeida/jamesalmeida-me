@@ -1,6 +1,6 @@
 "use client";
 
-import type { AvatarMood } from "@jamesalmeida/agent-avatars";
+import type { AvatarConfig, AvatarMood } from "@jamesalmeida/agent-avatars";
 import type { UIMessage } from "ai";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Modal } from "@/components/modal";
@@ -28,7 +28,7 @@ import {
   type StoredThreads,
 } from "@/lib/threads";
 
-export function ChatApp({ fallback }: { fallback: ReactNode }) {
+export function ChatApp({ avatar, fallback }: { avatar?: AvatarConfig; fallback: ReactNode }) {
   const [activeThreadId, setActiveThreadId] = useState<string>(NEW_CHAT_ID);
   const [storedThreads, setStoredThreads] = useState<StoredThreads>({});
   const [historyThreads, setHistoryThreads] = useState<HistoryThread[]>([]);
@@ -222,6 +222,7 @@ export function ChatApp({ fallback }: { fallback: ReactNode }) {
   return (
     <div className="app-shell flex flex-col overflow-hidden">
       <SiteHeader
+        avatar={avatar}
         menuButtonRef={menuButtonRef}
         onOpenMenu={() => setIsMenuOpen(true)}
         onNewChat={handleNewChat}
