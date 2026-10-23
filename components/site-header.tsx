@@ -86,8 +86,11 @@ export function SiteHeader({
           className="flex items-center text-[var(--foreground)]"
           data-cuelume-press="tick"
         >
+          {/* The padding (cancelled by the negative margin, so the layout doesn't move)
+              keeps the serif J's hook inside the box. Without it, Safari leaves bits
+              of the J behind as the name slides when the avatar comes back. */}
           <span
-            className={`flex flex-col text-[18px] leading-[1.05] tracking-[-0.01em] sm:flex-row sm:gap-x-[0.28em] sm:text-[26px] ${serif}`}
+            className={`-mx-[0.15em] -my-[0.25em] flex flex-col px-[0.15em] py-[0.25em] text-[18px] leading-[1.05] tracking-[-0.01em] sm:flex-row sm:gap-x-[0.28em] sm:text-[26px] ${serif}`}
           >
             <span>{FIRST_NAME}</span>
             <span>{LAST_NAME}</span>
