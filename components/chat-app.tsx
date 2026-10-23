@@ -27,11 +27,21 @@ import {
   type HistoryThread,
   type StoredThreads,
 } from "@/lib/threads";
+import type { MotionSettings } from "@/lib/motion-settings";
 import { trackEvent } from "@/lib/visit";
+import { MotionSettingsProvider } from "@/components/motion-settings";
 
 let landingTracked = false;
 
-export function ChatApp({ avatar, fallback }: { avatar?: AvatarConfig; fallback: ReactNode }) {
+export function ChatApp({
+  avatar,
+  fallback,
+  motion,
+}: {
+  avatar?: AvatarConfig;
+  fallback: ReactNode;
+  motion?: MotionSettings;
+}) {
   const [activeThreadId, setActiveThreadId] = useState<string>(NEW_CHAT_ID);
   const [storedThreads, setStoredThreads] = useState<StoredThreads>({});
   const [historyThreads, setHistoryThreads] = useState<HistoryThread[]>([]);
@@ -231,6 +241,7 @@ export function ChatApp({ avatar, fallback }: { avatar?: AvatarConfig; fallback:
     historyThreads.length > 0 || (storedThreads[NEW_CHAT_ID]?.userMessages.length ?? 0) > 0;
 
   return (
+    <MotionSettingsProvider motion={motion}>
     <div className="app-shell flex flex-col overflow-hidden">
       <SiteHeader
         avatar={avatar}
@@ -273,6 +284,7 @@ export function ChatApp({ avatar, fallback }: { avatar?: AvatarConfig; fallback:
         />
       ) : null}
     </div>
+    </MotionSettingsProvider>
   );
 }
 

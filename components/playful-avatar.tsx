@@ -4,11 +4,10 @@ import { AgentAvatar, EYES, type AvatarConfig, type AvatarEyes, type AvatarMood 
 import { play } from "cuelume";
 import { useAnimate } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { useMotion } from "./motion-settings";
 
 // How long a tap's trick lasts before Skaffen goes back to its own mood.
 const TRICK_MS = 2600;
-// One tap in this many does a spin with a hop instead of only a new face.
-const SPIN_CHANCE = 0.3;
 const TRICK_MOODS: AvatarMood[] = ["happy", "listening", "thinking", "writing"];
 const EYE_SHAPES = Object.keys(EYES) as AvatarEyes[];
 
@@ -20,8 +19,9 @@ function pick<T>(items: readonly T[], not?: T): T {
 }
 
 // Skaffen's avatar as a little easter egg: tapping it swaps the eye shape and mood
-// for a few seconds (and now and then spins it with a hop), then it goes back to
-// `mood`. Used in the header on the landing and above the latest reply.
+// for a few seconds, then it goes back to `mood`. Some taps also move it: half the
+// time nothing extra, otherwise a flat spin with a hop or a horizontal spin with a
+// little wind-up first. MotionConfig reducedMotion="user" drops the movement.
 export function PlayfulAvatar({
   avatar,
   mood,
@@ -36,6 +36,7 @@ export function PlayfulAvatar({
   const [trick, setTrick] = useState<Trick | null>(null);
   const timer = useRef<number | undefined>(undefined);
   const [scope, animate] = useAnimate<HTMLButtonElement>();
+  const { seconds } = useMotion();
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
@@ -47,12 +48,27 @@ export function PlayfulAvatar({
     }));
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => setTrick(null), TRICK_MS);
-    if (Math.random() < SPIN_CHANCE) {
-      // MotionConfig reducedMotion="user" turns this off for people who asked for less motion.
+
+    const roll = Math.random();
+    if (roll < 0.25) {
+      // A flat spin with a hop.
       void animate(
         scope.current,
         { rotate: [0, 360], y: [0, -size * 0.3, 0] },
-        { duration: 0.7, ease: [0.34, 1.3, 0.64, 1] },
+        { duration: seconds(0.9), ease: [0.34, 1.3, 0.64, 1] },
+      );
+    } else if (roll < 0.5) {
+      // A horizontal spin: turns back a little and crouches (the wind-up), then
+      // whips all the way round and settles.
+      void animate(
+        scope.current,
+        {
+          rotateY: [0, -40, 220, 360],
+          y: [0, size * 0.05, -size * 0.12, 0],
+          scaleY: [1, 0.92, 1.04, 1],
+          transformPerspective: [600, 600, 600, 600],
+        },
+        { duration: seconds(1.2), times: [0, 0.3, 0.75, 1], ease: "easeInOut" },
       );
     }
   };
@@ -62,17 +78,24 @@ export function PlayfulAvatar({
       ref={scope}
       type="button"
       onClick={handleTap}
-      aria-label={`Say hi to Skaffen`}
+      aria-label="Say hi to Skaffen"
       title="Say hi"
       className={`block shrink-0 rounded-full outline-offset-4 ${className}`}
       style={{ width: size, height: size }}
     >
-      <AgentAvatar
-        {...avatar}
-        eyes={trick?.eyes ?? avatar.eyes}
-        mood={trick?.mood ?? mood}
-        size={size}
-      />
+      <AgentAvatar {...avatar} eyes={trick?.eyes ?? avatar.eyes} mood={trick?.mood ?? mood} size={size} />
     </button>
+  );
+}
+
+// Skaffen at its one size: 56 px, scaled to 52 px on phones with CSS (so the server
+// render and the first client render agree). The header and the reply both use it.
+export function SkaffenAvatar({ avatar, mood }: { avatar: AvatarConfig; mood: AvatarMood }) {
+  return (
+    <span className="block h-13 w-13 shrink-0 sm:h-14 sm:w-14">
+      <span className="block origin-top-left scale-[0.9286] sm:scale-100">
+        <PlayfulAvatar avatar={avatar} mood={mood} size={56} />
+      </span>
+    </span>
   );
 }
