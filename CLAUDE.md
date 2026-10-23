@@ -81,7 +81,8 @@ app/
   consulting/page.tsx          # "How I can help", rendered from OFFER
   about/page.tsx               # "Why I do this": the story, past work from PROJECTS, Skaffen
   privacy/page.tsx             # Plain-language privacy page (keep claims true to the code)
-  opengraph-image.tsx          # next/og image
+  opengraph-image.tsx          # Link preview (next/og, built at deploy): Skaffen, name, HEADLINES[0], composer with PROMPT_EXAMPLES[0]
+  twitter-image.tsx            # Same card for X
   icon.png / icon.svg / favicon.ico / apple-icon.png
   sitemap.ts / robots.ts
   layout.tsx                   # metadata, JSON-LD; viewport maximumScale: 1
@@ -143,6 +144,7 @@ data/
   site.ts                      # SITE, HEADLINES and PROMPT_EXAMPLES (defaults for Settings → Landing) + OFFER. Client-safe. No secrets.
   portfolio.ts                 # PROJECTS: past company work only (client-safe). `confirmed` is never rendered.
 
+assets/og/                     # Static Latin cuts of Source Serif 4 + Inter (SIL OFL) for the link preview
 public/
   resume.pdf                   # Not linked anywhere since the site went client-first
 convex/                        # Convex backend: schema, chats, events, feedback, leads, settings, admin queries,
