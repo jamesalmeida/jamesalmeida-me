@@ -247,8 +247,8 @@ export function AdminAvatarSettings({ onLocked }: { onLocked: () => void }) {
 
         {!canSave ? (
           <p className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm leading-6 text-[var(--muted)]">
-            Saving is off on this deployment. Set <code>CONVEX_URL</code> and{" "}
-            <code>CONVEX_SERVER_SECRET</code> in Vercel (see CLAUDE.md), then redeploy.
+            Saving is off on this deployment. It needs a Convex URL and <code>CONVEX_SERVER_SECRET</code>{" "}
+            (see CLAUDE.md), then a redeploy.
           </p>
         ) : null}
 

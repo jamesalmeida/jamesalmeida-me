@@ -31,11 +31,13 @@ afterEach(() => {
 describe("convex functions", () => {
   it("rejects calls without the server secret", async () => {
     const t = setup();
-    await expect(t.mutation(api.settings.set, { secret: "wrong", key: "avatar", value: 1 })).rejects.toThrow(
-      "Unauthorized",
-    );
+    await expect(t.mutation(api.settings.set, { secret: "wrong", key: "avatar", value: 1 })).rejects.toMatchObject({
+      data: { code: "unauthorized" },
+    });
     vi.stubEnv("CONVEX_SERVER_SECRET", "");
-    await expect(t.query(api.settings.get, { secret: "", key: "avatar" })).rejects.toThrow("Unauthorized");
+    await expect(t.query(api.settings.get, { secret: "", key: "avatar" })).rejects.toMatchObject({
+      data: { code: "unauthorized" },
+    });
   });
 
   it("stores settings", async () => {

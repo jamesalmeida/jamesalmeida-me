@@ -144,9 +144,9 @@ function Notice({ children }: { children: ReactNode }) {
 export function NotConfiguredNotice() {
   return (
     <Notice>
-      Analytics are off on this deployment. Create a Convex project, set <code>CONVEX_DEPLOY_KEY</code>,{" "}
-      <code>CONVEX_URL</code> and <code>CONVEX_SERVER_SECRET</code> in Vercel (and the same{" "}
-      <code>CONVEX_SERVER_SECRET</code> in Convex), then redeploy.
+      Analytics are off on this deployment. It needs a Convex URL and <code>CONVEX_SERVER_SECRET</code>.
+      Production sets <code>CONVEX_URL</code> in Vercel. A preview leaves that unset, sets a Convex preview
+      deploy key as <code>CONVEX_DEPLOY_KEY</code>, and sets the same secret on the Convex preview deployment.
     </Notice>
   );
 }
