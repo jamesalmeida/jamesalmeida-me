@@ -20,8 +20,9 @@ function pick<T>(items: readonly T[], not?: T): T {
 
 // Skaffen's avatar as a little easter egg: tapping it swaps the eye shape and mood
 // for a few seconds, then it goes back to `mood`. Some taps also move it: half the
-// time nothing extra, otherwise a flat spin with a hop or a horizontal spin with a
-// little wind-up first. MotionConfig reducedMotion="user" drops the movement.
+// time nothing extra, otherwise a flat spin with a hop or a turn: the eyes wind up,
+// slide off one side of the body and come back from the other (the package's
+// `spin`). Reduced motion drops the movement.
 export function PlayfulAvatar({
   avatar,
   mood,
@@ -34,6 +35,7 @@ export function PlayfulAvatar({
   className?: string;
 }) {
   const [trick, setTrick] = useState<Trick | null>(null);
+  const [turns, setTurns] = useState(0);
   const timer = useRef<number | undefined>(undefined);
   const [scope, animate] = useAnimate<HTMLButtonElement>();
   const { seconds } = useMotion();
@@ -58,18 +60,7 @@ export function PlayfulAvatar({
         { duration: seconds(0.9), ease: [0.34, 1.3, 0.64, 1] },
       );
     } else if (roll < 0.5) {
-      // A horizontal spin: turns back a little and crouches (the wind-up), then
-      // whips all the way round and settles.
-      void animate(
-        scope.current,
-        {
-          rotateY: [0, -40, 220, 360],
-          y: [0, size * 0.05, -size * 0.12, 0],
-          scaleY: [1, 0.92, 1.04, 1],
-          transformPerspective: [600, 600, 600, 600],
-        },
-        { duration: seconds(1.2), times: [0, 0.3, 0.75, 1], ease: "easeInOut" },
-      );
+      setTurns((count) => count + 1);
     }
   };
 
@@ -83,7 +74,14 @@ export function PlayfulAvatar({
       className={`block shrink-0 rounded-full outline-offset-4 ${className}`}
       style={{ width: size, height: size }}
     >
-      <AgentAvatar {...avatar} eyes={trick?.eyes ?? avatar.eyes} mood={trick?.mood ?? mood} size={size} />
+      <AgentAvatar
+        {...avatar}
+        eyes={trick?.eyes ?? avatar.eyes}
+        mood={trick?.mood ?? mood}
+        size={size}
+        spin={turns}
+        spinMs={seconds(1.1) * 1000}
+      />
     </button>
   );
 }
