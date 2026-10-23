@@ -5,6 +5,7 @@ import { play } from "cuelume";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useId, useRef, useState } from "react";
 import { SITE } from "@/data/site";
+import { BouncingDots } from "./bouncing-dots";
 import {
   DEFAULT_MOTION,
   MOTION_LIMITS,
@@ -186,10 +187,14 @@ export function AdminMotionSettings({ onLocked }: { onLocked: () => void }) {
   );
 }
 
-type PreviewStage = "idle" | "thinking" | "reply";
+type PreviewStage = "idle" | "thinking" | "writing" | "done";
 
-// A small replay of a reply arriving at the slider values: Skaffen pops in and
-// thinks for the minimum thinking time, then the reply fades in below.
+// How long the preview's reply "streams" before it's done, at pace 1.
+const PREVIEW_WRITING_MS = 1600;
+
+// A small replay of a reply arriving at the slider values, with the same status
+// line as the chat: Skaffen pops in and thinks for the minimum thinking time, then
+// writes while the reply fades in below, then shows its role.
 function MotionPreview({ motion: settings }: { motion: MotionSettings }) {
   const [stage, setStage] = useState<PreviewStage>("idle");
   const [avatar, setAvatar] = useState<AvatarConfig>(SITE.assistant.avatar);
@@ -212,10 +217,13 @@ function MotionPreview({ motion: settings }: { motion: MotionSettings }) {
     // Starts the pop on the next frame so a replay animates from scratch.
     timer.current = window.setTimeout(() => {
       setStage("thinking");
-      timer.current = window.setTimeout(
-        () => setStage("reply"),
-        Math.max(settings.minThinkingMs, 300),
-      );
+      timer.current = window.setTimeout(() => {
+        setStage("writing");
+        timer.current = window.setTimeout(
+          () => setStage("done"),
+          PREVIEW_WRITING_MS * settings.durationScale,
+        );
+      }, Math.max(settings.minThinkingMs, 300));
     }, 50);
   };
   const s = (base: number) => base * settings.durationScale;
@@ -235,17 +243,18 @@ function MotionPreview({ motion: settings }: { motion: MotionSettings }) {
             >
               <AgentAvatar
                 {...avatar}
-                mood={stage === "thinking" ? "thinking" : "idle"}
+                mood={stage === "done" ? "idle" : stage}
                 size={44}
               />
               <span className="text-[var(--muted)]">
-                {stage === "thinking" ? "Thinking…" : SITE.assistant.role}
+                {stage === "thinking" ? "Thinking" : stage === "writing" ? "Writing" : SITE.assistant.role}
+                {stage === "thinking" || stage === "writing" ? <BouncingDots duration={s(1.2)} /> : null}
               </span>
             </motion.div>
           ) : null}
         </AnimatePresence>
         <AnimatePresence>
-          {stage === "reply" ? (
+          {stage === "writing" || stage === "done" ? (
             <motion.div
               key="reply"
               className="mt-3 space-y-2"
