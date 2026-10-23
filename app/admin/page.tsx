@@ -5,6 +5,7 @@ import { ArrowLeft, Lock } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AdminAvatarSettings } from "@/components/admin-avatar-settings";
 import { AdminLandingSettings } from "@/components/admin-landing-settings";
+import { AdminShareCard } from "@/components/admin-share-card";
 import { AdminMotionSettings } from "@/components/admin-motion-settings";
 import {
   Insights,
@@ -134,6 +135,12 @@ export default function AdminPage() {
                 description="The headlines in the A/B test, the example prompts in the composer and how long each one shows. Saved for every visitor; Insights shows how each one does."
               >
                 <AdminLandingSettings onLocked={lock} />
+              </Section>
+              <Section
+                title="Share card"
+                description="The link preview as a picture and a video: edit its words and Skaffen, watch the animation, then download a PNG or a video. Drafts stay in this browser; the site's own link preview is unchanged."
+              >
+                <AdminShareCard />
               </Section>
               <Section
                 title="Motion"
