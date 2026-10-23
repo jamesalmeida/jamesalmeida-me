@@ -16,7 +16,7 @@ import {
   type ShareCardFonts,
 } from "@/lib/share-card";
 
-// The same cuts the server's link preview uses (app/opengraph-image.tsx).
+// Static Latin cuts of Source Serif 4 and Inter (SIL OFL) in assets/og.
 const serifFont = localFont({ src: "../assets/og/SourceSerif4-Display.ttf", display: "block" });
 const sansFont = localFont({ src: "../assets/og/Inter-Regular.ttf", display: "block" });
 const FONTS: ShareCardFonts = { serif: serifFont.style.fontFamily, sans: sansFont.style.fontFamily };

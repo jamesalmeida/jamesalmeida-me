@@ -1,6 +1,7 @@
 // The share card (link preview) drawn on a canvas, frame by frame, for the /admin
 // studio: its live preview, the PNG download and the recorded video all come from
-// drawShareCard(), so they match. The layout follows app/opengraph-image.tsx.
+// drawShareCard(), so they match. Downloads become the site's link preview once
+// committed to public/og (see lib/og.ts).
 // Browser-only (canvas); the avatar geometry comes from agent-avatars.
 
 import { EYES, SHAPES, colorValue, eyeColorValue, type AvatarConfig } from "@jamesalmeida/agent-avatars";

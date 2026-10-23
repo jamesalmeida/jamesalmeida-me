@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BookingButton, EmailLink } from "@/components/booking-button";
 import { SitePageShell } from "@/components/site-page-shell";
 import { OFFER, SITE } from "@/data/site";
+import { OG_MEDIA } from "@/lib/og";
 
 const serif =
   "font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif]";
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
     title: "How I can help",
     description,
     url: "/consulting",
+    ...OG_MEDIA,
   },
 };
 

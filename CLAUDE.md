@@ -81,8 +81,6 @@ app/
   consulting/page.tsx          # "How I can help", rendered from OFFER
   about/page.tsx               # "Why I do this": the story, past work from PROJECTS, Skaffen
   privacy/page.tsx             # Plain-language privacy page (keep claims true to the code)
-  opengraph-image.tsx          # Link preview (next/og, built at deploy): "JamesAlmeida.me", HEADLINES[0], Skaffen (blob), composer with PROMPT_EXAMPLES[0]
-  twitter-image.tsx            # Same card for X
   icon.png / icon.svg / favicon.ico / apple-icon.png
   sitemap.ts / robots.ts
   layout.tsx                   # metadata, JSON-LD; viewport maximumScale: 1
@@ -137,6 +135,7 @@ lib/
   landing-settings.ts          # Landing setting: headlines (A/B), examples, timing; strict parse, pickHeadline (client-safe)
   landing-settings.server.ts   # getSiteLanding (cached Convex read), saveSiteLanding
   share-card.ts                # drawShareCard(): the share card on a canvas at time t (browser-only), video type pick
+  og.ts                        # OG_IMAGE / OG_VIDEO / OG_MEDIA: the link preview files in public/og, used by every page's metadata
   message-convert.ts           # assistant-ui messages → UIMessage (keeps tools)
   threads.ts                   # New chat + history threads; storage, caps, getFirstUserText
   theme.ts                     # Theme keys + inline pre-paint script (client-safe)
@@ -146,8 +145,10 @@ data/
   site.ts                      # SITE, HEADLINES and PROMPT_EXAMPLES (defaults for Settings → Landing) + OFFER. Client-safe. No secrets.
   portfolio.ts                 # PROJECTS: past company work only (client-safe). `confirmed` is never rendered.
 
-assets/og/                     # Static Latin cuts of Source Serif 4 + Inter (SIL OFL) for the link preview
+assets/og/                     # Static Latin cuts of Source Serif 4 + Inter (SIL OFL) for the share card studio
 public/
+  og/og-image.png              # Link preview image (og:image, X), 1200 × 630, made in /admin → Share card
+  og/og-video.mp4              # Link preview video (og:video), 1200 × 630 MP4, made in /admin → Share card
   resume.pdf                   # Not linked anywhere since the site went client-first
 convex/                        # Convex backend: schema, chats, events, feedback, leads, settings, admin queries,
                                #   retention + crons (90 days). No _generated: lib.ts types the builders.
@@ -276,7 +277,7 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 - Insights (`components/admin-dashboard.tsx`, `convex/admin.ts`): 7/30/90-day range; funnel stats (distinct visits per step, plus leads); "How far chats went" and "Where they ended" bars; sources and headlines; "How chats started" (each landing example sent, how many of those visits got a brief, and how many typed their own first message); feedback with reasons, comments, the reply and the visitor's message; recent chats that open a transcript dialog. Leads: email (mailto), name, brief, View chat, Delete. Without Convex it shows how to set it up.
 - Settings → Skaffen's avatar: the package's `<AvatarEditor>` (shape tiles, colour and eye-colour swatches plus a custom colour picker, fill, eyes, a live preview with a mood switcher), themed with the site's colours through its `--aa-editor-*` variables, then "Save for everyone" and "Reset to default". `POST /api/admin/avatar` validates strictly (`parseAvatarSetting`: every field, presets or hex colours, no extra keys), saves to Convex `settings`, then revalidates the `site-avatar` tag and `/`. `GET /api/admin/avatar` returns `{ avatar, source, canSave }`.
 - Settings → Landing (`components/admin-landing-settings.tsx`): headlines with an "In test" checkbox, example prompts, add and remove rows, a "Time per example" slider, "Save for everyone" and "Reset to default" (Save stays off with an empty row, a duplicate or no headline in the test). `POST /api/admin/landing` validates strictly (`parseLandingSetting`), saves to Convex `settings`, then revalidates the `site-landing` tag and `/`.
-- Settings → Share card (`components/admin-share-card.tsx`, `lib/share-card.ts`): the link-preview card drawn on a 1200 × 630 canvas, in the same layout and fonts as `app/opengraph-image.tsx` (via `next/font/local` from `assets/og`). Edit the top line, headline, highlighted word, the line under it, the composer example (empty hides it), Skaffen (the package's `AvatarEditor` without its preview; defaults to the saved avatar as a blob) and the video length (4–12 s). The preview loops the animation: the highlighted word's first letter opens a gap and drops in ("I" → "AI", optional), and Skaffen looks at the headline, blinks, glances up, then down at the composer. "Download image (PNG)" draws the frame at `STILL_SECONDS` (2 s); "Download video" records the animation in real time with `MediaRecorder` from `canvas.captureStream(30)`, as MP4 where the browser can (Chrome, Safari) else WebM. The draft lives in localStorage (`jamesalmeida-share-card`), saved only after it has been read back. Nothing is saved to the site: the site's own link preview (`opengraph-image.tsx`) is separate.
+- Settings → Share card (`components/admin-share-card.tsx`, `lib/share-card.ts`): the link-preview card drawn on a 1200 × 630 canvas, with the fonts in `assets/og` (via `next/font/local`). Edit the top line, headline, highlighted word, the line under it, the composer example (empty hides it), Skaffen (the package's `AvatarEditor` without its preview; defaults to the saved avatar as a blob) and the video length (4–12 s). The preview loops the animation: the highlighted word's first letter opens a gap and drops in ("I" → "AI", optional), and Skaffen looks at the headline, blinks, glances up, then down at the composer. "Download image (PNG)" draws the frame at `STILL_SECONDS` (2 s); "Download video" records the animation in real time with `MediaRecorder` from `canvas.captureStream(30)`, as MP4 where the browser can (Chrome, Safari) else WebM. The draft lives in localStorage (`jamesalmeida-share-card`), saved only after it has been read back. Nothing is saved to the site: to change the link preview, replace `public/og/og-image.png` and `public/og/og-video.mp4` with downloads from here and commit them. `lib/og.ts` points `og:image`, `og:video` and X's image at them; a page that sets its own `openGraph` (`/consulting`, `/about`, `/privacy`) must spread `OG_MEDIA` into it, because Next replaces the layout's whole `openGraph` object.
 - Settings → Motion: "Animation pace" and "Minimum thinking time" sliders, a Preview that replays Skaffen popping in, "Thinking…" for the minimum thinking time, "Writing…" while the reply fades in, then "James' AI assistant", at the slider values (the same status line and bouncing dots as the chat), "Save for everyone" and "Reset to default". `POST /api/admin/motion` validates strictly (`parseMotionSetting`), saves to Convex `settings`, then revalidates the `site-motion` tag and `/`.
 - Settings → Model: `POST /api/admin/model` sets httpOnly cookie `jamesalmeida-model` (30 days) to `${model}.${issuedAtSeconds}.${base64url HMAC-SHA256}`. The key is `ADMIN_COOKIE_SECRET` if set, else `ADMIN_PASSWORD`. No cookie is signed or honoured without `ADMIN_PASSWORD`. Unsigned, unknown-model, old-format and expired (older than 30 days) cookies are ignored, and the default model is used.
 - The override only applies to the admin's own browser. Every other visitor gets the default model.
