@@ -16,7 +16,7 @@ import {
   useThreadViewport,
 } from "@assistant-ui/react";
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
-import { useHappyMoment, type AvatarMood } from "@jamesalmeida/agent-avatars";
+import { useHappyMoment, type AvatarConfig, type AvatarMood } from "@jamesalmeida/agent-avatars";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
@@ -40,6 +40,7 @@ import { getVisitContext, getVisitId } from "@/lib/visit";
 import { serif } from "./booking-button";
 import { LandingHeadline } from "./landing-headline";
 import { MessageActions } from "./message-actions";
+import { PlayfulAvatar } from "./playful-avatar";
 import { PrivacyNotice } from "./privacy-notice";
 import { ShowBookingCtaToolUI, ShowBriefToolUI } from "./tool-cards";
 
@@ -48,9 +49,14 @@ type ThreadProps = {
   onMessagesChange: (messages: UIMessage[]) => void;
   onReply?: (text: string) => void;
   onRunComplete?: (messages: UIMessage[]) => void;
-  /** Skaffen's mood in a conversation, or null on the landing. ChatApp passes it to the header. */
-  onPresenceChange?: (mood: AvatarMood | null) => void;
+  /** Skaffen's look (the site setting); shown above the latest reply. */
+  avatar?: AvatarConfig;
+  /** True once the thread has messages: ChatApp hides the header avatar then. */
+  onConversationChange?: (isConversation: boolean) => void;
 };
+
+// Skaffen's look for the reply avatar, from ChatApp (the saved site setting).
+const SkaffenAvatarContext = createContext<AvatarConfig>(SITE.assistant.avatar);
 
 // Matches the server's per-part cap in lib/sanitize-messages.ts.
 const MAX_MESSAGE_CHARS = 2000;
@@ -114,7 +120,14 @@ function followKeyboard(scroll: () => void, ms = 1000) {
 // The composer moves from the landing to the bottom with a shared layout animation.
 const composerLayoutTransition = { type: "spring", stiffness: 320, damping: 34 } as const;
 
-export function Thread({ initialMessages, onMessagesChange, onPresenceChange, onReply, onRunComplete }: ThreadProps) {
+export function Thread({
+  avatar = SITE.assistant.avatar,
+  initialMessages,
+  onConversationChange,
+  onMessagesChange,
+  onReply,
+  onRunComplete,
+}: ThreadProps) {
   // The AI SDK chat's error. A run that fails before any assistant content (a 429,
   // a 403, or a stream that errors right after "start") creates no assistant
   // message, so MessagePrimitive.Error has nothing to render in; RunErrorNotice does.
@@ -134,6 +147,7 @@ export function Thread({ initialMessages, onMessagesChange, onPresenceChange, on
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <InitialMessageIdsContext.Provider value={initialIds}>
+      <SkaffenAvatarContext.Provider value={avatar}>
       <ShowBookingCtaToolUI />
       <ShowBriefToolUI />
       <ThreadPersistence onMessagesChange={onMessagesChange} />
@@ -147,9 +161,10 @@ export function Thread({ initialMessages, onMessagesChange, onPresenceChange, on
         <ThreadBody
           runError={runError}
           onCancel={() => { cancelledRef.current = true; }}
-          onPresenceChange={onPresenceChange}
+          onConversationChange={onConversationChange}
         />
       </ThreadPrimitive.Root>
+      </SkaffenAvatarContext.Provider>
       </InitialMessageIdsContext.Provider>
     </AssistantRuntimeProvider>
   );
@@ -160,11 +175,11 @@ export function Thread({ initialMessages, onMessagesChange, onPresenceChange, on
 // landing fades up and away while the composer glides down.
 function ThreadBody({
   onCancel,
-  onPresenceChange,
+  onConversationChange,
   runError,
 }: {
   onCancel: () => void;
-  onPresenceChange?: (mood: AvatarMood | null) => void;
+  onConversationChange?: (isConversation: boolean) => void;
   runError: string | null;
 }) {
   const isEmpty = useThread((state) => state.messages.length === 0);
@@ -199,7 +214,7 @@ function ThreadBody({
       {isEmpty ? null : (
         <>
           <h1 className="sr-only">Chat with {SITE.assistant.name}, {SITE.assistant.role}</h1>
-          <SkaffenPresence onPresenceChange={onPresenceChange} />
+          <ConversationPresence onConversationChange={onConversationChange} />
           <KeepAnchorOnRunEnd />
           {/* turnAnchor="top": each new message scrolls to the top of the viewport and
               the reply streams in below it (MessagePrimitive.Root adds the room for it).
@@ -384,33 +399,57 @@ function RunErrorNotice({ error }: { error: string | null }) {
   );
 }
 
-// Works out Skaffen's mood and reports it to ChatApp, which shows the one Skaffen on
-// screen in the header, left of the name: writing while a reply streams, a happy
-// moment when a new reply brings the brief, listening while the visitor types,
-// otherwise waiting. Unmounting (back to the landing) reports null.
-function SkaffenPresence({ onPresenceChange }: { onPresenceChange?: (mood: AvatarMood | null) => void }) {
-  const initialIds = useContext(InitialMessageIdsContext);
-  const isRunning = useThread((state) => state.isRunning);
-  const last = useThread((state) => state.messages[state.messages.length - 1]);
-  const isVisitorTyping = useThreadComposer((state) => state.text.trim().length > 0);
-  const lastBringsBrief =
-    last?.role === "assistant" &&
-    !initialIds.has(last.id) &&
-    last.content.some((part) => part.type === "tool-call" && part.toolName === "showBrief");
-  const isHappy = useHappyMoment(lastBringsBrief && !isRunning);
-  const mood: AvatarMood = isRunning ? "writing" : isHappy ? "happy" : isVisitorTyping ? "listening" : "idle";
-
+// Mounted while the thread has messages: tells ChatApp a conversation is on screen,
+// so the header avatar shrinks away (Skaffen shows above the latest reply instead).
+function ConversationPresence({ onConversationChange }: { onConversationChange?: (isConversation: boolean) => void }) {
   useEffect(() => {
-    onPresenceChange?.(mood);
-  }, [mood, onPresenceChange]);
-  useEffect(() => () => onPresenceChange?.(null), [onPresenceChange]);
-
+    onConversationChange?.(true);
+    return () => onConversationChange?.(false);
+  }, [onConversationChange]);
   return null;
+}
+
+// Skaffen above the latest reply, as its status: thinking from the moment a message
+// is sent until the reply starts streaming, writing while it streams, a happy
+// moment when a new reply brings the brief, listening while the visitor types,
+// otherwise idle. It pops in under each new message and shrinks away from the
+// previous reply. Tapping it is the PlayfulAvatar easter egg.
+function ReplyAvatar({ isNew }: { isNew: boolean }) {
+  const avatar = useContext(SkaffenAvatarContext);
+  const isRunning = useMessage((message) => message.status?.type === "running");
+  const hasContent = useMessage(hasVisibleContent);
+  const bringsBrief = useMessage((message) =>
+    message.content.some((part) => part.type === "tool-call" && part.toolName === "showBrief"),
+  );
+  const isVisitorTyping = useThreadComposer((state) => state.text.trim().length > 0);
+  const isHappy = useHappyMoment(isNew && bringsBrief && !isRunning);
+  const mood: AvatarMood = isRunning
+    ? hasContent
+      ? "writing"
+      : "thinking"
+    : isHappy
+      ? "happy"
+      : isVisitorTyping
+        ? "listening"
+        : "idle";
+
+  return (
+    <motion.div
+      className="origin-left"
+      initial={isNew ? { scale: 0, opacity: 0, height: 0 } : false}
+      animate={{ scale: 1, opacity: 1, height: "auto" }}
+      exit={{ scale: 0, opacity: 0, height: 0 }}
+      transition={{ type: "spring", stiffness: 420, damping: 28 }}
+    >
+      <PlayfulAvatar avatar={avatar} mood={mood} size={40} />
+    </motion.div>
+  );
 }
 
 function AssistantMessage() {
   const message = useMessage();
   const isNew = useIsNewMessage();
+  const isLast = useMessage((state) => state.isLast);
   const hasContent = hasVisibleContent(message);
   const isWriting = message.status?.type === "running";
   const hasText = message.content.some((part) => part.type === "text" && part.text.trim().length > 0);
@@ -427,8 +466,9 @@ function AssistantMessage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: "easeOut", delay: isNew ? 0.15 : 0 }}
       >
-        {/* Replies have no avatar or label; Skaffen's avatar is in the header. */}
         <h2 className="sr-only">{SITE.assistant.name} said:</h2>
+        {/* Only the latest reply has Skaffen above it. */}
+        <AnimatePresence initial={false}>{isLast ? <ReplyAvatar key="avatar" isNew={isNew} /> : null}</AnimatePresence>
         {hasContent ? (
           <div className="flex min-w-0 flex-col gap-4 text-base leading-[1.6] sm:text-lg">
             <MessagePrimitive.Parts
@@ -438,7 +478,7 @@ function AssistantMessage() {
             />
           </div>
         ) : isWriting ? (
-          // The header avatar looking up is the visual cue; this is for screen readers.
+          // Skaffen's thinking avatar above is the visual cue; this is for screen readers.
           <p className="sr-only">Writing a reply</p>
         ) : null}
         <MessagePrimitive.Error>
