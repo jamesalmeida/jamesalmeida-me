@@ -40,7 +40,8 @@ import { getVisitContext, getVisitId } from "@/lib/visit";
 import { serif } from "./booking-button";
 import { LandingHeadline } from "./landing-headline";
 import { MessageActions } from "./message-actions";
-import { PlayfulAvatar } from "./playful-avatar";
+import { useMotion } from "./motion-settings";
+import { SkaffenAvatar } from "./playful-avatar";
 import { PrivacyNotice } from "./privacy-notice";
 import { ShowBookingCtaToolUI, ShowBriefToolUI } from "./tool-cards";
 
@@ -117,8 +118,6 @@ function followKeyboard(scroll: () => void, ms = 1000) {
   window.setTimeout(() => viewport.removeEventListener("resize", onResize), ms);
 }
 
-// The composer moves from the landing to the bottom with a shared layout animation.
-const composerLayoutTransition = { type: "spring", stiffness: 320, damping: 34 } as const;
 
 export function Thread({
   avatar = SITE.assistant.avatar,
@@ -183,6 +182,7 @@ function ThreadBody({
   runError: string | null;
 }) {
   const isEmpty = useThread((state) => state.messages.length === 0);
+  const landingExitSeconds = useMotion().seconds(0.45);
 
   return (
     <div className="relative min-h-0 flex-1">
@@ -192,7 +192,7 @@ function ThreadBody({
             key="landing"
             className="absolute inset-0 flex flex-col overflow-y-auto"
             exit={{ opacity: 0, y: -32, pointerEvents: "none" }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
+            transition={{ duration: landingExitSeconds, ease: "easeOut" }}
           >
             <div className="flex flex-1 flex-col items-center justify-center gap-5 px-4 pb-16 pt-4 sm:gap-7 sm:px-12 sm:pb-20">
               <h1
@@ -409,13 +409,41 @@ function ConversationPresence({ onConversationChange }: { onConversationChange?:
   return null;
 }
 
+// When each new reply may show, keyed by the visitor message it answers (parentId).
+// Module-level, because a quick first reply forks the new chat into history and
+// remounts the thread while Skaffen should still be thinking.
+const thinkingUntil = new Map<string, number>();
+
+// Holds a new reply back for the site's minimum thinking time, so Skaffen's thinking
+// is visible even when the reply is ready at once. `held` is true until then;
+// `wasHeld` says the reply was held recently, so it fades in when it shows (also
+// after a remount). Restored replies skip it.
+function useThinkingHold(isNew: boolean) {
+  const { minThinkingMs } = useMotion();
+  const key = useMessage((message) => message.parentId);
+  const [until] = useState(() => {
+    if (!key) return undefined;
+    if (!thinkingUntil.has(key) && isNew && minThinkingMs > 0) thinkingUntil.set(key, Date.now() + minThinkingMs);
+    return thinkingUntil.get(key);
+  });
+  const [held, setHeld] = useState(() => until !== undefined && until > Date.now());
+  useEffect(() => {
+    if (!held || until === undefined) return;
+    const timer = window.setTimeout(() => setHeld(false), Math.max(0, until - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [held, until]);
+  return { held, wasHeld: until !== undefined && Date.now() - until < 5000 };
+}
+
 // Skaffen above the latest reply, as its status: thinking from the moment a message
-// is sent until the reply starts streaming, writing while it streams, a happy
-// moment when a new reply brings the brief, listening while the visitor types,
-// otherwise idle. It pops in under each new message and shrinks away from the
-// previous reply. Tapping it is the PlayfulAvatar easter egg.
-function ReplyAvatar({ isNew }: { isNew: boolean }) {
+// is sent until the reply shows (at least the minimum thinking time), writing while
+// it streams, a happy moment when a new reply brings the brief, listening while the
+// visitor types, otherwise idle. Its name sits beside it. It pops in under each new
+// message and shrinks away from the previous reply. Tapping it is the PlayfulAvatar
+// easter egg.
+function ReplyAvatar({ isNew, isThinking }: { isNew: boolean; isThinking: boolean }) {
   const avatar = useContext(SkaffenAvatarContext);
+  const { spring, seconds } = useMotion();
   const isRunning = useMessage((message) => message.status?.type === "running");
   const hasContent = useMessage(hasVisibleContent);
   const bringsBrief = useMessage((message) =>
@@ -423,11 +451,11 @@ function ReplyAvatar({ isNew }: { isNew: boolean }) {
   );
   const isVisitorTyping = useThreadComposer((state) => state.text.trim().length > 0);
   const isHappy = useHappyMoment(isNew && bringsBrief && !isRunning);
-  const mood: AvatarMood = isRunning
-    ? hasContent
+  const mood: AvatarMood = isThinking || (isRunning && !hasContent)
+    ? "thinking"
+    : isRunning
       ? "writing"
-      : "thinking"
-    : isHappy
+      : isHappy
       ? "happy"
       : isVisitorTyping
         ? "listening"
@@ -435,13 +463,17 @@ function ReplyAvatar({ isNew }: { isNew: boolean }) {
 
   return (
     <motion.div
-      className="origin-left"
+      className="flex origin-left items-center gap-3"
       initial={isNew ? { scale: 0, opacity: 0, height: 0 } : false}
       animate={{ scale: 1, opacity: 1, height: "auto" }}
       exit={{ scale: 0, opacity: 0, height: 0 }}
-      transition={{ type: "spring", stiffness: 420, damping: 28 }}
+      transition={isNew ? { ...spring(0.8, 0.3), delay: seconds(0.25) } : spring(0.6, 0.1)}
     >
-      <PlayfulAvatar avatar={avatar} mood={mood} size={40} />
+      <SkaffenAvatar avatar={avatar} mood={mood} />
+      {/* The visible name; the sr-only heading above already says who's talking. */}
+      <span aria-hidden className={`text-[19px] text-[var(--muted)] sm:text-[22px] ${serif}`}>
+        {SITE.assistant.name}
+      </span>
     </motion.div>
   );
 }
@@ -450,6 +482,8 @@ function AssistantMessage() {
   const message = useMessage();
   const isNew = useIsNewMessage();
   const isLast = useMessage((state) => state.isLast);
+  const { seconds } = useMotion();
+  const { held: isHeld, wasHeld } = useThinkingHold(isNew);
   const hasContent = hasVisibleContent(message);
   const isWriting = message.status?.type === "running";
   const hasText = message.content.some((part) => part.type === "text" && part.text.trim().length > 0);
@@ -464,20 +498,27 @@ function AssistantMessage() {
         className="flex w-full flex-col gap-3"
         initial={isNew ? { opacity: 0, y: 12 } : false}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: "easeOut", delay: isNew ? 0.15 : 0 }}
+        transition={{ duration: seconds(0.5), ease: "easeOut", delay: isNew ? seconds(0.2) : 0 }}
       >
         <h2 className="sr-only">{SITE.assistant.name} said:</h2>
         {/* Only the latest reply has Skaffen above it. */}
-        <AnimatePresence initial={false}>{isLast ? <ReplyAvatar key="avatar" isNew={isNew} /> : null}</AnimatePresence>
-        {hasContent ? (
-          <div className="flex min-w-0 flex-col gap-4 text-base leading-[1.6] sm:text-lg">
+        <AnimatePresence initial={false}>
+          {isLast ? <ReplyAvatar key="avatar" isNew={isNew} isThinking={isHeld} /> : null}
+        </AnimatePresence>
+        {hasContent && !isHeld ? (
+          <motion.div
+            className="flex min-w-0 flex-col gap-4 text-base leading-[1.6] sm:text-lg"
+            initial={isNew || wasHeld ? { opacity: 0, y: 8 } : false}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: seconds(0.5), ease: "easeOut" }}
+          >
             <MessagePrimitive.Parts
               components={{
                 Text: MarkdownText,
               }}
             />
-          </div>
-        ) : isWriting ? (
+          </motion.div>
+        ) : isWriting || isHeld ? (
           // Skaffen's thinking avatar above is the visual cue; this is for screen readers.
           <p className="sr-only">Writing a reply</p>
         ) : null}
@@ -486,11 +527,11 @@ function AssistantMessage() {
             <ErrorPrimitive.Message />
           </ErrorPrimitive.Root>
         </MessagePrimitive.Error>
-        {hasText && !isWriting ? (
+        {hasText && !isWriting && !isHeld ? (
           <motion.div
-            initial={isNew ? { opacity: 0, y: 6 } : false}
+            initial={isNew || wasHeld ? { opacity: 0, y: 6 } : false}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
+            transition={{ duration: seconds(0.35), ease: "easeOut" }}
           >
             <MessageActions />
           </motion.div>
@@ -502,6 +543,7 @@ function AssistantMessage() {
 
 function UserMessage() {
   const isNew = useIsNewMessage();
+  const { spring } = useMotion();
 
   return (
     <MessagePrimitive.Root className="flex w-full justify-end pt-7">
@@ -509,7 +551,7 @@ function UserMessage() {
         className="max-w-[85%] rounded-[1.4rem] bg-[var(--user-bubble)] px-[18px] py-3 text-base leading-[1.55] sm:max-w-[560px] sm:rounded-[1.5rem] sm:px-[22px] sm:py-3.5 sm:text-lg"
         initial={isNew ? { opacity: 0, y: 48 } : false}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        transition={spring(0.7, 0.15)}
       >
         <MessagePrimitive.Parts
           components={{
@@ -587,6 +629,7 @@ function Composer({
     }
   };
 
+  const motionSettings = useMotion();
   const buttonSize = isLanding ? "h-12 w-12 sm:h-14 sm:w-14" : "h-11 w-11 sm:h-12 sm:w-12";
   const buttonClass = `flex shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] transition hover:opacity-85 disabled:opacity-40 ${buttonSize}`;
   const textClass = isLanding
@@ -598,7 +641,8 @@ function Composer({
       <motion.div
         layoutId="composer"
         layout="position"
-        transition={composerLayoutTransition}
+        // The composer glides from the landing to the dock (shared layout animation).
+        transition={motionSettings.spring(0.8, 0.12)}
         className={`flex items-end gap-2 rounded-[1.75rem] border border-[var(--border-strong)] bg-[var(--surface)] sm:gap-3 ${
           isLanding
             ? "py-1.5 pl-5 pr-1.5 shadow-[0_16px_48px_rgba(0,0,0,0.08)] sm:rounded-[2.25rem] sm:py-2.5 sm:pl-8 sm:pr-2.5 sm:shadow-[0_24px_80px_rgba(0,0,0,0.08)]"

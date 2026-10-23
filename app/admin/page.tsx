@@ -4,6 +4,7 @@ import { play } from "cuelume";
 import { ArrowLeft, Lock } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AdminAvatarSettings } from "@/components/admin-avatar-settings";
+import { AdminMotionSettings } from "@/components/admin-motion-settings";
 import {
   Insights,
   Leads,
@@ -126,6 +127,12 @@ export default function AdminPage() {
                 description="The avatar every visitor sees in the header. Saved to the site database; until something is saved, the site uses SITE.assistant.avatar."
               >
                 <AdminAvatarSettings onLocked={lock} />
+              </Section>
+              <Section
+                title="Motion"
+                description="How fast the chat's animations run, and how long Skaffen always thinks before a reply shows. Saved for every visitor."
+              >
+                <AdminMotionSettings onLocked={lock} />
               </Section>
               <Section
                 title="Model"
