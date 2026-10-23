@@ -2,7 +2,6 @@
 
 import { play } from "cuelume";
 import { ArrowLeft, Lock } from "lucide-react";
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AdminAvatarSettings } from "@/components/admin-avatar-settings";
 import {
@@ -81,13 +80,16 @@ export default function AdminPage() {
             <h1 className={`text-4xl tracking-[-0.04em] ${serif}`}>jamesalmeida.me</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Link
+            {/* A full page load, not a client-side Link: the router would reuse its
+                cached copy of / and hide a just-saved avatar. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+            <a
               href="/"
               className="inline-flex items-center gap-2 rounded-full border border-[var(--border-strong)] px-4 py-2 text-sm font-medium transition hover:border-[var(--foreground)]"
             >
               <ArrowLeft size={14} aria-hidden />
               Back to site
-            </Link>
+            </a>
             <button
               type="button"
               onClick={handleLock}
@@ -254,9 +256,10 @@ function UnlockDialog({ onUnlock }: { onUnlock: () => void }) {
           </p>
         ) : null}
         <div className="flex items-center justify-between gap-3">
-          <Link href="/" className="text-sm text-[var(--muted)] underline-offset-4 hover:underline">
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- full load, see above */}
+          <a href="/" className="text-sm text-[var(--muted)] underline-offset-4 hover:underline">
             Back to the site
-          </Link>
+          </a>
           <button
             className="rounded-full bg-[var(--foreground)] px-5 py-3 text-sm font-medium text-[var(--background)] transition hover:opacity-85 disabled:opacity-60"
             disabled={isChecking || value.length === 0}
