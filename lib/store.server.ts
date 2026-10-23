@@ -4,13 +4,32 @@ import { ConvexHttpClient } from "convex/browser";
 import { anyApi, type FunctionReference } from "convex/server";
 
 // The site's server is the only caller of the Convex functions in convex/. Every
-// call passes CONVEX_SERVER_SECRET, which the functions check. Without CONVEX_URL
-// and CONVEX_SERVER_SECRET (local dev, CI, previews) nothing is stored or read.
+// call passes CONVEX_SERVER_SECRET, which the functions check. Without a deployment
+// URL and CONVEX_SERVER_SECRET nothing is stored or read.
+//
+// Production sets CONVEX_URL in Vercel. `npx convex deploy` (preview builds) injects
+// the per-deployment URL as NEXT_PUBLIC_CONVEX_URL for the Next build, and Next
+// inlines that into the server bundle. Leave CONVEX_URL unset on Preview so this
+// fallback is the preview deployment, not production.
 
 export const storeApi = anyApi;
 
+/**
+ * ConvexHttpClient appends `/api/query` itself. A trailing slash makes that
+ * `//api/query`, which the deployment answers with an empty 404.
+ */
+export function normalizeConvexDeploymentUrl(raw: string | undefined): string | null {
+  const trimmed = raw?.trim();
+  if (!trimmed) return null;
+  try {
+    return new URL(trimmed).origin;
+  } catch {
+    return trimmed.replace(/\/+$/, "") || null;
+  }
+}
+
 function storeConfig(): { url: string; secret: string } | null {
-  const url = process.env.CONVEX_URL || process.env.NEXT_PUBLIC_CONVEX_URL;
+  const url = normalizeConvexDeploymentUrl(process.env.CONVEX_URL || process.env.NEXT_PUBLIC_CONVEX_URL);
   const secret = process.env.CONVEX_SERVER_SECRET;
   return url && secret ? { url, secret } : null;
 }
@@ -52,17 +71,29 @@ export async function storeMutationQuietly(
   }
 }
 
+function storeErrorData(error: unknown): unknown {
+  return error && typeof error === "object" && "data" in error ? error.data : undefined;
+}
+
 /** For admin screens only: what likely went wrong with a Convex call, in plain words. */
 export function describeStoreError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
-  if (/Could not find (public )?function/i.test(message)) {
-    return "The Convex functions aren't deployed. Set CONVEX_DEPLOY_KEY (Production) in Vercel and redeploy; the build log should say '[build] CONVEX_DEPLOY_KEY is set'.";
+  const data = storeErrorData(error);
+  const code = data && typeof data === "object" && "code" in data ? data.code : undefined;
+  if (code === "unauthorized" || /Unauthorized/.test(message)) {
+    return "CONVEX_SERVER_SECRET doesn't match between Vercel and this Convex deployment. Reveal both values and compare them.";
   }
-  if (/Unauthorized/.test(message)) {
-    return "CONVEX_SERVER_SECRET doesn't match between Vercel and the Convex production deployment.";
+  if (/Could not find (public )?function/i.test(message)) {
+    return "The Convex functions aren't deployed. The build log should say '[build] CONVEX_DEPLOY_KEY is set'. Production uses a production deploy key; a preview uses a preview deploy key.";
+  }
+  if (!message.trim()) {
+    return "Convex's query endpoint returned an empty error. CONVEX_URL must be the deployment origin (https://<name>.convex.cloud) with no trailing slash or extra path.";
   }
   if (/fetch failed|ENOTFOUND|ECONNREFUSED/i.test(message)) {
     return "Couldn't reach Convex. Check CONVEX_URL.";
+  }
+  if (/Server Error/.test(message)) {
+    return "Convex hid the details (production does that for an ordinary Error). Open this deployment's Logs in the Convex dashboard.";
   }
   return message.slice(0, 300);
 }
