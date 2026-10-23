@@ -245,6 +245,7 @@ function MotionPreview({ motion: settings }: { motion: MotionSettings }) {
                 {...avatar}
                 mood={stage === "done" ? "idle" : stage}
                 size={44}
+                outline
               />
               <span className="text-[var(--muted)]">
                 {stage === "thinking" ? "Thinking" : stage === "writing" ? "Writing" : SITE.assistant.role}

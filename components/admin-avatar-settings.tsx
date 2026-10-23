@@ -1,100 +1,25 @@
 "use client";
 
-import {
-  AgentAvatar,
-  COLORS,
-  EYES,
-  EYE_COLORS,
-  SHAPES,
-  colorValue,
-  eyeColorValue,
-  type AvatarConfig,
-  type AvatarMood,
-} from "@jamesalmeida/agent-avatars";
+import { AvatarEditor, type AvatarConfig } from "@jamesalmeida/agent-avatars";
 import { play } from "cuelume";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { DEFAULT_SITE_AVATAR } from "@/lib/avatar-settings";
 
-const MOODS: AvatarMood[] = ["idle", "listening", "thinking", "writing", "happy"];
-const FILLS = ["gradient", "solid"] as const;
-
-const pillClass = (selected: boolean) =>
-  `rounded-full border px-4 py-2 text-sm font-medium capitalize transition ${
-    selected
-      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-      : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--border-strong)]"
-  }`;
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div role="group" aria-label={label} className="space-y-2.5">
-      <p className="text-sm font-medium">{label}</p>
-      <div className="flex flex-wrap items-center gap-2">{children}</div>
-    </div>
-  );
-}
-
-// A preset swatch row plus a native colour picker for any hex colour.
-function ColorField({
-  label,
-  presets,
-  value,
-  resolve,
-  onChange,
-}: {
-  label: string;
-  presets: Record<string, { label: string; value: string }>;
-  value: string;
-  resolve: (value: string) => string;
-  onChange: (value: string) => void;
-}) {
-  const isCustom = !(value in presets);
-  return (
-    <Field label={label}>
-      {Object.entries(presets).map(([key, preset]) => (
-        <button
-          key={key}
-          type="button"
-          title={preset.label}
-          aria-label={preset.label}
-          aria-pressed={value === key}
-          onClick={() => onChange(key)}
-          className={`h-9 w-9 rounded-full border border-[var(--border-strong)] transition ${
-            value === key ? "ring-2 ring-[var(--foreground)] ring-offset-2 ring-offset-[var(--background)]" : ""
-          }`}
-          style={{ backgroundColor: preset.value }}
-          data-cuelume-press="tick"
-        />
-      ))}
-      <label
-        title="Custom colour"
-        className={`relative flex h-9 cursor-pointer items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] pl-1 pr-3 text-sm ${
-          isCustom ? "ring-2 ring-[var(--foreground)] ring-offset-2 ring-offset-[var(--background)]" : ""
-        }`}
-      >
-        <span
-          className="h-7 w-7 rounded-full border border-[var(--border-strong)]"
-          style={{ backgroundColor: resolve(value) }}
-        />
-        {isCustom ? value : "Custom"}
-        <input
-          type="color"
-          aria-label={`Custom ${label.toLowerCase()}`}
-          className="absolute inset-0 cursor-pointer opacity-0"
-          value={resolve(value)}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      </label>
-    </Field>
-  );
-}
+// The package's editor, themed with the site's colours.
+const editorTheme = {
+  "--aa-editor-accent": "var(--foreground)",
+  "--aa-editor-muted": "var(--muted)",
+  "--aa-editor-border": "var(--border-strong)",
+  "--aa-editor-control": "var(--surface-muted)",
+  "--aa-editor-selected": "var(--surface)",
+  "--aa-editor-ring": "var(--panel-strong)",
+} as CSSProperties;
 
 // Skaffen's look for every visitor. Saved by POST /api/admin/avatar (Convex).
 export function AdminAvatarSettings({ onLocked }: { onLocked: () => void }) {
   const [saved, setSaved] = useState<AvatarConfig>(DEFAULT_SITE_AVATAR);
   const [draft, setDraft] = useState<AvatarConfig>(DEFAULT_SITE_AVATAR);
   const [canSave, setCanSave] = useState(true);
-  const [mood, setMood] = useState<AvatarMood>("idle");
   const [status, setStatus] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -158,93 +83,15 @@ export function AdminAvatarSettings({ onLocked }: { onLocked: () => void }) {
   };
 
   return (
-    <div className="grid gap-8 md:grid-cols-[220px_1fr]">
-      <div className="flex flex-col items-center gap-4">
-        <div className="flex h-[200px] w-[200px] items-center justify-center rounded-[2rem] border border-[var(--border)] bg-[var(--surface)]">
-          <AgentAvatar {...draft} mood={mood} size={140} followPointer label="Avatar preview" />
-        </div>
-        <div role="group" aria-label="Preview mood" className="flex flex-wrap justify-center gap-1.5">
-          {MOODS.map((option) => (
-            <button
-              key={option}
-              type="button"
-              aria-pressed={mood === option}
-              onClick={() => setMood(option)}
-              className={`${pillClass(mood === option)} px-3 py-1.5 text-xs`}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      </div>
-
+    <div className="max-w-2xl space-y-6">
+      <AvatarEditor
+        value={draft}
+        onChange={(next) => update(next)}
+        outline
+        previewSize={140}
+        style={editorTheme}
+      />
       <div className="space-y-6">
-        <Field label="Shape">
-          {(Object.keys(SHAPES) as (keyof typeof SHAPES)[]).map((shape) => (
-            <button
-              key={shape}
-              type="button"
-              aria-pressed={draft.shape === shape}
-              onClick={() => update({ shape })}
-              className={`flex flex-col items-center gap-1 rounded-2xl border px-3 pb-2 pt-3 text-xs font-medium transition ${
-                draft.shape === shape
-                  ? "border-[var(--foreground)] bg-[var(--surface)]"
-                  : "border-[var(--border)] hover:border-[var(--border-strong)]"
-              }`}
-              data-cuelume-press="tick"
-            >
-              <AgentAvatar {...draft} shape={shape} animated={false} size={36} />
-              {SHAPES[shape].label}
-            </button>
-          ))}
-        </Field>
-
-        <ColorField
-          label="Colour"
-          presets={COLORS}
-          value={draft.color}
-          resolve={colorValue}
-          onChange={(color) => update({ color })}
-        />
-
-        <Field label="Fill">
-          {FILLS.map((fill) => (
-            <button
-              key={fill}
-              type="button"
-              aria-pressed={draft.fill === fill}
-              onClick={() => update({ fill })}
-              className={pillClass(draft.fill === fill)}
-              data-cuelume-press="tick"
-            >
-              {fill}
-            </button>
-          ))}
-        </Field>
-
-        <Field label="Eyes">
-          {(Object.keys(EYES) as (keyof typeof EYES)[]).map((eyes) => (
-            <button
-              key={eyes}
-              type="button"
-              aria-pressed={draft.eyes === eyes}
-              onClick={() => update({ eyes })}
-              className={pillClass(draft.eyes === eyes)}
-              data-cuelume-press="tick"
-            >
-              {eyes}
-            </button>
-          ))}
-        </Field>
-
-        <ColorField
-          label="Eye colour"
-          presets={EYE_COLORS}
-          value={draft.eyeColor}
-          resolve={eyeColorValue}
-          onChange={(eyeColor) => update({ eyeColor })}
-        />
-
         {!canSave ? (
           <p className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm leading-6 text-[var(--muted)]">
             Saving is off on this deployment. It needs a Convex URL and <code>CONVEX_SERVER_SECRET</code>{" "}
