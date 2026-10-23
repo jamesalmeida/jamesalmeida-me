@@ -79,6 +79,12 @@ export function PlayfulAvatar({
         eyes={trick?.eyes ?? avatar.eyes}
         mood={trick?.mood ?? mood}
         size={size}
+        // While idle, the eyes follow the mouse when it comes close and look at
+        // whatever has focus (the composer, a button). The outline only shows in dark
+        // mode (--aa-outline-color in globals.css), so a dark avatar stays visible.
+        followPointer
+        followFocus
+        outline
         spin={turns}
         spinMs={seconds(1.1) * 1000}
       />

@@ -15,6 +15,8 @@
   --accent: #2f4858;
   --accent-foreground: #ffffff;
   --danger: #a3321f;
+  /* Skaffen's outline (agent-avatars `outline`): only needed on the dark background. */
+  --aa-outline-color: transparent;
 }
 
 .dark {
@@ -32,6 +34,7 @@
   --accent: #8ba4b5;
   --accent-foreground: #0a0a0a;
   --danger: #f87171;
+  --aa-outline-color: rgba(255, 255, 255, 0.24);
 }
 
 * {
