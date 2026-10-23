@@ -1,14 +1,13 @@
 // What the browser may report for analytics, and the checks the server runs on it.
 // Client-safe and pure; the API routes call these before anything is stored.
 
-import { HEADLINES } from "@/data/site";
 import { BRIEF_FIELDS, MAX_BRIEF_FIELD_CHARS, type Brief } from "@/lib/brief";
 import { DOWN_REASONS, MAX_FEEDBACK_DETAILS_CHARS } from "@/lib/feedback";
 
 /** Visit ids are random UUIDs from the browser; conversation and message ids come from assistant-ui. */
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
-export const CLIENT_EVENT_TYPES = ["landing_view", "booking_clicked", "email_clicked"] as const;
+export const CLIENT_EVENT_TYPES = ["landing_view", "booking_clicked", "email_clicked", "example_sent"] as const;
 export type ClientEventType = (typeof CLIENT_EVENT_TYPES)[number];
 
 export const DEVICES = ["phone", "tablet", "desktop"] as const;
@@ -23,6 +22,8 @@ export type VisitContext = {
 };
 
 const MAX_CONTEXT_CHARS = 100;
+/** Headlines and examples are edited in /admin (lib/landing-settings.ts caps them at 80). */
+const MAX_LANDING_TEXT_CHARS = 120;
 const MAX_REPLY_CHARS = 4000;
 const MAX_USER_TEXT_CHARS = 2000;
 const MAX_EMAIL_CHARS = 254;
@@ -43,12 +44,12 @@ export function parseId(value: unknown): string | undefined {
   return typeof value === "string" && ID_PATTERN.test(value) ? value : undefined;
 }
 
-/** Unknown keys are dropped; the headline must be one of HEADLINES. */
+/** Unknown keys are dropped; strings are trimmed and capped. */
 export function parseVisitContext(input: unknown): VisitContext {
   const raw = record(input);
   const context: VisitContext = {};
-  const headline = text(raw.headline, 200);
-  if (headline && (HEADLINES as readonly string[]).includes(headline)) context.headline = headline;
+  const headline = text(raw.headline, MAX_LANDING_TEXT_CHARS);
+  if (headline) context.headline = headline;
   const device = text(raw.device, 20);
   if (device && (DEVICES as readonly string[]).includes(device)) context.device = device;
   for (const key of ["referrer", "utmSource", "utmMedium", "utmCampaign"] as const) {
@@ -63,10 +64,14 @@ export function parseClientEvent(input: unknown) {
   const type = CLIENT_EVENT_TYPES.find((candidate) => candidate === raw.type);
   const visitId = parseId(raw.visitId);
   if (!type || !visitId) return null;
+  // example_sent: the landing example the visitor sent by pressing send on an empty composer.
+  const example = type === "example_sent" ? text(raw.example, MAX_LANDING_TEXT_CHARS) : undefined;
+  if (type === "example_sent" && !example) return null;
   return {
     type,
     visitId,
     conversationId: parseId(raw.conversationId),
+    ...(example ? { example } : {}),
     context: parseVisitContext(raw.context),
   };
 }

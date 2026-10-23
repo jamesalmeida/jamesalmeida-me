@@ -2,17 +2,17 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { HEADLINES } from "@/data/site";
+import { REVEAL_HEADLINE } from "@/lib/landing-settings";
 
-const HEADLINE = HEADLINES[0];
 // "What can AI do for you?" first reads "What can I do for you?", then an "A" slides
 // in next to the "I". The "A" is always in the DOM (collapsed at first), so crawlers
-// and screen readers get the full headline.
-const AI_INDEX = HEADLINE.indexOf("AI");
+// and screen readers get the full headline. Other headlines (the A/B test) show as
+// they are.
+const AI_INDEX = REVEAL_HEADLINE.indexOf("AI");
 
 // The landing h1's text. `still` (StaticIntro, before hydration) holds the first
 // frame; the chat's landing plays the reveal, also after New chat.
-export function LandingHeadline({ still = false }: { still?: boolean }) {
+export function LandingHeadline({ text, still = false }: { text: string; still?: boolean }) {
   const reduceMotion = useReducedMotion();
   // Driven by state, not `initial`: the landing's AnimatePresence has initial={false},
   // which skips its children's entrance animations.
@@ -23,12 +23,12 @@ export function LandingHeadline({ still = false }: { still?: boolean }) {
     return () => window.clearTimeout(timer);
   }, [still, reduceMotion]);
 
-  if (AI_INDEX === -1) return HEADLINE;
+  if (text !== REVEAL_HEADLINE || AI_INDEX === -1) return text;
 
   const collapsed = { width: 0, opacity: 0, y: "-0.35em" };
   return (
     <>
-      {HEADLINE.slice(0, AI_INDEX)}
+      {text.slice(0, AI_INDEX)}
       {/* Top-aligned: an inline-block with overflow hidden sits on its bottom edge. */}
       <motion.span
         className="inline-block overflow-hidden align-top"
@@ -46,7 +46,7 @@ export function LandingHeadline({ still = false }: { still?: boolean }) {
       >
         A
       </motion.span>
-      {HEADLINE.slice(AI_INDEX + 1)}
+      {text.slice(AI_INDEX + 1)}
     </>
   );
 }

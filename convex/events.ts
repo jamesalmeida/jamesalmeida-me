@@ -8,22 +8,24 @@ const CONVERSATION_FLAGS = {
 } as const;
 
 // Events the browser reports through /api/events (landing_view, booking_clicked,
-// email_clicked). chat_started and brief_shown are recorded by chats.ts.
+// email_clicked, example_sent). chat_started and brief_shown are recorded by chats.ts.
 export const record = mutation({
   args: {
     secret: v.string(),
     type: v.string(),
     visitId: v.string(),
     conversationId: v.optional(v.string()),
+    example: v.optional(v.string()),
     context: v.object(visitContext),
   },
-  handler: async (ctx, { secret, type, visitId, conversationId, context }) => {
+  handler: async (ctx, { secret, type, visitId, conversationId, example, context }) => {
     assertServer(secret);
     const now = Date.now();
     await ctx.db.insert("events", {
       type,
       visitId,
       conversationId,
+      example,
       ...context,
       at: now,
       expiresAt: now + RETENTION_MS,

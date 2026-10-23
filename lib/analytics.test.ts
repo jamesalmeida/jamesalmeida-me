@@ -14,7 +14,7 @@ describe("parseId", () => {
 });
 
 describe("parseVisitContext", () => {
-  it("keeps known headlines, devices and capped strings, and drops everything else", () => {
+  it("keeps headlines, known devices and capped strings, and drops everything else", () => {
     expect(
       parseVisitContext({
         headline: HEADLINES[0],
@@ -29,7 +29,9 @@ describe("parseVisitContext", () => {
       referrer: "news.ycombinator.com",
       utmSource: "s".repeat(100),
     });
-    expect(parseVisitContext({ headline: "Made up", device: "fridge" })).toEqual({});
+    // Headlines are edited in /admin, so any short text is kept (capped).
+    expect(parseVisitContext({ headline: "A new headline", device: "fridge" })).toEqual({ headline: "A new headline" });
+    expect(parseVisitContext({ headline: "h".repeat(200) })).toEqual({ headline: "h".repeat(120) });
     expect(parseVisitContext("nope")).toEqual({});
   });
 });
@@ -44,6 +46,18 @@ describe("parseClientEvent", () => {
     });
     expect(parseClientEvent({ type: "chat_started", visitId: "v1" })).toBeNull();
     expect(parseClientEvent({ type: "landing_view" })).toBeNull();
+  });
+
+  it("keeps the example only on example_sent, which needs one", () => {
+    expect(parseClientEvent({ type: "example_sent", visitId: "v1", example: " Will AI change my job? " })).toEqual({
+      type: "example_sent",
+      visitId: "v1",
+      conversationId: undefined,
+      example: "Will AI change my job?",
+      context: {},
+    });
+    expect(parseClientEvent({ type: "example_sent", visitId: "v1" })).toBeNull();
+    expect(parseClientEvent({ type: "landing_view", visitId: "v1", example: "x" })).not.toHaveProperty("example");
   });
 });
 

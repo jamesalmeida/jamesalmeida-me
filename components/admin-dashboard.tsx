@@ -21,6 +21,8 @@ type Funnel = {
 type Dashboard = {
   funnel: Funnel;
   headlines: { headline: string; views: number; chats: number }[];
+  examples: { example: string; sent: number; briefs: number }[];
+  ownWords: number;
   referrers: { referrer: string; visits: number }[];
   depth: { one: number; two: number; three: number; fourPlus: number };
   outcomes: { noBrief: number; briefOnly: number; clicked: number; lead: number };
@@ -273,6 +275,30 @@ export function Insights({ dashboard, onOpenConversation }: { dashboard: Dashboa
                   <td className="py-2 text-right tabular-nums">{percent(row.chats, row.views)}</td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+          <h3 className="mb-2.5 mt-6 text-sm font-medium">How chats started</h3>
+          <table className="w-full text-sm">
+            <thead className="text-left text-[var(--muted)]">
+              <tr>
+                <th className="pb-2 font-normal">First message</th>
+                <th className="pb-2 text-right font-normal">Chats</th>
+                <th className="pb-2 text-right font-normal">Got a brief</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dashboard.examples.map((row) => (
+                <tr key={row.example} className="border-t border-[var(--border)]">
+                  <td className="py-2 pr-3">&ldquo;{row.example}&rdquo;</td>
+                  <td className="py-2 text-right tabular-nums">{row.sent}</td>
+                  <td className="py-2 text-right tabular-nums">{percent(row.briefs, row.sent)}</td>
+                </tr>
+              ))}
+              <tr className="border-t border-[var(--border)] text-[var(--muted)]">
+                <td className="py-2 pr-3">Typed their own</td>
+                <td className="py-2 text-right tabular-nums">{dashboard.ownWords}</td>
+                <td className="py-2 text-right" />
+              </tr>
             </tbody>
           </table>
         </Panel>

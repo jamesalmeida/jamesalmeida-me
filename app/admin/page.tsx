@@ -4,6 +4,7 @@ import { play } from "cuelume";
 import { ArrowLeft, Lock } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AdminAvatarSettings } from "@/components/admin-avatar-settings";
+import { AdminLandingSettings } from "@/components/admin-landing-settings";
 import { AdminMotionSettings } from "@/components/admin-motion-settings";
 import {
   Insights,
@@ -127,6 +128,12 @@ export default function AdminPage() {
                 description="The avatar every visitor sees in the header. Saved to the site database; until something is saved, the site uses SITE.assistant.avatar."
               >
                 <AdminAvatarSettings onLocked={lock} />
+              </Section>
+              <Section
+                title="Landing"
+                description="The headlines in the A/B test, the example prompts in the composer and how long each one shows. Saved for every visitor; Insights shows how each one does."
+              >
+                <AdminLandingSettings onLocked={lock} />
               </Section>
               <Section
                 title="Motion"

@@ -2,13 +2,19 @@
 // so it ends when the tab closes) and where the visit came from. Sent with chat
 // requests, funnel events, feedback and leads. Client-only; never throws.
 
-import { HEADLINES } from "@/data/site";
 import type { ClientEventType, VisitContext } from "@/lib/analytics";
 
 const VISIT_KEY = "jamesalmeida-visit";
 
 let cachedContext: VisitContext | null = null;
 let cachedVisitId: string | undefined;
+let visitHeadline: string | undefined;
+
+/** The landing headline this visit sees (the A/B test). Set before the first event. */
+export function setVisitHeadline(headline: string): void {
+  visitHeadline = headline;
+  if (cachedContext) cachedContext.headline = headline;
+}
 
 function randomId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -31,7 +37,7 @@ export function getVisitId(): string {
 /** Read once per page load: the referring site (host only), UTM tags, screen size and headline. */
 export function getVisitContext(): VisitContext {
   if (cachedContext) return cachedContext;
-  const context: VisitContext = { headline: HEADLINES[0] };
+  const context: VisitContext = visitHeadline ? { headline: visitHeadline } : {};
   try {
     const referrer = document.referrer ? new URL(document.referrer).hostname : "";
     if (referrer && referrer !== window.location.hostname) context.referrer = referrer;
@@ -64,11 +70,12 @@ export function postQuietly(url: string, body: unknown): void {
   }
 }
 
-export function trackEvent(type: ClientEventType, conversationId?: string): void {
+export function trackEvent(type: ClientEventType, conversationId?: string, example?: string): void {
   postQuietly("/api/events", {
     type,
     visitId: getVisitId(),
     conversationId,
+    example,
     context: getVisitContext(),
   });
 }

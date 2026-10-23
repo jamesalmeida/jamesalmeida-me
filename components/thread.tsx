@@ -34,11 +34,12 @@ import {
   type KeyboardEvent,
   type RefObject,
 } from "react";
-import { PROMPT_EXAMPLES, SITE } from "@/data/site";
+import { SITE } from "@/data/site";
 import { toUIMessages } from "@/lib/message-convert";
-import { getVisitContext, getVisitId } from "@/lib/visit";
+import { getVisitContext, getVisitId, trackEvent } from "@/lib/visit";
 import { serif } from "./booking-button";
 import { LandingHeadline } from "./landing-headline";
+import { useLanding } from "./landing-settings";
 import { MessageActions } from "./message-actions";
 import { useMotion } from "./motion-settings";
 import { BouncingDots } from "./bouncing-dots";
@@ -196,11 +197,7 @@ function ThreadBody({
             transition={{ duration: landingExitSeconds, ease: "easeOut" }}
           >
             <div className="flex flex-1 flex-col items-center justify-center gap-5 px-4 pb-16 pt-4 sm:gap-7 sm:px-12 sm:pb-20">
-              <h1
-                className={`max-w-[1000px] text-center text-[44px] font-normal leading-[1.05] tracking-[-0.02em] sm:text-[72px] lg:text-[88px] lg:leading-[1.02] ${serif}`}
-              >
-                <LandingHeadline />
-              </h1>
+              <LandingTitle />
               <p className="max-w-[720px] text-center text-[17px] leading-[1.5] text-[var(--muted)] sm:text-[22px]">
                 {SITE.subhead}
               </p>
@@ -581,15 +578,32 @@ function UserMessage() {
   );
 }
 
-// Cycles the landing example until the visitor focuses the composer or types.
+// The landing h1: this visit's headline. While headlines are A/B tested it fades in,
+// since StaticIntro kept its own (maybe different) h1 invisible.
+function LandingTitle() {
+  const { headline, headlines } = useLanding();
+  const isTesting = headlines.filter((option) => option.active).length > 1;
+  return (
+    <h1
+      className={`max-w-[1000px] text-center text-[44px] font-normal leading-[1.05] tracking-[-0.02em] sm:text-[72px] lg:text-[88px] lg:leading-[1.02] ${serif} ${isTesting ? "landing-fade-in" : ""}`}
+    >
+      <LandingHeadline text={headline} />
+    </h1>
+  );
+}
+
+// Cycles the landing examples (Settings → Landing in /admin) until the visitor
+// focuses the composer or types. Starts at a random one, so no example wins the
+// "which gets sent" count just by being shown first.
 function useRotatingExample(enabled: boolean) {
-  const [index, setIndex] = useState(0);
+  const { examples, exampleIntervalMs } = useLanding();
+  const [index, setIndex] = useState(() => Math.floor(Math.random() * examples.length));
   useEffect(() => {
     if (!enabled) return;
-    const timer = window.setInterval(() => setIndex((value) => value + 1), 4500);
+    const timer = window.setInterval(() => setIndex((value) => value + 1), exampleIntervalMs);
     return () => window.clearInterval(timer);
-  }, [enabled]);
-  return PROMPT_EXAMPLES[index % PROMPT_EXAMPLES.length];
+  }, [enabled, exampleIntervalMs]);
+  return examples[index % examples.length];
 }
 
 function Composer({
@@ -633,8 +647,10 @@ function Composer({
     wasRunningRef.current = isRunning;
   }, [isRunning, scrollToBottom]);
 
-  // On the landing, sending an empty composer sends the example being shown.
+  // On the landing, sending an empty composer sends the example being shown. The
+  // admin dashboard counts which examples get people started.
   const sendExample = () => {
+    trackEvent("example_sent", undefined, example);
     composerRuntime.setText(example);
     composerRuntime.send();
   };
