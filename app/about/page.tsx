@@ -4,6 +4,7 @@ import { BookingButton, EmailLink } from "@/components/booking-button";
 import { SitePageShell } from "@/components/site-page-shell";
 import { PROJECTS } from "@/data/portfolio";
 import { SITE } from "@/data/site";
+import { OG_MEDIA } from "@/lib/og";
 
 const serif =
   "font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif]";
@@ -19,6 +20,7 @@ export const metadata: Metadata = {
     title: "Why I do this",
     description,
     url: "/about",
+    ...OG_MEDIA,
   },
 };
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { SitePageShell } from "@/components/site-page-shell";
 import { SITE } from "@/data/site";
+import { OG_MEDIA } from "@/lib/og";
 
 const serif =
   "font-['Iowan_Old_Style','Palatino_Linotype','Book_Antiqua',Georgia,serif]";
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
     title: "Privacy",
     description,
     url: "/privacy",
+    ...OG_MEDIA,
   },
 };
 

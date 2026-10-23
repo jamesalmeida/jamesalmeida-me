@@ -138,7 +138,7 @@ export default function AdminPage() {
               </Section>
               <Section
                 title="Share card"
-                description="The link preview as a picture and a video: edit its words and Skaffen, watch the animation, then download a PNG or a video. Drafts stay in this browser; the site's own link preview is unchanged."
+                description="The link preview as a picture and a video: edit its words and Skaffen, watch the animation, then download a PNG or a video. Drafts stay in this browser. To use them as the site's link preview, the files go in public/og (og-image.png, og-video.mp4)."
               >
                 <AdminShareCard />
               </Section>

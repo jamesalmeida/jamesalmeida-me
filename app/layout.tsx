@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { ClickTracker } from "@/components/click-tracker";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SITE } from "@/data/site";
+import { OG_IMAGE, OG_MEDIA } from "@/lib/og";
 import { themeInitScript } from "@/lib/theme";
 import "./globals.css";
 
@@ -44,12 +45,14 @@ export const metadata: Metadata = {
     siteName: SITE.name,
     title: SITE.title,
     description: SITE.description,
+    ...OG_MEDIA,
   },
   twitter: {
     card: "summary_large_image",
     title: SITE.title,
     description: SITE.description,
     creator: SITE.xHandle,
+    images: [OG_IMAGE],
   },
   alternates: {
     canonical: "/",
