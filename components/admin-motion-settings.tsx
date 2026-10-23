@@ -238,7 +238,9 @@ function MotionPreview({ motion: settings }: { motion: MotionSettings }) {
                 mood={stage === "thinking" ? "thinking" : "idle"}
                 size={44}
               />
-              <span className="text-[var(--muted)]">{SITE.assistant.name}</span>
+              <span className="text-[var(--muted)]">
+                {stage === "thinking" ? "Thinking…" : SITE.assistant.role}
+              </span>
             </motion.div>
           ) : null}
         </AnimatePresence>

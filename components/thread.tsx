@@ -438,7 +438,8 @@ function useThinkingHold(isNew: boolean) {
 // Skaffen above the latest reply, as its status: thinking from the moment a message
 // is sent until the reply shows (at least the minimum thinking time), writing while
 // it streams, a happy moment when a new reply brings the brief, listening while the
-// visitor types, otherwise idle. Its name sits beside it. It pops in under each new
+// visitor types, otherwise idle. Beside it, "Thinking…" / "Writing…" and then
+// "James' AI assistant". It pops in under each new
 // message and shrinks away from the previous reply. Tapping it is the PlayfulAvatar
 // easter egg.
 function ReplyAvatar({ isNew, isThinking }: { isNew: boolean; isThinking: boolean }) {
@@ -460,6 +461,7 @@ function ReplyAvatar({ isNew, isThinking }: { isNew: boolean; isThinking: boolea
       : isVisitorTyping
         ? "listening"
         : "idle";
+  const status = mood === "thinking" ? "Thinking…" : mood === "writing" ? "Writing…" : SITE.assistant.role;
 
   return (
     <motion.div
@@ -470,9 +472,22 @@ function ReplyAvatar({ isNew, isThinking }: { isNew: boolean; isThinking: boolea
       transition={isNew ? { ...spring(0.8, 0.3), delay: seconds(0.25) } : spring(0.6, 0.1)}
     >
       <SkaffenAvatar avatar={avatar} mood={mood} />
-      {/* The visible name; the sr-only heading above already says who's talking. */}
-      <span aria-hidden className={`text-[19px] text-[var(--muted)] sm:text-[22px] ${serif}`}>
-        {SITE.assistant.name}
+      {/* Its status, a little dimmer than the reply: what it's doing while it works,
+          then who it is. Hidden from screen readers: the sr-only heading says who's
+          talking and "Writing a reply" covers the wait. */}
+      <span aria-hidden className="relative text-base leading-[1.6] text-[var(--muted)] sm:text-lg">
+        <AnimatePresence initial={false} mode="popLayout">
+          <motion.span
+            key={status}
+            className="block whitespace-nowrap"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: seconds(0.3), ease: "easeOut" }}
+          >
+            {status}
+          </motion.span>
+        </AnimatePresence>
       </span>
     </motion.div>
   );
@@ -500,7 +515,7 @@ function AssistantMessage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: seconds(0.5), ease: "easeOut", delay: isNew ? seconds(0.2) : 0 }}
       >
-        <h2 className="sr-only">{SITE.assistant.name} said:</h2>
+        <h2 className="sr-only">{SITE.assistant.role} said:</h2>
         {/* Only the latest reply has Skaffen above it. */}
         <AnimatePresence initial={false}>
           {isLast ? <ReplyAvatar key="avatar" isNew={isNew} isThinking={isHeld} /> : null}
