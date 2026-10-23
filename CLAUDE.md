@@ -81,7 +81,7 @@ app/
   consulting/page.tsx          # "How I can help", rendered from OFFER
   about/page.tsx               # "Why I do this": the story, past work from PROJECTS, Skaffen
   privacy/page.tsx             # Plain-language privacy page (keep claims true to the code)
-  opengraph-image.tsx          # Link preview (next/og, built at deploy): Skaffen, name, HEADLINES[0], composer with PROMPT_EXAMPLES[0]
+  opengraph-image.tsx          # Link preview (next/og, built at deploy): "JamesAlmeida.me", HEADLINES[0], Skaffen (blob), composer with PROMPT_EXAMPLES[0]
   twitter-image.tsx            # Same card for X
   icon.png / icon.svg / favicon.ico / apple-icon.png
   sitemap.ts / robots.ts
