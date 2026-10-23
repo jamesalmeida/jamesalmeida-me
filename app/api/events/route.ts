@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const MAX_BODY_BYTES = 2 * 1024;
 
 // Funnel events from the browser (lib/visit.ts): landing_view, booking_clicked,
-// email_clicked. Stored after the response, so the page never waits on it.
+// email_clicked, example_sent. Stored after the response, so the page never waits on it.
 export async function POST(request: Request) {
   const result = await readPublicJson(request, analyticsIpLimiter, MAX_BODY_BYTES);
   if ("response" in result) return result.response;

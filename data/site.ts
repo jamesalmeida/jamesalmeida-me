@@ -38,7 +38,9 @@ export const SITE = {
   },
 } as const;
 
-// The landing question. The first entry is the default; the rest are A/B candidates.
+// The landing question: the defaults for Settings → Landing in /admin, where headlines
+// are edited and put in the A/B test (lib/landing-settings.ts). Only the first is in
+// the test by default.
 export const HEADLINES = [
   // The landing first reads "What can I do for you?", then an "A" slides in (LandingHeadline).
   "What can AI do for you?",
@@ -47,7 +49,8 @@ export const HEADLINES = [
   "What would you do with an extra day a week?",
 ] as const;
 
-// Rotating composer placeholders on the landing. Short enough for a phone.
+// Rotating composer placeholders on the landing: the defaults for Settings → Landing
+// in /admin. Short enough for a phone.
 export const PROMPT_EXAMPLES = [
   "Where do I start with AI?",
   "Will AI change my job?",

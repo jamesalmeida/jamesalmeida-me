@@ -30,18 +30,25 @@ import {
 import type { MotionSettings } from "@/lib/motion-settings";
 import { trackEvent } from "@/lib/visit";
 import { MotionSettingsProvider } from "@/components/motion-settings";
+import { LandingSettingsProvider, chooseHeadline } from "@/components/landing-settings";
+import { DEFAULT_LANDING, type LandingSettings } from "@/lib/landing-settings";
 
 let landingTracked = false;
 
 export function ChatApp({
   avatar,
   fallback,
+  landing = DEFAULT_LANDING,
   motion,
 }: {
   avatar?: AvatarConfig;
   fallback: ReactNode;
+  landing?: LandingSettings;
   motion?: MotionSettings;
 }) {
+  // This visit's headline (the A/B test). Chosen in the first render, so the
+  // landing_view event below already carries it.
+  const [headline] = useState(() => chooseHeadline(landing));
   const [activeThreadId, setActiveThreadId] = useState<string>(NEW_CHAT_ID);
   const [storedThreads, setStoredThreads] = useState<StoredThreads>({});
   const [historyThreads, setHistoryThreads] = useState<HistoryThread[]>([]);
@@ -242,6 +249,7 @@ export function ChatApp({
 
   return (
     <MotionSettingsProvider motion={motion}>
+    <LandingSettingsProvider landing={landing} headline={headline}>
     <div className="app-shell flex flex-col overflow-hidden">
       <SiteHeader
         avatar={avatar}
@@ -284,6 +292,7 @@ export function ChatApp({
         />
       ) : null}
     </div>
+    </LandingSettingsProvider>
     </MotionSettingsProvider>
   );
 }

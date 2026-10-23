@@ -57,8 +57,9 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
       <>
         <p>
           To learn what works, I record a few events: that the chat page loaded, that a chat
-          started, that the assistant wrote a brief, and clicks on the booking and email links.
-          With them I keep the headline you saw, the website that sent you here (just its
+          started, that the assistant wrote a brief, clicks on the booking and email links, and
+          which suggested question you sent if you used one. With them I keep the headline you
+          saw, the website that sent you here (just its
           domain), any campaign tags in the link, and whether you&apos;re on a phone, tablet or
           desktop. A random id, kept in your browser tab until you close it, ties one visit&apos;s
           events together. These events are deleted after 90 days.

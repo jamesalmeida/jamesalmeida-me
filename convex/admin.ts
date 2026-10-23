@@ -22,8 +22,14 @@ export const dashboard = query({
     const headlines = new Map<string, { views: Set<string>; chats: Set<string> }>();
     const referrers = new Map<string, Set<string>>();
     const headlineByVisit = new Map<string, string>();
+    // Landing examples sent with an empty composer, by visit.
+    const examples = new Map<string, Set<string>>();
     for (const event of events) {
       visitsByStep.get(event.type)?.add(event.visitId);
+      if (event.type === "example_sent" && event.example) {
+        if (!examples.has(event.example)) examples.set(event.example, new Set());
+        examples.get(event.example)!.add(event.visitId);
+      }
       if (event.type === "landing_view") {
         const headline = event.headline ?? "(unknown)";
         headlineByVisit.set(event.visitId, headline);
@@ -100,6 +106,17 @@ export const dashboard = query({
         views: views.size,
         chats: chats.size,
       })),
+      // Which examples get people started, and whether those chats reached a brief.
+      examples: [...examples]
+        .map(([example, visits]) => ({
+          example,
+          sent: visits.size,
+          briefs: [...visits].filter((visitId) => visitsByStep.get("brief_shown")!.has(visitId)).length,
+        }))
+        .sort((a, b) => b.sent - a.sent),
+      ownWords: [...visitsByStep.get("chat_started")!].filter(
+        (visitId) => ![...examples.values()].some((visits) => visits.has(visitId)),
+      ).length,
       referrers: [...referrers]
         .map(([referrer, visits]) => ({ referrer, visits: visits.size }))
         .sort((a, b) => b.visits - a.visits)

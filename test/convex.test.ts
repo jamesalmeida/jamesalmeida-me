@@ -53,6 +53,7 @@ describe("convex functions", () => {
     const context = { headline: "What can AI do for you?", referrer: "x.com", device: "phone" };
     await t.mutation(api.events.record, { secret, type: "landing_view", visitId: "v1", context });
     await t.mutation(api.events.record, { secret, type: "landing_view", visitId: "v2", context: {} });
+    await t.mutation(api.events.record, { secret, type: "example_sent", visitId: "v1", example: "I run a bakery", context });
     await t.mutation(api.chats.recordUserMessage, {
       secret,
       conversationId: "c1",
@@ -104,6 +105,8 @@ describe("convex functions", () => {
       leads: 1,
     });
     expect(dashboard.headlines).toContainEqual({ headline: "What can AI do for you?", views: 1, chats: 1 });
+    expect(dashboard.examples).toEqual([{ example: "I run a bakery", sent: 1, briefs: 1 }]);
+    expect(dashboard.ownWords).toBe(0);
     expect(dashboard.referrers[0]).toEqual({ referrer: "x.com", visits: 1 });
     expect(dashboard.depth).toEqual({ one: 0, two: 1, three: 0, fourPlus: 0 });
     expect(dashboard.outcomes).toEqual({ noBrief: 0, briefOnly: 0, clicked: 0, lead: 1 });

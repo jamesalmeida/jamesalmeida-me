@@ -48,6 +48,8 @@ export default defineSchema({
     type: v.string(),
     visitId: v.string(),
     conversationId: v.optional(v.string()),
+    // example_sent: the landing example the visitor sent.
+    example: v.optional(v.string()),
     ...visitContext,
     at: v.number(),
     expiresAt: v.number(),
