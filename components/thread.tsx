@@ -41,6 +41,7 @@ import { serif } from "./booking-button";
 import { LandingHeadline } from "./landing-headline";
 import { MessageActions } from "./message-actions";
 import { useMotion } from "./motion-settings";
+import { BouncingDots } from "./bouncing-dots";
 import { SkaffenAvatar } from "./playful-avatar";
 import { PrivacyNotice } from "./privacy-notice";
 import { ShowBookingCtaToolUI, ShowBriefToolUI } from "./tool-cards";
@@ -487,31 +488,11 @@ function ReplyAvatar({ isNew, isThinking }: { isNew: boolean; isThinking: boolea
             transition={{ duration: seconds(0.3), ease: "easeOut" }}
           >
             {status}
-            {isWorking ? <BouncingDots /> : null}
+            {isWorking ? <BouncingDots duration={seconds(1.2)} /> : null}
           </motion.span>
         </AnimatePresence>
       </span>
     </motion.div>
-  );
-}
-
-// The "…" after Thinking / Writing: three dots that hop one after another, at the
-// site's animation pace. Reduced motion leaves them still (globals.css).
-function BouncingDots() {
-  const { seconds } = useMotion();
-  const duration = seconds(1.2);
-  return (
-    <span className="inline-flex">
-      {[0, 1, 2].map((dot) => (
-        <span
-          key={dot}
-          className="status-dot inline-block"
-          style={{ animationDuration: `${duration}s`, animationDelay: `${dot * duration * 0.15}s` }}
-        >
-          .
-        </span>
-      ))}
-    </span>
   );
 }
 
