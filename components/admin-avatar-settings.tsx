@@ -15,7 +15,7 @@ import { play } from "cuelume";
 import { useEffect, useState, type ReactNode } from "react";
 import { DEFAULT_SITE_AVATAR } from "@/lib/avatar-settings";
 
-const MOODS: AvatarMood[] = ["idle", "listening", "writing", "happy"];
+const MOODS: AvatarMood[] = ["idle", "listening", "thinking", "writing", "happy"];
 const FILLS = ["gradient", "solid"] as const;
 
 const pillClass = (selected: boolean) =>
