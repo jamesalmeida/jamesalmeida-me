@@ -237,6 +237,22 @@ body {
   }
 }
 
+/* The "…" after Skaffen's Thinking / Writing status (BouncingDots in thread.tsx). */
+.status-dot {
+  animation: status-dot-hop 1.2s ease-in-out infinite;
+}
+
+@keyframes status-dot-hop {
+  0%,
+  45%,
+  100% {
+    transform: translateY(0);
+  }
+  20% {
+    transform: translateY(-0.28em);
+  }
+}
+
 /* prefers-reduced-motion: no CSS transitions or animations. framer-motion is
    handled by <MotionConfig reducedMotion="user"> in ThemeProvider. */
 @media (prefers-reduced-motion: reduce) {

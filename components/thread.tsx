@@ -461,7 +461,8 @@ function ReplyAvatar({ isNew, isThinking }: { isNew: boolean; isThinking: boolea
       : isVisitorTyping
         ? "listening"
         : "idle";
-  const status = mood === "thinking" ? "Thinking…" : mood === "writing" ? "Writing…" : SITE.assistant.role;
+  const status = mood === "thinking" ? "Thinking" : mood === "writing" ? "Writing" : SITE.assistant.role;
+  const isWorking = mood === "thinking" || mood === "writing";
 
   return (
     <motion.div
@@ -486,10 +487,31 @@ function ReplyAvatar({ isNew, isThinking }: { isNew: boolean; isThinking: boolea
             transition={{ duration: seconds(0.3), ease: "easeOut" }}
           >
             {status}
+            {isWorking ? <BouncingDots /> : null}
           </motion.span>
         </AnimatePresence>
       </span>
     </motion.div>
+  );
+}
+
+// The "…" after Thinking / Writing: three dots that hop one after another, at the
+// site's animation pace. Reduced motion leaves them still (globals.css).
+function BouncingDots() {
+  const { seconds } = useMotion();
+  const duration = seconds(1.2);
+  return (
+    <span className="inline-flex">
+      {[0, 1, 2].map((dot) => (
+        <span
+          key={dot}
+          className="status-dot inline-block"
+          style={{ animationDuration: `${duration}s`, animationDelay: `${dot * duration * 0.15}s` }}
+        >
+          .
+        </span>
+      ))}
+    </span>
   );
 }
 
