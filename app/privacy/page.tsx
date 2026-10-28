@@ -28,16 +28,27 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
       <>
         <p>
           When you send a message, the recent messages in that chat (up to the last 20) go to my
-          server and on to the AI model provider that writes the reply: OpenAI or Anthropic,
-          depending on which model I have the chat set to. The first message of a new chat is
-          also sent to generate a short title for it. The providers handle that data under their
-          API terms.
+          server and, unless the check below blocks them, on to the AI model provider that writes
+          the reply: OpenAI or Anthropic, depending on which model I have the chat set to. The
+          first message of a new chat is also sent to generate a short title for it, unless that
+          message was blocked. The providers
+          handle that data under their API terms.
+        </p>
+        <p>
+          Before a reply is written, the same messages may also go to TypeSafe. Their model, Jev,
+          does not write the reply. It checks the latest message for spam, attempts to override
+          the assistant, and requests for harmful or illegal help, and it scores the chat: how
+          well it fits the work I do, and whether to suggest a discovery call or an email. If
+          that check blocks a message, the message is not sent to OpenAI or Anthropic. When
+          TypeSafe is not configured, this check is skipped.
         </p>
         <p>
           I save a copy of each chat, your messages and the assistant&apos;s replies, in my
           database (hosted by Convex), so I can see what&apos;s useful and where the assistant
-          falls short. Saved chats are deleted automatically after 90 days. They aren&apos;t
-          linked to your name or email unless you leave your email on a brief. If you&apos;d like
+          falls short. Saved chats are deleted automatically after 90 days, and so are the block
+          and the fit score stored with a chat. They aren&apos;t
+          linked to your name or email unless you leave your email on a brief. If you leave your
+          email, the fit score at that moment is saved with it. If you&apos;d like
           a chat deleted sooner, email me.
         </p>
         <p>Please don&apos;t share sensitive information, such as patient or customer details.</p>
@@ -119,7 +130,9 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
           To limit abuse, my server counts requests per IP address in memory over a short
           window. Those counts aren&apos;t written to storage and reset whenever the server
           restarts. When you send a message, rate a reply or leave your email, Vercel BotID also
-          runs a check in your browser and on the server to tell people from bots.
+          runs a check in your browser and on the server to tell people from bots. The TypeSafe
+          check described above is what stops a message that looks like spam, a jailbreak or
+          abuse before a reply is written.
         </p>
       </>
     ),

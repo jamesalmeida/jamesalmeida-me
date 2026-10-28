@@ -3,6 +3,14 @@
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
 import { briefEntries, type Brief } from "@/lib/brief";
+import {
+  BLOCK_REASON_LABEL,
+  formatFit,
+  fitLabel,
+  INTENT_LABEL,
+  type BlockReason,
+  type JevIntent,
+} from "@/lib/jev-decision";
 import { serif } from "./booking-button";
 import { Modal } from "./modal";
 
@@ -26,6 +34,12 @@ type Dashboard = {
   referrers: { referrer: string; visits: number }[];
   depth: { one: number; two: number; three: number; fourPlus: number };
   outcomes: { noBrief: number; briefOnly: number; clicked: number; lead: number };
+  jev: {
+    scored: number;
+    averageFit: number | null;
+    blocked: number;
+    intents: Record<JevIntent, number>;
+  };
   conversationCount: number;
   truncated: boolean;
   recent: {
@@ -37,6 +51,10 @@ type Dashboard = {
     briefShown: boolean;
     clicked: boolean;
     leadCaptured: boolean;
+    blocked: boolean;
+    blockReason: BlockReason | null;
+    intent: JevIntent | null;
+    fitScore: number | null;
     firstMessage: string;
   }[];
   feedback: {
@@ -58,6 +76,8 @@ export type Lead = {
   name?: string;
   brief: Brief;
   conversationId?: string;
+  /** Fit score copied from the chat when the lead was saved. */
+  fitScore?: number;
   createdAt: number;
 };
 
@@ -67,6 +87,10 @@ type Transcript = {
   utmSource?: string;
   device?: string;
   model?: string;
+  blocked?: boolean;
+  blockReason?: BlockReason;
+  intent?: JevIntent;
+  fitScore?: number;
   messages: { role: "user" | "assistant"; text: string; tools?: string[]; createdAt: number }[];
 };
 
@@ -178,7 +202,7 @@ function BarList({ rows, total }: { rows: { label: string; value: number }[]; to
   );
 }
 
-function Stat({ label, value, note }: { label: string; value: number; note?: string }) {
+function Stat({ label, value, note }: { label: string; value: number | string; note?: string }) {
   return (
     <div className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface)] p-4">
       <p className="text-sm text-[var(--muted)]">{label}</p>
@@ -224,6 +248,35 @@ export function Insights({ dashboard, onOpenConversation }: { dashboard: Dashboa
         </div>
         <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
           Visits are page loads of the chat in one browser tab. Booking clicks open Cal.com; whether they booked shows in Cal.com.
+        </p>
+      </Panel>
+
+      <Panel title="Fit and safety" aside={<span className="text-sm text-[var(--muted)]">{dashboard.jev.scored} scored</span>}>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <Stat
+            label="Average fit"
+            value={dashboard.jev.averageFit === null ? "–" : dashboard.jev.averageFit.toFixed(1)}
+            note="0 is not a fit, 3 is strong"
+          />
+          <Stat label="Blocked" value={dashboard.jev.blocked} note="Stopped before the reply model ran" />
+          <Stat
+            label="Scored chats"
+            value={dashboard.jev.scored}
+            note={`${percent(dashboard.jev.scored, dashboard.conversationCount)} of chats`}
+          />
+        </div>
+        <h3 className="mb-2.5 mt-6 text-sm font-medium">Latest intent</h3>
+        <BarList
+          total={dashboard.conversationCount}
+          rows={[
+            { label: INTENT_LABEL.continue_chat, value: dashboard.jev.intents.continue_chat },
+            { label: INTENT_LABEL.suggest_book_call, value: dashboard.jev.intents.suggest_book_call },
+            { label: INTENT_LABEL.suggest_email, value: dashboard.jev.intents.suggest_email },
+          ]}
+        />
+        <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+          TypeSafe (Jev) scores each chat and blocks spam, jailbreaks and abuse before the reply model runs. Chats stay
+          unscored when that check is off.
         </p>
       </Panel>
 
@@ -357,6 +410,11 @@ export function Insights({ dashboard, onOpenConversation }: { dashboard: Dashboa
                     {chat.briefShown ? <Badge>Brief</Badge> : null}
                     {chat.clicked ? <Badge>Clicked</Badge> : null}
                     {chat.leadCaptured ? <Badge>Lead</Badge> : null}
+                    {typeof chat.fitScore === "number" ? <Badge>{formatFit(chat.fitScore)}</Badge> : null}
+                    {chat.blocked ? (
+                      <Badge>Blocked{chat.blockReason ? ` · ${BLOCK_REASON_LABEL[chat.blockReason]}` : ""}</Badge>
+                    ) : null}
+                    {chat.intent && chat.intent !== "continue_chat" ? <Badge>{INTENT_LABEL[chat.intent]}</Badge> : null}
                   </span>
                 </button>
               </li>
@@ -405,6 +463,11 @@ export function Leads({
                   {lead.name ? `${lead.name} <${lead.email}>` : lead.email}
                 </a>
                 <span className="text-[var(--muted)]">{formatDate(lead.createdAt)}</span>
+                {typeof lead.fitScore === "number" ? (
+                  <Badge>
+                    {formatFit(lead.fitScore)} · {fitLabel(lead.fitScore)}
+                  </Badge>
+                ) : null}
                 <span className="ml-auto flex gap-3">
                   {lead.conversationId ? (
                     <button type="button" onClick={() => onOpenConversation(lead.conversationId!)} className="text-[var(--accent)] underline underline-offset-4">
@@ -469,6 +532,13 @@ export function TranscriptDialog({ conversationId, onClose, onLocked }: { conver
                 {transcript.utmSource ?? transcript.referrer ? ` · ${transcript.utmSource ?? transcript.referrer}` : ""}
                 {transcript.device ? ` · ${transcript.device}` : ""}
                 {transcript.model ? ` · ${transcript.model}` : ""}
+                {typeof transcript.fitScore === "number"
+                  ? ` · ${formatFit(transcript.fitScore)} · ${fitLabel(transcript.fitScore)}`
+                  : ""}
+                {transcript.intent && transcript.intent !== "continue_chat" ? ` · ${INTENT_LABEL[transcript.intent]}` : ""}
+                {transcript.blocked
+                  ? ` · Blocked${transcript.blockReason ? ` (${BLOCK_REASON_LABEL[transcript.blockReason]})` : ""}`
+                  : ""}
               </p>
             ) : null}
           </div>

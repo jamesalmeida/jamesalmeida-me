@@ -1,6 +1,15 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+// Jev's screen of a conversation. Optional: absent when TYPESAFE_API_KEY is unset
+// or the call failed. `blocked` stays true once any turn was stopped.
+export const blockReason = v.union(v.literal("spam"), v.literal("jailbreak"), v.literal("abuse"));
+export const jevIntent = v.union(
+  v.literal("continue_chat"),
+  v.literal("suggest_book_call"),
+  v.literal("suggest_email"),
+);
+
 // Where a visit came from. Captured in the browser (lib/visit.ts) and checked on the
 // server (lib/analytics.ts). No IP addresses or user agents.
 export const visitContext = {
@@ -27,6 +36,11 @@ export default defineSchema({
     bookingClicked: v.boolean(),
     emailClicked: v.boolean(),
     leadCaptured: v.boolean(),
+    blocked: v.optional(v.boolean()),
+    blockReason: v.optional(blockReason),
+    intent: v.optional(jevIntent),
+    // 0–3. Jev's fit score for this conversation, updated on each screened turn.
+    fitScore: v.optional(v.number()),
     expiresAt: v.number(),
   })
     .index("by_conversationId", ["conversationId"])
@@ -77,6 +91,8 @@ export default defineSchema({
     name: v.optional(v.string()),
     brief: v.record(v.string(), v.string()),
     conversationId: v.optional(v.string()),
+    // Copied from the conversation when the lead is saved, so it outlives the 90-day transcript.
+    fitScore: v.optional(v.number()),
     createdAt: v.number(),
   }).index("by_createdAt", ["createdAt"]),
 

@@ -1,6 +1,27 @@
 import { v } from "convex/values";
 import { RETENTION_MS, assertServer, mutation } from "./lib";
-import { visitContext } from "./schema";
+import { blockReason, jevIntent, visitContext } from "./schema";
+
+// Fields written onto the conversation from one Jev screen. A later passing turn
+// does not clear `blocked`; the first reason that stopped a message stays put
+// unless a later turn is blocked for a new reason.
+function screenFields(screen: {
+  blocked: boolean;
+  blockReason?: "spam" | "jailbreak" | "abuse";
+  intent?: "continue_chat" | "suggest_book_call" | "suggest_email";
+  fitScore?: number;
+} | undefined) {
+  if (!screen) return {};
+  const fitScore =
+    typeof screen.fitScore === "number" && Number.isFinite(screen.fitScore)
+      ? Math.min(3, Math.max(0, screen.fitScore))
+      : undefined;
+  return {
+    ...(screen.intent ? { intent: screen.intent } : {}),
+    ...(fitScore !== undefined ? { fitScore } : {}),
+    ...(screen.blocked ? { blocked: true as const, ...(screen.blockReason ? { blockReason: screen.blockReason } : {}) } : {}),
+  };
+}
 
 // Called by /api/chat when a visitor sends a message. The first message of a
 // conversation creates it and records a chat_started event.
@@ -12,8 +33,16 @@ export const recordUserMessage = mutation({
     context: v.object(visitContext),
     model: v.string(),
     text: v.string(),
+    screen: v.optional(
+      v.object({
+        blocked: v.boolean(),
+        blockReason: v.optional(blockReason),
+        intent: v.optional(jevIntent),
+        fitScore: v.optional(v.number()),
+      }),
+    ),
   },
-  handler: async (ctx, { secret, conversationId, visitId, context, model, text }) => {
+  handler: async (ctx, { secret, conversationId, visitId, context, model, text, screen }) => {
     assertServer(secret);
     const now = Date.now();
     const existing = await ctx.db
@@ -26,6 +55,7 @@ export const recordUserMessage = mutation({
         userMessages: existing.userMessages + 1,
         model,
         expiresAt: now + RETENTION_MS,
+        ...screenFields(screen),
       });
     } else {
       await ctx.db.insert("conversations", {
@@ -40,6 +70,7 @@ export const recordUserMessage = mutation({
         bookingClicked: false,
         emailClicked: false,
         leadCaptured: false,
+        ...screenFields(screen),
         expiresAt: now + RETENTION_MS,
       });
       if (visitId) {
