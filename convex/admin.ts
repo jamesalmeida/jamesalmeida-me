@@ -58,6 +58,12 @@ export const dashboard = query({
       .take(MAX_CONVERSATIONS);
     const depth = { one: 0, two: 0, three: 0, fourPlus: 0 };
     const outcomes = { noBrief: 0, briefOnly: 0, clicked: 0, lead: 0 };
+    const jev = {
+      scored: 0,
+      fitTotal: 0,
+      blocked: 0,
+      intents: { continue_chat: 0, suggest_book_call: 0, suggest_email: 0 },
+    };
     for (const conversation of conversations) {
       if (conversation.userMessages <= 1) depth.one += 1;
       else if (conversation.userMessages === 2) depth.two += 1;
@@ -67,6 +73,12 @@ export const dashboard = query({
       else if (conversation.bookingClicked || conversation.emailClicked) outcomes.clicked += 1;
       else if (conversation.briefShown) outcomes.briefOnly += 1;
       else outcomes.noBrief += 1;
+      if (typeof conversation.fitScore === "number") {
+        jev.scored += 1;
+        jev.fitTotal += conversation.fitScore;
+      }
+      if (conversation.blocked) jev.blocked += 1;
+      if (conversation.intent) jev.intents[conversation.intent] += 1;
     }
 
     const recent = await Promise.all(
@@ -85,6 +97,10 @@ export const dashboard = query({
           briefShown: conversation.briefShown,
           clicked: conversation.bookingClicked || conversation.emailClicked,
           leadCaptured: conversation.leadCaptured,
+          blocked: conversation.blocked ?? false,
+          blockReason: conversation.blockReason ?? null,
+          intent: conversation.intent ?? null,
+          fitScore: conversation.fitScore ?? null,
           firstMessage: first?.text.slice(0, 160) ?? "",
         };
       }),
@@ -123,6 +139,12 @@ export const dashboard = query({
         .slice(0, 10),
       depth,
       outcomes,
+      jev: {
+        scored: jev.scored,
+        averageFit: jev.scored > 0 ? jev.fitTotal / jev.scored : null,
+        blocked: jev.blocked,
+        intents: jev.intents,
+      },
       conversationCount: conversations.length,
       truncated: events.length === MAX_EVENTS || conversations.length === MAX_CONVERSATIONS,
       recent,

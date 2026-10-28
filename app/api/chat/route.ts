@@ -4,7 +4,10 @@ import { after } from "next/server";
 import { resolveAdminModel } from "@/lib/admin-cookie";
 import { rejectBots } from "@/lib/bot-protection";
 import { parseId, parseVisitContext } from "@/lib/analytics";
+import { blockedChatResponse } from "@/lib/blocked-chat";
 import { chatTools } from "@/lib/chat-tools";
+import { BLOCKED_REPLY, intentNudge, storedScreen } from "@/lib/jev-decision";
+import { screenVisitorTurn } from "@/lib/jev.server";
 import { getModelOption, MODEL_COOKIE_NAME } from "@/lib/models";
 import { createModel } from "@/lib/models.server";
 import {
@@ -52,11 +55,44 @@ export async function POST(req: Request) {
 
   const cookieStore = await cookies();
   const modelId = resolveAdminModel(cookieStore.get(MODEL_COOKIE_NAME)?.value);
+
+  // Jev screens the turn before the reply model. No key, or a failed call, skips it.
+  const decision = await screenVisitorTurn(messages);
+  const screen = decision ? storedScreen(decision) : undefined;
+  const conversationId = parseId(fields.conversationId);
+  const userText = messageText(messages[messages.length - 1]);
+  const recordUser = () => {
+    if (!conversationId) return Promise.resolve();
+    return storeMutationQuietly(storeApi.chats.recordUserMessage, {
+      conversationId,
+      visitId: parseId(fields.visitId),
+      context: parseVisitContext(fields.context),
+      model: modelId,
+      text: userText,
+      ...(screen ? { screen } : {}),
+    });
+  };
+
+  if (decision?.action === "block") {
+    if (conversationId) {
+      after(async () => {
+        await recordUser();
+        await storeMutationQuietly(storeApi.chats.recordReply, {
+          conversationId,
+          text: BLOCKED_REPLY,
+          tools: [],
+        });
+      });
+    }
+    return blockedChatResponse(BLOCKED_REPLY);
+  }
+
   const model = createModel(modelId);
   const modelOption = getModelOption(modelId);
 
   // The system prompt is static, so let Anthropic cache it. OpenAI caches
-  // long prefixes automatically and ignores this.
+  // long prefixes automatically and ignores this. A Jev nudge, when there is
+  // one, is a second system message so the cached prefix stays stable.
   const system: SystemModelMessage = {
     role: "system",
     content: getSystemPrompt(),
@@ -64,28 +100,29 @@ export async function POST(req: Request) {
       ? { providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } } }
       : {}),
   };
+  const nudgeKind = decision?.nudge;
+  const nudge = nudgeKind === "book" || nudgeKind === "email" ? intentNudge(nudgeKind) : null;
 
   const result = streamText({
     model,
-    messages: [system, ...convertToModelMessages(messages)],
+    messages: [system, ...(nudge ? [{ role: "system" as const, content: nudge }] : []), ...convertToModelMessages(messages)],
     tools: chatTools,
     stopWhen: stepCountIs(3),
     maxOutputTokens: 800,
+    // Only the first step is forced, so the model can still write the reply after the card.
+    ...(decision?.forceTool
+      ? {
+          prepareStep: ({ stepNumber }: { stepNumber: number }) =>
+            stepNumber === 0 ? { toolChoice: "required" as const } : { toolChoice: "auto" as const },
+        }
+      : {}),
   });
 
   // The transcript (kept 90 days, see convex/), stored after the response so the
   // reply never waits on it. conversationId is the id of the chat's first message.
-  const conversationId = parseId(fields.conversationId);
   if (conversationId) {
-    const userText = messageText(messages[messages.length - 1]);
     after(async () => {
-      await storeMutationQuietly(storeApi.chats.recordUserMessage, {
-        conversationId,
-        visitId: parseId(fields.visitId),
-        context: parseVisitContext(fields.context),
-        model: modelId,
-        text: userText,
-      });
+      await recordUser();
       try {
         const steps = await result.steps;
         await storeMutationQuietly(storeApi.chats.recordReply, {

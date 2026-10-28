@@ -12,15 +12,23 @@ export const submit = mutation({
   },
   handler: async (ctx, { secret, conversationId, ...lead }) => {
     assertServer(secret);
-    await ctx.db.insert("leads", { ...lead, conversationId, createdAt: Date.now() });
-    if (!conversationId) return;
-    const conversation = await ctx.db
-      .query("conversations")
-      .withIndex("by_conversationId", (q) => q.eq("conversationId", conversationId))
-      .unique();
-    if (conversation && !conversation.leadCaptured) {
-      await ctx.db.patch(conversation._id, { leadCaptured: true });
+    let fitScore: number | undefined;
+    if (conversationId) {
+      const conversation = await ctx.db
+        .query("conversations")
+        .withIndex("by_conversationId", (q) => q.eq("conversationId", conversationId))
+        .unique();
+      if (conversation) {
+        if (!conversation.leadCaptured) await ctx.db.patch(conversation._id, { leadCaptured: true });
+        if (typeof conversation.fitScore === "number") fitScore = conversation.fitScore;
+      }
     }
+    await ctx.db.insert("leads", {
+      ...lead,
+      conversationId,
+      createdAt: Date.now(),
+      ...(fitScore !== undefined ? { fitScore } : {}),
+    });
   },
 });
 

@@ -121,6 +121,9 @@ lib/
   request-body.ts              # Body size cap (Content-Length, then UTF-8 bytes)
   rate-limit.ts                # In-memory per-IP / global fixed-window limiter
   bot-protection.ts            # Vercel BotID checkBotId() wrapper (403 on bots)
+  jev-decision.ts              # Pure Jev policy: block thresholds, CTA nudge, fit label (client-safe)
+  jev.server.ts                # TypeSafe Jev client (TYPESAFE_API_KEY). Soft-skip when unset
+  blocked-chat.ts              # Refusal UI stream when Jev blocks a turn (no chat LLM)
   admin-cookie.ts              # HMAC-signed model cookie
   admin-auth.ts                # startAdminSession (limiter → JSON → password → cookie), requireAdminSession
   analytics.ts                 # Client-safe validators for visit context, events, feedback, leads
@@ -183,6 +186,8 @@ CONVEX_SERVER_SECRET=...           # must match the same variable on that Convex
 CONVEX_DEPLOY_KEY=...              # production deploy key on Vercel Production; preview deploy key on Vercel Preview.
                                    # `npm run build` runs `convex deploy` when it is set. Never put the production key on Preview.
 RESEND_API_KEY=... / LEAD_NOTIFY_FROM=... / LEAD_NOTIFY_TO=...  # optional lead email to James
+TYPESAFE_API_KEY=...               # optional. Server-only. Jev screens each visitor turn before the chat model.
+                                   # Unset (or a failed call) skips the check. Set on Vercel Production and Preview.
 ```
 
 Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model there before its provider retirement date. A cookie or `DEFAULT_MODEL` that names a removed id falls back to the default, unless the id is listed in `LEGACY_MODEL_IDS` (`lib/models.ts`), which maps it to its replacement. `claude-sonnet-4-5` (deprecated by Anthropic, retires 2026-11-30) maps to `claude-sonnet-5-5`.
@@ -267,6 +272,7 @@ Model ids live in `lib/models.ts` and `lib/models.server.ts`. Remove a model the
 - Both model routes run, in order: rate limit → BotID → body parsing. So do `/api/events` (2 KB), `/api/feedback` (12 KB) and `/api/leads` (4 KB), through `readPublicJson` (`lib/public-request.ts`).
 - `lib/rate-limit.ts` keys on the first `x-forwarded-for` IP, then `x-real-ip`, then `"unknown"`. Limits: `/api/chat` 30 per 10 min per IP plus 600 per hour across all visitors; `/api/generate-title` 20 per 10 min per IP; `/api/events` + `/api/feedback` 60 per 10 min per IP (shared); `/api/leads` 5 per 10 min per IP. Over the limit returns 429 JSON with `Retry-After` (seconds). The map is capped (expired entries swept, then oldest evicted). State is **per serverless instance** (cold starts reset it, instances don't share it), which is accepted: no external storage.
 - BotID (`botid` package, `basic` check level) is set up in `instrumentation-client.ts` and checked in `lib/bot-protection.ts`. Keep paths and check level in sync. Bots get 403. It returns `isBot: false` in dev. If `checkBotId()` throws (for example, no Vercel OIDC token under a local `next start`), the request is allowed and the error is logged.
+- Jev (TypeSafe, `@typesafe-ai/sdk`, `TYPESAFE_API_KEY`, server-only) runs after the rate limit and BotID and before the chat model, one `systemOne` call per visitor turn (`lib/jev.server.ts`, model `jev-latest`). It asks nouls for spam, jailbreak and abuse, a severity score, a choice of `continue_chat` / `suggest_book_call` / `suggest_email`, and a 0–3 fit score. The app owns the thresholds (`lib/jev-decision.ts`): a hazard at 0.7+ blocks, a hazard at 0.35+ blocks when severity is at least 2, and an intent with confidence at least 0.5 nudges a CTA once (a second system message plus `toolChoice: "required"` on the first step) until a booking or brief card is already in the thread. A block returns a canned Skaffen refusal (`lib/blocked-chat.ts`) and does not call the chat model. The client skips title generation when the reply is that refusal (`replyWasBlocked`), so the blocked message is not sent to the title model either. The conversation stores `blocked`, `blockReason`, `intent` and `fitScore` (a later pass does not clear `blocked`); a lead copies `fitScore` when it is saved. `/admin` shows them on Insights, recent chats, the transcript and the lead. No key, no visitor text, or a Jev error skips the check and the chat model still runs. Do not log the error message (it can echo the visitor's text). Do not put the key in client code. Update `/privacy` if this changes.
 - `components/thread.tsx` turns a 429/403 from `/api/chat` into a short friendly error (`BLOCKED_MESSAGE`); any other chat error shows a generic "Something went wrong" message. A run that fails before any assistant content (429, 403, or a stream that errors right after `start`) creates no assistant message, so `Thread` catches the error with `useChatRuntime`'s `onError` and `RunErrorNotice` shows it under the last user message until the next run starts. Errors after some content still show inside the assistant message (`MessagePrimitive.Error`). Title generation failures stay silent.
 - Spend caps in the OpenAI and Anthropic dashboards are the backstop.
 - Running `npm run eval` against a deployed URL: BotID may 403 requests that come from Node, because they lack the browser's BotID headers. Run it against `npm run dev`.

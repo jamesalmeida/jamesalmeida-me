@@ -32,8 +32,17 @@ import { trackEvent } from "@/lib/visit";
 import { MotionSettingsProvider } from "@/components/motion-settings";
 import { LandingSettingsProvider, chooseHeadline } from "@/components/landing-settings";
 import { DEFAULT_LANDING, type LandingSettings } from "@/lib/landing-settings";
+import { replyWasBlocked } from "@/lib/jev-decision";
 
 let landingTracked = false;
+
+function assistantReplyText(messages: UIMessage[]): string {
+  const reply = [...messages].reverse().find((message) => message.role === "assistant");
+  return (reply?.parts ?? [])
+    .flatMap((part) => (part.type === "text" ? [part.text] : []))
+    .join("\n\n")
+    .trim();
+}
 
 export function ChatApp({
   avatar,
@@ -178,7 +187,8 @@ export function ChatApp({
       });
       setHistoryThreads((prev) => capHistoryThreads([history, ...prev]));
       const firstText = getFirstUserText(messages);
-      if (firstText) generateTitle(history.id, firstText);
+      // A blocked turn is a canned refusal. Don't send that message to the title model.
+      if (firstText && !replyWasBlocked(assistantReplyText(messages))) generateTitle(history.id, firstText);
       return history.id;
     },
     [generateTitle, updateStoredThreads],

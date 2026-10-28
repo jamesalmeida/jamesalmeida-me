@@ -69,11 +69,12 @@ ANTHROPIC_API_KEY=sk-ant-...
 OPENAI_API_KEY=sk-proj-...   # only if an OpenAI model is selected
 ADMIN_PASSWORD=...           # required to set the model override
 DEFAULT_MODEL=claude-sonnet-5-5
+TYPESAFE_API_KEY=...         # optional. Jev screens messages before the chat model. Unset skips it.
 ```
 
 Convex is optional locally: set `CONVEX_URL` and `CONVEX_SERVER_SECRET` to store transcripts, events, feedback, leads and site settings; without them nothing is stored. `npm run build` deploys `convex/` when `CONVEX_DEPLOY_KEY` is set. See `.env.example`.
 
-The chat cannot answer without those API keys. `npm run typecheck` and `npm run build` do not need them.
+The chat cannot answer without an OpenAI or Anthropic key. `TYPESAFE_API_KEY` is optional and server-only: when it is set, [Jev](https://docs.typesafe.ai/introduction/quickstart.md) (`@typesafe-ai/sdk`) screens each visitor message for spam, jailbreaks and abuse before the chat model runs, and chooses whether to nudge a booking or email card. The fit score and any block are stored with the chat (and the score with a lead) for `/admin`. When the key is unset, or Jev fails, the check is skipped and the reply model still runs. `npm run typecheck` and `npm run build` do not need any of these keys.
 
 ```bash
 npm run typecheck
