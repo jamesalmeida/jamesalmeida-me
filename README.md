@@ -14,7 +14,7 @@ Deployed on Vercel as project `jamesalmeida-portfolio`, team GSV (slug `gsv-2`).
 | Chat UI | `@assistant-ui/react` 0.11.58 + `@assistant-ui/react-ai-sdk` 1.1.21 |
 | AI | Vercel AI SDK v5 (`ai` 5). Do not upgrade these pins. See `CLAUDE.md`. |
 | Styling | Tailwind CSS v4 |
-| Persistence | localStorage (no database) |
+| Persistence | Convex (chat transcripts, funnel events, feedback, leads, site settings); the visitor's own chat state stays in localStorage |
 | Node | 24 (`.nvmrc`) |
 
 ## Routes
@@ -24,10 +24,14 @@ Deployed on Vercel as project `jamesalmeida-portfolio`, team GSV (slug `gsv-2`).
 | `/` | Full-screen chat (no page scroll, no sidebar). Header: name, Book a discovery call (from `sm`), Menu. The Menu holds the links, theme and sound settings, and recent chats. |
 | `/consulting` | "How I can help", rendered from `OFFER`. The reading pages have a "Back to chat" button instead of a nav bar. |
 | `/about` | "Why I do this": the story and past work from `PROJECTS`. `/work` redirects here. |
-| `/admin` | Password-gated model switcher. Not indexed. |
+| `/privacy` | Privacy policy. |
+| `/admin` | Password-gated admin. Not indexed. Tabs: **Insights** (transcripts, funnel, feedback), **Leads**, and **Settings** (model switcher, Skaffen's avatar, landing headline/examples, chat motion, and the link-preview share card studio). |
 | `/api/chat` | Streaming chat |
 | `/api/generate-title` | Short title for a saved chat |
 | `/api/admin/model` | Read or set the signed model cookie |
+| `/api/events` | Funnel events from the browser (`landing_view`, `booking_clicked`, `email_clicked`, `example_sent`) |
+| `/api/feedback` | Thumbs up/down and the feedback form under each reply |
+| `/api/leads` | The optional email on the brief card (saved before it answers) |
 
 There is no `/api/admin/verify`.
 
@@ -66,6 +70,8 @@ OPENAI_API_KEY=sk-proj-...   # only if an OpenAI model is selected
 ADMIN_PASSWORD=...           # required to set the model override
 DEFAULT_MODEL=claude-sonnet-5-5
 ```
+
+Convex is optional locally: set `CONVEX_URL` and `CONVEX_SERVER_SECRET` to store transcripts, events, feedback, leads and site settings; without them nothing is stored. `npm run build` deploys `convex/` when `CONVEX_DEPLOY_KEY` is set. See `.env.example`.
 
 The chat cannot answer without those API keys. `npm run typecheck` and `npm run build` do not need them.
 
