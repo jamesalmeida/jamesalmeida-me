@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 import { parseClientIp } from "../lib/client-ip";
+import { MAX_REASON_CHARS } from "../lib/jev-quality";
 import { RETENTION_MS, assertServer, mutation, query } from "./lib";
-import { blockReason, jevIntent, visitContext } from "./schema";
+import { blockReason, jevIntent, sentiment, visitContext } from "./schema";
 
 // Fields written onto the conversation from one Jev screen. A later passing turn
 // does not clear `blocked`; the first reason that stopped a message stays put
@@ -140,6 +141,33 @@ export const recordReply = mutation({
         expiresAt: now + RETENTION_MS,
       });
     }
+  },
+});
+
+// Latest sentiment and went-badly score for a conversation. A blocked chat is
+// left unchanged, so a late score cannot add a went-badly flag.
+export const recordQuality = mutation({
+  args: {
+    secret: v.string(),
+    conversationId: v.string(),
+    sentiment,
+    wentBadly: v.number(),
+    reason: v.string(),
+  },
+  handler: async (ctx, { secret, conversationId, sentiment: tone, wentBadly, reason }) => {
+    assertServer(secret);
+    if (!Number.isFinite(wentBadly)) return;
+    const existing = await ctx.db
+      .query("conversations")
+      .withIndex("by_conversationId", (q) => q.eq("conversationId", conversationId))
+      .unique();
+    if (!existing || existing.blocked) return;
+    await ctx.db.patch(existing._id, {
+      sentiment: tone,
+      wentBadly: Math.min(1, Math.max(0, wentBadly)),
+      reason: reason.trim().slice(0, MAX_REASON_CHARS),
+      scoredAt: Date.now(),
+    });
   },
 });
 

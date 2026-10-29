@@ -42,14 +42,18 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
           and requests for harmful, illegal, or abusive help, including taking or using secrets
           that aren&apos;t yours. It also scores the chat: how well it fits the work I do, and
           whether to suggest a discovery call or an email. If that check blocks a message, the
-          message is not sent to OpenAI or Anthropic, and the chat ends there. When TypeSafe
-          is not configured, this check is skipped.
+          message is not sent to OpenAI or Anthropic, and the chat ends there. After a reply is
+          written, the conversation may be sent to TypeSafe again so Jev can note how you seemed
+          (positive, neutral, or negative) and whether the chat went badly. That second check
+          does not change the reply. When TypeSafe is not configured, or a check fails, it is
+          skipped.
         </p>
         <p>
           I save a copy of each chat, your messages and the assistant&apos;s replies, in my
           database (hosted by Convex), so I can see what&apos;s useful and where the assistant
           falls short. Saved chats are deleted automatically after 90 days, and so are the block,
-          the fit score, and any IP address stored with a blocked chat. They aren&apos;t
+          the fit score, the sentiment note, the went-badly score, and any IP address stored
+          with a blocked chat. They aren&apos;t
           linked to your name or email unless you leave your email on a brief. If you leave your
           email, the fit score at that moment is saved with it. If you&apos;d like
           a chat deleted sooner, email me.

@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { qualityView, wentBadlyFlag } from "../lib/jev-quality";
 import { assertServer, query } from "./lib";
 
 // Read-only queries for the /admin dashboard. The site's server only calls them
@@ -7,6 +8,10 @@ import { assertServer, query } from "./lib";
 const FUNNEL_STEPS = ["landing_view", "chat_started", "brief_shown", "booking_clicked", "email_clicked"] as const;
 const MAX_EVENTS = 10_000;
 const MAX_CONVERSATIONS = 2_000;
+const RECENT_LIMIT = 50;
+// Went-badly chats stay on the list even when they are older than the latest 50,
+// so the admin filter can show them. Capped so the first-message reads stay bounded.
+const FLAGGED_LIMIT = 80;
 
 export const dashboard = query({
   args: { secret: v.string(), since: v.number() },
@@ -62,6 +67,7 @@ export const dashboard = query({
       scored: 0,
       fitTotal: 0,
       blocked: 0,
+      wentBadly: 0,
       intents: { continue_chat: 0, suggest_book_call: 0, suggest_email: 0 },
     };
     for (const conversation of conversations) {
@@ -78,15 +84,36 @@ export const dashboard = query({
         jev.fitTotal += conversation.fitScore;
       }
       if (conversation.blocked) jev.blocked += 1;
+      if (
+        typeof conversation.wentBadly === "number" &&
+        wentBadlyFlag(conversation.wentBadly, { blocked: conversation.blocked === true })
+      ) {
+        jev.wentBadly += 1;
+      }
       if (conversation.intent) jev.intents[conversation.intent] += 1;
     }
 
+    const flagged = conversations.filter(
+      (conversation) =>
+        typeof conversation.wentBadly === "number" &&
+        wentBadlyFlag(conversation.wentBadly, { blocked: conversation.blocked === true }),
+    );
+    const pickedIds = new Set<string>();
+    const picked: typeof conversations = [];
+    for (const conversation of [...flagged.slice(0, FLAGGED_LIMIT), ...conversations.slice(0, RECENT_LIMIT)]) {
+      if (pickedIds.has(conversation.conversationId)) continue;
+      pickedIds.add(conversation.conversationId);
+      picked.push(conversation);
+    }
+    picked.sort((a, b) => b.startedAt - a.startedAt);
+
     const recent = await Promise.all(
-      conversations.slice(0, 50).map(async (conversation) => {
+      picked.map(async (conversation) => {
         const first = await ctx.db
           .query("messages")
           .withIndex("by_conversation", (q) => q.eq("conversationId", conversation.conversationId))
           .first();
+        const quality = qualityView(conversation);
         return {
           conversationId: conversation.conversationId,
           startedAt: conversation.startedAt,
@@ -102,6 +129,11 @@ export const dashboard = query({
           clientIp: conversation.blocked && conversation.clientIp ? conversation.clientIp : null,
           intent: conversation.intent ?? null,
           fitScore: conversation.fitScore ?? null,
+          sentiment: quality.sentiment,
+          wentBadly: quality.wentBadly,
+          wentBadlyScore: quality.wentBadlyScore,
+          reason: quality.reason,
+          scoredAt: quality.scoredAt,
           firstMessage: first?.text.slice(0, 160) ?? "",
         };
       }),
@@ -144,6 +176,7 @@ export const dashboard = query({
         scored: jev.scored,
         averageFit: jev.scored > 0 ? jev.fitTotal / jev.scored : null,
         blocked: jev.blocked,
+        wentBadly: jev.wentBadly,
         intents: jev.intents,
       },
       conversationCount: conversations.length,
@@ -180,9 +213,17 @@ export const conversation = query({
       .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
       .take(500);
     const { _id, _creationTime, clientIp, ...details } = conversation;
+    const quality = qualityView(conversation);
     return {
       ...details,
       clientIp: conversation.blocked && clientIp ? clientIp : null,
+      // `details.wentBadly` is the stored 0–1 score. Replace it with the flag,
+      // and keep the number on wentBadlyScore. The reason is only sent when flagged.
+      sentiment: quality.sentiment,
+      wentBadly: quality.wentBadly,
+      wentBadlyScore: quality.wentBadlyScore,
+      reason: quality.reason,
+      scoredAt: quality.scoredAt,
       messages: messages.map(({ role, text, tools, createdAt }) => ({ role, text, tools, createdAt })),
     };
   },

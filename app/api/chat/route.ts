@@ -8,7 +8,7 @@ import { blockedChatResponse } from "@/lib/blocked-chat";
 import { chatTools } from "@/lib/chat-tools";
 import { parseClientIp } from "@/lib/client-ip";
 import { BLOCKED_REPLY, intentNudge, screenForStore, threadIsClosed } from "@/lib/jev-decision";
-import { screenVisitorTurn } from "@/lib/jev.server";
+import { scoreConversationQuality, screenVisitorTurn } from "@/lib/jev.server";
 import { getModelOption, MODEL_COOKIE_NAME } from "@/lib/models";
 import { createModel } from "@/lib/models.server";
 import {
@@ -133,11 +133,11 @@ export async function POST(req: Request) {
       await recordUser();
       try {
         const steps = await result.steps;
-        await storeMutationQuietly(storeApi.chats.recordReply, {
-          conversationId,
-          text: steps.map((step) => step.text).filter(Boolean).join("\n\n"),
-          tools: steps.flatMap((step) => step.toolCalls.map((call) => call.toolName)),
-        });
+        const text = steps.map((step) => step.text).filter(Boolean).join("\n\n");
+        const tools = steps.flatMap((step) => step.toolCalls.map((call) => call.toolName));
+        await storeMutationQuietly(storeApi.chats.recordReply, { conversationId, text, tools });
+        // After the reply is stored. Scoring never runs on the request path.
+        await storeQuality(messages, { text, tools }, conversationId);
       } catch {
         // The run failed or was stopped; the user's message is still recorded.
       }
@@ -156,6 +156,26 @@ async function storedChatIsBlocked(conversationId: string | undefined): Promise<
     // The transcript check still closes an honest client. Don't echo the visitor's text.
     console.error("Could not read whether this chat was already blocked.");
     return false;
+  }
+}
+
+async function storeQuality(
+  messages: readonly UIMessage[],
+  reply: { text: string; tools: string[] },
+  conversationId: string,
+) {
+  try {
+    const decision = await scoreConversationQuality(messages, reply);
+    if (!decision) return;
+    await storeMutationQuietly(storeApi.chats.recordQuality, {
+      conversationId,
+      sentiment: decision.sentiment,
+      wentBadly: decision.wentBadly,
+      reason: decision.reason,
+    });
+  } catch (error) {
+    const name = error instanceof Error ? error.name : "Error";
+    console.error("Jev quality score failed; this chat was not scored.", name);
   }
 }
 

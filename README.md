@@ -74,7 +74,7 @@ TYPESAFE_API_KEY=...         # optional. Jev screens messages before the chat mo
 
 Convex is optional locally: set `CONVEX_URL` and `CONVEX_SERVER_SECRET` to store transcripts, events, feedback, leads and site settings; without them nothing is stored. `npm run build` deploys `convex/` when `CONVEX_DEPLOY_KEY` is set. See `.env.example`.
 
-The chat cannot answer without an OpenAI or Anthropic key. `TYPESAFE_API_KEY` is optional and server-only: when it is set, [Jev](https://docs.typesafe.ai/introduction/quickstart.md) (`@typesafe-ai/sdk`) screens each visitor message for spam, jailbreaks and abuse before the chat model runs, and chooses whether to nudge a booking or email card. The fit score and any block are stored with the chat (and the score with a lead) for `/admin`. When the key is unset, or Jev fails, the check is skipped and the reply model still runs. `npm run typecheck` and `npm run build` do not need any of these keys.
+The chat cannot answer without an OpenAI or Anthropic key. `TYPESAFE_API_KEY` is optional and server-only: when it is set, [Jev](https://docs.typesafe.ai/introduction/quickstart.md) (`@typesafe-ai/sdk`) screens each visitor message for spam, jailbreaks and abuse before the chat model runs, and chooses whether to nudge a booking or email card. The fit score and any block are stored with the chat (and the score with a lead) for `/admin`. After a reply finishes, Jev also scores visitor sentiment and whether the chat went badly; `/admin` can filter to those chats. When the key is unset, or Jev fails, the check is skipped and the reply model still runs. `npm run typecheck` and `npm run build` do not need any of these keys.
 
 ```bash
 npm run typecheck

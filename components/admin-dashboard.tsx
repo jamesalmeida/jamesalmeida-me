@@ -8,8 +8,10 @@ import {
   formatFit,
   fitLabel,
   INTENT_LABEL,
+  SENTIMENT_LABEL,
   type BlockReason,
   type JevIntent,
+  type Sentiment,
 } from "@/lib/jev-decision";
 import { serif } from "./booking-button";
 import { Modal } from "./modal";
@@ -38,6 +40,7 @@ type Dashboard = {
     scored: number;
     averageFit: number | null;
     blocked: number;
+    wentBadly: number;
     intents: Record<JevIntent, number>;
   };
   conversationCount: number;
@@ -56,6 +59,10 @@ type Dashboard = {
     clientIp: string | null;
     intent: JevIntent | null;
     fitScore: number | null;
+    sentiment: Sentiment | null;
+    wentBadly: boolean;
+    wentBadlyScore: number | null;
+    reason: string | null;
     firstMessage: string;
   }[];
   feedback: {
@@ -93,6 +100,11 @@ type Transcript = {
   clientIp?: string | null;
   intent?: JevIntent;
   fitScore?: number;
+  sentiment?: Sentiment | null;
+  /** True when this chat is flagged. Never set on a blocked chat. */
+  wentBadly?: boolean;
+  wentBadlyScore?: number | null;
+  reason?: string | null;
   messages: { role: "user" | "assistant"; text: string; tools?: string[]; createdAt: number }[];
 };
 
@@ -228,6 +240,16 @@ function BlockedBadge({ reason }: { reason: BlockReason | null }) {
   );
 }
 
+function WentBadlyBadge({ score, reason }: { score: number | null; reason: string | null }) {
+  const label = typeof score === "number" ? `Went badly · ${score.toFixed(2)}` : "Went badly";
+  return (
+    <span className="inline-flex max-w-full flex-col gap-0.5 rounded-2xl border border-[var(--review-border)] bg-[var(--review-bg)] px-2.5 py-1 text-[var(--review)]">
+      <span className="text-xs font-semibold">{label}</span>
+      {reason ? <span className="text-xs font-normal leading-4">{reason}</span> : null}
+    </span>
+  );
+}
+
 function BlockedIp({ ip }: { ip: string }) {
   return (
     <span className="rounded-full border border-[var(--danger)] px-2.5 py-0.5 text-xs font-medium text-[var(--danger)]">
@@ -251,6 +273,8 @@ export function RangePicker({ days, onChange }: { days: number; onChange: (days:
 export function Insights({ dashboard, onOpenConversation }: { dashboard: Dashboard; onOpenConversation: (id: string) => void }) {
   const { funnel, depth, outcomes } = dashboard;
   const visits = funnel.landing_view;
+  const [onlyWentBadly, setOnlyWentBadly] = useState(false);
+  const recent = onlyWentBadly ? dashboard.recent.filter((chat) => chat.wentBadly && !chat.blocked) : dashboard.recent;
   return (
     <div className="space-y-6">
       {dashboard.truncated ? <Notice>There&apos;s more data than this view reads at once; numbers are a lower bound.</Notice> : null}
@@ -270,13 +294,14 @@ export function Insights({ dashboard, onOpenConversation }: { dashboard: Dashboa
       </Panel>
 
       <Panel title="Fit and safety" aside={<span className="text-sm text-[var(--muted)]">{dashboard.jev.scored} scored</span>}>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Stat
             label="Average fit"
             value={dashboard.jev.averageFit === null ? "–" : dashboard.jev.averageFit.toFixed(1)}
             note="0 is not a fit, 3 is strong"
           />
           <Stat label="Blocked" value={dashboard.jev.blocked} note="Stopped before the reply model ran" />
+          <Stat label="Went badly" value={dashboard.jev.wentBadly} note="For improving the site. Not a block." />
           <Stat
             label="Scored chats"
             value={dashboard.jev.scored}
@@ -293,8 +318,9 @@ export function Insights({ dashboard, onOpenConversation }: { dashboard: Dashboa
           ]}
         />
         <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
-          TypeSafe (Jev) scores each chat and blocks spam, jailbreaks and abuse before the reply model runs. Chats stay
-          unscored when that check is off.
+          TypeSafe (Jev) blocks spam, jailbreaks and abuse before the reply model runs, and scores fit. After a reply
+          it also notes sentiment and whether the chat went badly. That score never delays the reply. Chats stay
+          unscored when that check is off. A blocked chat is not also marked went badly.
         </p>
       </Panel>
 
@@ -408,12 +434,34 @@ export function Insights({ dashboard, onOpenConversation }: { dashboard: Dashboa
         )}
       </Panel>
 
-      <Panel title="Recent chats">
+      <Panel
+        title="Recent chats"
+        aside={
+          <button
+            type="button"
+            aria-pressed={onlyWentBadly}
+            onClick={() => setOnlyWentBadly((on) => !on)}
+            className={`rounded-full border px-4 py-2 text-sm transition ${
+              onlyWentBadly
+                ? "border-[var(--review-border)] bg-[var(--review-bg)] font-semibold text-[var(--review)]"
+                : "border-[var(--border)] bg-[var(--surface)] font-medium text-[var(--foreground)] hover:border-[var(--border-strong)]"
+            }`}
+          >
+            Went badly only{dashboard.jev.wentBadly > 0 ? ` · ${dashboard.jev.wentBadly}` : ""}
+          </button>
+        }
+      >
         {dashboard.recent.length === 0 ? (
           <p className="text-sm text-[var(--muted)]">No chats yet.</p>
+        ) : recent.length === 0 ? (
+          <p className="text-sm text-[var(--muted)]">No chats went badly in this range.</p>
         ) : (
-          <ul className="divide-y divide-[var(--border)]">
-            {dashboard.recent.map((chat) => (
+          <>
+            {onlyWentBadly && dashboard.jev.wentBadly > recent.length ? (
+              <p className="mb-2 text-xs text-[var(--muted)]">Showing the latest {recent.length}.</p>
+            ) : null}
+            <ul className="divide-y divide-[var(--border)]">
+            {recent.map((chat) => (
               <li key={chat.conversationId}>
                 <button
                   type="button"
@@ -426,6 +474,8 @@ export function Insights({ dashboard, onOpenConversation }: { dashboard: Dashboa
                       <BlockedBadge reason={chat.blockReason} />
                       {chat.clientIp ? <BlockedIp ip={chat.clientIp} /> : null}
                     </span>
+                  ) : chat.wentBadly ? (
+                    <WentBadlyBadge score={chat.wentBadlyScore} reason={chat.reason} />
                   ) : null}
                   <span className="flex flex-wrap items-center gap-2 text-[var(--muted)]">
                     {formatDate(chat.startedAt)} · {chat.userMessages} {chat.userMessages === 1 ? "message" : "messages"}
@@ -435,12 +485,14 @@ export function Insights({ dashboard, onOpenConversation }: { dashboard: Dashboa
                     {chat.clicked ? <Badge>Clicked</Badge> : null}
                     {chat.leadCaptured ? <Badge>Lead</Badge> : null}
                     {typeof chat.fitScore === "number" ? <Badge>{formatFit(chat.fitScore)}</Badge> : null}
+                    {chat.sentiment ? <span>{SENTIMENT_LABEL[chat.sentiment]}</span> : null}
                     {chat.intent && chat.intent !== "continue_chat" ? <Badge>{INTENT_LABEL[chat.intent]}</Badge> : null}
                   </span>
                 </button>
               </li>
             ))}
-          </ul>
+            </ul>
+          </>
         )}
       </Panel>
     </div>
@@ -552,6 +604,10 @@ export function TranscriptDialog({ conversationId, onClose, onLocked }: { conver
                 <BlockedBadge reason={transcript.blockReason ?? null} />
                 {transcript.clientIp ? <BlockedIp ip={transcript.clientIp} /> : null}
               </div>
+            ) : transcript?.wentBadly ? (
+              <div className="mt-2">
+                <WentBadlyBadge score={transcript.wentBadlyScore ?? null} reason={transcript.reason ?? null} />
+              </div>
             ) : null}
             {transcript ? (
               <p className="mt-1 text-sm text-[var(--muted)]">
@@ -562,6 +618,7 @@ export function TranscriptDialog({ conversationId, onClose, onLocked }: { conver
                 {typeof transcript.fitScore === "number"
                   ? ` · ${formatFit(transcript.fitScore)} · ${fitLabel(transcript.fitScore)}`
                   : ""}
+                {transcript.sentiment ? ` · ${SENTIMENT_LABEL[transcript.sentiment]}` : ""}
                 {transcript.intent && transcript.intent !== "continue_chat" ? ` · ${INTENT_LABEL[transcript.intent]}` : ""}
               </p>
             ) : null}

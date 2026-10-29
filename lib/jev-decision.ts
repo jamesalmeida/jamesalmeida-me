@@ -1,5 +1,20 @@
 import { SITE } from "@/data/site";
 
+export {
+  FALLBACK_REASON,
+  QUALITY_SIGNAL_THRESHOLD,
+  SENTIMENT_CONFIDENCE_MIN,
+  SENTIMENT_LABEL,
+  WENT_BADLY_THRESHOLD,
+  decideQuality,
+  qualityView,
+  wentBadlyFlag,
+  type QualityDecision,
+  type QualityReadings,
+  type QualityView,
+  type Sentiment,
+} from "./jev-quality";
+
 // Thresholds are this app's policy, adapted from TypeSafe's guardrails cookbook.
 // A hazard at or above the action line blocks the turn. A milder hit blocks only
 // when the severity score reaches "serious" (2 on a 0–3 scale). An intent nudges

@@ -15,6 +15,10 @@
   --accent: #2f4858;
   --accent-foreground: #ffffff;
   --danger: #a3321f;
+  /* Went-badly review badge. Warm fill, so it is not the red Blocked outline. */
+  --review: #6b4308;
+  --review-bg: #f6e7c8;
+  --review-border: #c4923a;
   /* Skaffen's outline (agent-avatars `outline`): only needed on the dark background. */
   --aa-outline-color: transparent;
 }
@@ -34,6 +38,9 @@
   --accent: #8ba4b5;
   --accent-foreground: #0a0a0a;
   --danger: #f87171;
+  --review: #f3d7a2;
+  --review-bg: #3a2c16;
+  --review-border: #c4923a;
   --aa-outline-color: rgba(255, 255, 255, 0.24);
 }
 
