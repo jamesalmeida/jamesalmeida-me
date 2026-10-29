@@ -10,7 +10,7 @@ type ModalProps = {
   onClose: () => void;
   /** Focused when the dialog closes. Defaults to whatever had focus when it opened. */
   returnFocusRef?: RefObject<HTMLElement | null>;
-  /** "center" for a dialog box; "sheet" for a full-screen panel that is a side panel from `sm`. */
+  /** "center" for a dialog box; "sheet" for a floating panel at the top (top right from `sm`). */
   layout?: "center" | "sheet";
 };
 
@@ -18,7 +18,7 @@ type ModalProps = {
 const LAYOUT_CLASSES = {
   center:
     "items-center justify-center px-4 backdrop:bg-[rgba(0,0,0,0.4)] backdrop:backdrop-blur-[8px]",
-  sheet: "items-stretch justify-end backdrop:bg-transparent sm:p-5",
+  sheet: "items-start justify-center p-4 backdrop:bg-transparent sm:justify-end sm:p-5",
 };
 
 // Native <dialog> opened with showModal(): the browser traps focus, closes on Escape
