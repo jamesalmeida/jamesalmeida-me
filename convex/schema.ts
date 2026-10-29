@@ -9,6 +9,7 @@ export const jevIntent = v.union(
   v.literal("suggest_book_call"),
   v.literal("suggest_email"),
 );
+export const sentiment = v.union(v.literal("positive"), v.literal("neutral"), v.literal("negative"));
 
 // Where a visit came from. Captured in the browser (lib/visit.ts) and checked on the
 // server (lib/analytics.ts). No IP addresses or user agents on the visit itself.
@@ -44,6 +45,14 @@ export default defineSchema({
     intent: v.optional(jevIntent),
     // 0–3. Jev's fit score for this conversation, updated on each screened turn.
     fitScore: v.optional(v.number()),
+    // Latest after-reply quality score. Absent when Jev is off or the call failed.
+    // A blocked conversation is not given these, and /admin hides a went-badly flag
+    // if one was stored before the block.
+    sentiment: v.optional(sentiment),
+    // 0–1. Probability the conversation went badly.
+    wentBadly: v.optional(v.number()),
+    reason: v.optional(v.string()),
+    scoredAt: v.optional(v.number()),
     expiresAt: v.number(),
   })
     .index("by_conversationId", ["conversationId"])
