@@ -26,7 +26,7 @@ Deployed on Vercel as project `jamesalmeida-portfolio`, team GSV (slug `gsv-2`).
 | `/about` | "Why I do this": the story and past work from `PROJECTS`. `/work` redirects here. |
 | `/privacy` | Privacy policy. |
 | `/admin` | Password-gated admin. Not indexed. Tabs: **Insights** (transcripts, funnel, feedback), **Leads**, and **Settings** (model switcher, Skaffen's avatar, landing headline/examples, chat motion, and the link-preview share card studio). |
-| `/api/chat` | Streaming chat |
+| `/api/chat` | Streaming chat. A turn in a chat that was already blocked is refused without calling Jev or the reply model. |
 | `/api/generate-title` | Short title for a saved chat |
 | `/api/admin/model` | Read or set the signed model cookie |
 | `/api/events` | Funnel events from the browser (`landing_view`, `booking_clicked`, `email_clicked`, `example_sent`) |
@@ -74,7 +74,9 @@ TYPESAFE_API_KEY=...         # optional. Jev screens messages before the chat mo
 
 Convex is optional locally: set `CONVEX_URL` and `CONVEX_SERVER_SECRET` to store transcripts, events, feedback, leads and site settings; without them nothing is stored. `npm run build` deploys `convex/` when `CONVEX_DEPLOY_KEY` is set. See `.env.example`.
 
-The chat cannot answer without an OpenAI or Anthropic key. `TYPESAFE_API_KEY` is optional and server-only: when it is set, [Jev](https://docs.typesafe.ai/introduction/quickstart.md) (`@typesafe-ai/sdk`) screens each visitor message for spam, jailbreaks and abuse before the chat model runs, and chooses whether to nudge a booking or email card. The fit score and any block are stored with the chat (and the score with a lead) for `/admin`. After a reply finishes, Jev also scores visitor sentiment and whether the chat went badly; `/admin` can filter to those chats. When the key is unset, or Jev fails, the check is skipped and the reply model still runs. `npm run typecheck` and `npm run build` do not need any of these keys.
+The chat cannot answer without an OpenAI or Anthropic key. `TYPESAFE_API_KEY` is optional and server-only: when it is set, [Jev](https://docs.typesafe.ai/introduction/quickstart.md) (`@typesafe-ai/sdk`) screens each visitor message for spam, jailbreaks and abuse before the chat model runs, and chooses whether to nudge a booking or email card. A request for the assistant's own secrets — API keys, credentials, passwords, tokens, the system prompt, or environment variables — counts as a jailbreak, or as abuse when the visitor wants to take or use them.
+
+A blocked turn ends the chat: the composer locks and later messages in that chat are refused without calling Jev or the reply model. The fit score, the block and its reason are stored with the chat, and on a flagged chat the visitor IP is stored with it too, for `/admin` to review; the fit score is also copied to a lead. After a reply finishes, Jev also scores visitor sentiment and whether the chat went badly; `/admin` can filter to those chats. Ordinary chats store no IP address and no user agent. When the key is unset, or a Jev call fails, the check is skipped and the reply model still runs — except an obvious request for the assistant's keys or prompt, which still blocks from the message text. `npm run typecheck` and `npm run build` do not need any of these keys.
 
 ```bash
 npm run typecheck
