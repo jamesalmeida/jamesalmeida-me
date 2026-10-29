@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { RETENTION_MS, assertServer, mutation } from "./lib";
+import { parseClientIp } from "../lib/client-ip";
+import { RETENTION_MS, assertServer, mutation, query } from "./lib";
 import { blockReason, jevIntent, visitContext } from "./schema";
 
 // Fields written onto the conversation from one Jev screen. A later passing turn
@@ -10,16 +11,25 @@ function screenFields(screen: {
   blockReason?: "spam" | "jailbreak" | "abuse";
   intent?: "continue_chat" | "suggest_book_call" | "suggest_email";
   fitScore?: number;
+  clientIp?: string;
 } | undefined) {
   if (!screen) return {};
   const fitScore =
     typeof screen.fitScore === "number" && Number.isFinite(screen.fitScore)
       ? Math.min(3, Math.max(0, screen.fitScore))
       : undefined;
+  // Only a blocked turn may carry an IP, and only when it is one address.
+  const clientIp = screen.blocked ? parseClientIp(screen.clientIp) : undefined;
   return {
     ...(screen.intent ? { intent: screen.intent } : {}),
     ...(fitScore !== undefined ? { fitScore } : {}),
-    ...(screen.blocked ? { blocked: true as const, ...(screen.blockReason ? { blockReason: screen.blockReason } : {}) } : {}),
+    ...(screen.blocked
+      ? {
+          blocked: true as const,
+          ...(screen.blockReason ? { blockReason: screen.blockReason } : {}),
+          ...(clientIp ? { clientIp } : {}),
+        }
+      : {}),
   };
 }
 
@@ -39,6 +49,7 @@ export const recordUserMessage = mutation({
         blockReason: v.optional(blockReason),
         intent: v.optional(jevIntent),
         fitScore: v.optional(v.number()),
+        clientIp: v.optional(v.string()),
       }),
     ),
   },
@@ -129,5 +140,18 @@ export const recordReply = mutation({
         expiresAt: now + RETENTION_MS,
       });
     }
+  },
+});
+
+// Whether this conversation was already stopped. /api/chat refuses later turns.
+export const blockState = query({
+  args: { secret: v.string(), conversationId: v.string() },
+  handler: async (ctx, { secret, conversationId }) => {
+    assertServer(secret);
+    const conversation = await ctx.db
+      .query("conversations")
+      .withIndex("by_conversationId", (q) => q.eq("conversationId", conversationId))
+      .unique();
+    return { blocked: conversation?.blocked === true };
   },
 });

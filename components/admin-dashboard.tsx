@@ -53,6 +53,7 @@ type Dashboard = {
     leadCaptured: boolean;
     blocked: boolean;
     blockReason: BlockReason | null;
+    clientIp: string | null;
     intent: JevIntent | null;
     fitScore: number | null;
     firstMessage: string;
@@ -89,6 +90,7 @@ type Transcript = {
   model?: string;
   blocked?: boolean;
   blockReason?: BlockReason;
+  clientIp?: string | null;
   intent?: JevIntent;
   fitScore?: number;
   messages: { role: "user" | "assistant"; text: string; tools?: string[]; createdAt: number }[];
@@ -215,6 +217,22 @@ function Stat({ label, value, note }: { label: string; value: number | string; n
 function Badge({ children }: { children: ReactNode }) {
   return (
     <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--muted)]">{children}</span>
+  );
+}
+
+function BlockedBadge({ reason }: { reason: BlockReason | null }) {
+  return (
+    <span className="rounded-full border border-[var(--danger)] px-2.5 py-0.5 text-xs font-semibold text-[var(--danger)]">
+      Blocked{reason ? ` · ${BLOCK_REASON_LABEL[reason]}` : ""}
+    </span>
+  );
+}
+
+function BlockedIp({ ip }: { ip: string }) {
+  return (
+    <span className="rounded-full border border-[var(--danger)] px-2.5 py-0.5 text-xs font-medium text-[var(--danger)]">
+      IP <span className="select-all">{ip}</span>
+    </span>
   );
 }
 
@@ -403,6 +421,12 @@ export function Insights({ dashboard, onOpenConversation }: { dashboard: Dashboa
                   className="flex w-full flex-col gap-1.5 py-3.5 text-left text-sm transition hover:opacity-80"
                 >
                   <span className="line-clamp-2 leading-6">{chat.firstMessage || "(no text)"}</span>
+                  {chat.blocked ? (
+                    <span className="flex flex-wrap items-center gap-2">
+                      <BlockedBadge reason={chat.blockReason} />
+                      {chat.clientIp ? <BlockedIp ip={chat.clientIp} /> : null}
+                    </span>
+                  ) : null}
                   <span className="flex flex-wrap items-center gap-2 text-[var(--muted)]">
                     {formatDate(chat.startedAt)} · {chat.userMessages} {chat.userMessages === 1 ? "message" : "messages"}
                     {chat.referrer ? ` · ${chat.referrer}` : ""}
@@ -411,9 +435,6 @@ export function Insights({ dashboard, onOpenConversation }: { dashboard: Dashboa
                     {chat.clicked ? <Badge>Clicked</Badge> : null}
                     {chat.leadCaptured ? <Badge>Lead</Badge> : null}
                     {typeof chat.fitScore === "number" ? <Badge>{formatFit(chat.fitScore)}</Badge> : null}
-                    {chat.blocked ? (
-                      <Badge>Blocked{chat.blockReason ? ` · ${BLOCK_REASON_LABEL[chat.blockReason]}` : ""}</Badge>
-                    ) : null}
                     {chat.intent && chat.intent !== "continue_chat" ? <Badge>{INTENT_LABEL[chat.intent]}</Badge> : null}
                   </span>
                 </button>
@@ -526,6 +547,12 @@ export function TranscriptDialog({ conversationId, onClose, onLocked }: { conver
             <h2 id={titleId} className={`text-2xl tracking-[-0.02em] ${serif}`}>
               Chat transcript
             </h2>
+            {transcript?.blocked ? (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <BlockedBadge reason={transcript.blockReason ?? null} />
+                {transcript.clientIp ? <BlockedIp ip={transcript.clientIp} /> : null}
+              </div>
+            ) : null}
             {transcript ? (
               <p className="mt-1 text-sm text-[var(--muted)]">
                 {formatDate(transcript.startedAt)}
@@ -536,9 +563,6 @@ export function TranscriptDialog({ conversationId, onClose, onLocked }: { conver
                   ? ` · ${formatFit(transcript.fitScore)} · ${fitLabel(transcript.fitScore)}`
                   : ""}
                 {transcript.intent && transcript.intent !== "continue_chat" ? ` · ${INTENT_LABEL[transcript.intent]}` : ""}
-                {transcript.blocked
-                  ? ` · Blocked${transcript.blockReason ? ` (${BLOCK_REASON_LABEL[transcript.blockReason]})` : ""}`
-                  : ""}
               </p>
             ) : null}
           </div>

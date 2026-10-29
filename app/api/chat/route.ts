@@ -6,7 +6,8 @@ import { rejectBots } from "@/lib/bot-protection";
 import { parseId, parseVisitContext } from "@/lib/analytics";
 import { blockedChatResponse } from "@/lib/blocked-chat";
 import { chatTools } from "@/lib/chat-tools";
-import { BLOCKED_REPLY, intentNudge, storedScreen } from "@/lib/jev-decision";
+import { parseClientIp } from "@/lib/client-ip";
+import { BLOCKED_REPLY, intentNudge, screenForStore, threadIsClosed } from "@/lib/jev-decision";
 import { screenVisitorTurn } from "@/lib/jev.server";
 import { getModelOption, MODEL_COOKIE_NAME } from "@/lib/models";
 import { createModel } from "@/lib/models.server";
@@ -19,7 +20,7 @@ import {
 } from "@/lib/rate-limit";
 import { payloadTooLargeResponse, readBodyWithLimit } from "@/lib/request-body";
 import { sanitizeMessages } from "@/lib/sanitize-messages";
-import { storeApi, storeMutationQuietly } from "@/lib/store.server";
+import { storeApi, storeMutationQuietly, storeQuery } from "@/lib/store.server";
 import { getSystemPrompt } from "@/lib/system-prompt";
 
 export const maxDuration = 30;
@@ -28,8 +29,9 @@ export const dynamic = "force-dynamic";
 const MAX_BODY_BYTES = 200 * 1024;
 
 export async function POST(req: Request) {
+  const clientIp = getClientIp(req.headers);
   const limit = checkRateLimits([
-    [chatIpLimiter, getClientIp(req.headers)],
+    [chatIpLimiter, clientIp],
     [chatGlobalLimiter, "global"],
   ]);
   if (!limit.ok) return rateLimitedResponse(limit.retryAfterSeconds);
@@ -56,10 +58,17 @@ export async function POST(req: Request) {
   const cookieStore = await cookies();
   const modelId = resolveAdminModel(cookieStore.get(MODEL_COOKIE_NAME)?.value);
 
-  // Jev screens the turn before the reply model. No key, or a failed call, skips it.
-  const decision = await screenVisitorTurn(messages);
-  const screen = decision ? storedScreen(decision) : undefined;
+  // Jev screens the turn before the reply model. No key skips it. A chat that was
+  // already blocked stays closed, and does not call Jev or the reply model again.
   const conversationId = parseId(fields.conversationId);
+  const transcriptClosed = threadIsClosed(messages);
+  const chatClosed = transcriptClosed || (await storedChatIsBlocked(transcriptClosed ? undefined : conversationId));
+  const decision = chatClosed ? null : await screenVisitorTurn(messages);
+  const refusing = chatClosed || decision?.action === "block";
+  const screen = screenForStore(decision, {
+    chatClosed,
+    clientIp: refusing ? parseClientIp(clientIp) : undefined,
+  });
   const userText = messageText(messages[messages.length - 1]);
   const recordUser = () => {
     if (!conversationId) return Promise.resolve();
@@ -73,15 +82,14 @@ export async function POST(req: Request) {
     });
   };
 
-  if (decision?.action === "block") {
+  if (refusing) {
+    // Write the block before the response, so a follow-up turn already sees it.
     if (conversationId) {
-      after(async () => {
-        await recordUser();
-        await storeMutationQuietly(storeApi.chats.recordReply, {
-          conversationId,
-          text: BLOCKED_REPLY,
-          tools: [],
-        });
+      await recordUser();
+      await storeMutationQuietly(storeApi.chats.recordReply, {
+        conversationId,
+        text: BLOCKED_REPLY,
+        tools: [],
       });
     }
     return blockedChatResponse(BLOCKED_REPLY);
@@ -137,6 +145,18 @@ export async function POST(req: Request) {
   }
 
   return result.toUIMessageStreamResponse();
+}
+
+async function storedChatIsBlocked(conversationId: string | undefined): Promise<boolean> {
+  if (!conversationId) return false;
+  try {
+    const state = await storeQuery<{ blocked?: boolean } | null>(storeApi.chats.blockState, { conversationId });
+    return state?.blocked === true;
+  } catch {
+    // The transcript check still closes an honest client. Don't echo the visitor's text.
+    console.error("Could not read whether this chat was already blocked.");
+    return false;
+  }
 }
 
 function messageText(message: UIMessage | undefined): string {
