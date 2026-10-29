@@ -11,7 +11,7 @@ export const jevIntent = v.union(
 );
 
 // Where a visit came from. Captured in the browser (lib/visit.ts) and checked on the
-// server (lib/analytics.ts). No IP addresses or user agents.
+// server (lib/analytics.ts). No IP addresses or user agents on the visit itself.
 export const visitContext = {
   headline: v.optional(v.string()),
   referrer: v.optional(v.string()),
@@ -38,6 +38,9 @@ export default defineSchema({
     leadCaptured: v.boolean(),
     blocked: v.optional(v.boolean()),
     blockReason: v.optional(blockReason),
+    // Visitor IP. Set only when a turn is blocked for spam, jailbreak, or abuse.
+    // Ordinary chats leave this unset. Deleted with the conversation after 90 days.
+    clientIp: v.optional(v.string()),
     intent: v.optional(jevIntent),
     // 0–3. Jev's fit score for this conversation, updated on each screened turn.
     fitScore: v.optional(v.number()),

@@ -99,6 +99,7 @@ export const dashboard = query({
           leadCaptured: conversation.leadCaptured,
           blocked: conversation.blocked ?? false,
           blockReason: conversation.blockReason ?? null,
+          clientIp: conversation.blocked && conversation.clientIp ? conversation.clientIp : null,
           intent: conversation.intent ?? null,
           fitScore: conversation.fitScore ?? null,
           firstMessage: first?.text.slice(0, 160) ?? "",
@@ -178,9 +179,10 @@ export const conversation = query({
       .query("messages")
       .withIndex("by_conversation", (q) => q.eq("conversationId", conversationId))
       .take(500);
-    const { _id, _creationTime, ...details } = conversation;
+    const { _id, _creationTime, clientIp, ...details } = conversation;
     return {
       ...details,
+      clientIp: conversation.blocked && clientIp ? clientIp : null,
       messages: messages.map(({ role, text, tools, createdAt }) => ({ role, text, tools, createdAt })),
     };
   },

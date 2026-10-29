@@ -30,12 +30,34 @@ export const INTENT_LABEL: Record<JevIntent, string> = {
   suggest_email: "Suggest email",
 };
 
-/** Shown as Skaffen's reply when a turn is blocked. The chat model is not called. */
-export const BLOCKED_REPLY = `I can't take that one further. If you're here about your own work and how James can help, tell me a little about that, or email him at ${SITE.email}.`;
+/** Shown as Skaffen's reply when a turn is blocked. The chat model is not called. The chat ends. */
+export const BLOCKED_REPLY = `I can't take that one further. This chat is closed. If you're here about your own work and how James can help, email him at ${SITE.email}.`;
+
+/** Earlier wording. Still closes a thread that was blocked before the copy changed. */
+const EARLIER_BLOCKED_REPLY = `I can't take that one further. If you're here about your own work and how James can help, tell me a little about that, or email him at ${SITE.email}.`;
+
+const CLOSED_REPLIES = [BLOCKED_REPLY, EARLIER_BLOCKED_REPLY];
 
 /** True when the reply is the canned refusal, so the client must not send the turn to the title model. */
 export function replyWasBlocked(text: string): boolean {
-  return text.trim() === BLOCKED_REPLY;
+  const trimmed = text.trim();
+  return CLOSED_REPLIES.some((reply) => reply === trimmed);
+}
+
+type TextPart = { type: string; text?: unknown };
+
+/** True when an earlier assistant turn was the canned refusal, so this chat stays closed. */
+export function threadIsClosed(
+  messages: readonly { role: string; parts?: readonly TextPart[]; content?: readonly TextPart[] }[],
+): boolean {
+  return messages.some((message) => {
+    if (message.role !== "assistant") return false;
+    const parts = message.parts ?? message.content ?? [];
+    const text = parts
+      .flatMap((part) => (part.type === "text" && typeof part.text === "string" ? [part.text] : []))
+      .join("\n\n");
+    return replyWasBlocked(text);
+  });
 }
 
 export type JevReadings = {
@@ -132,6 +154,23 @@ export function storedScreen(decision: JevDecision): StoredScreen {
     intent: decision.intent,
     fitScore: decision.fitScore,
   };
+}
+
+/** What /api/chat writes for one turn. `clientIp` is set only when that turn is blocked. */
+export type ScreenWrite = StoredScreen | { blocked: true; blockReason?: BlockReason; clientIp?: string };
+
+export function screenForStore(
+  decision: JevDecision | null,
+  options: { chatClosed?: boolean; clientIp?: string } = {},
+): ScreenWrite | undefined {
+  const chatClosed = options.chatClosed === true;
+  if (!decision && !chatClosed) return undefined;
+  const clientIp = options.clientIp || undefined;
+  if (!decision) return { blocked: true, ...(clientIp ? { clientIp } : {}) };
+  const stored = storedScreen(decision);
+  const blocked = stored.blocked || chatClosed;
+  if (!blocked) return stored;
+  return { ...stored, blocked: true, ...(clientIp ? { clientIp } : {}) };
 }
 
 /** Turn-specific instruction. The choice itself comes from Jev, not from this text. */

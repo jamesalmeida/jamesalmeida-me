@@ -21,7 +21,7 @@ import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
 import { play } from "cuelume";
-import { ArrowDown, ArrowUp, Square } from "lucide-react";
+import { ArrowDown, ArrowUp, Lock, Square } from "lucide-react";
 import {
   createContext,
   useCallback,
@@ -31,10 +31,12 @@ import {
   useRef,
   useState,
   type ComponentPropsWithoutRef,
+  type FormEvent,
   type KeyboardEvent,
   type RefObject,
 } from "react";
 import { SITE } from "@/data/site";
+import { threadIsClosed } from "@/lib/jev-decision";
 import { toUIMessages } from "@/lib/message-convert";
 import { getVisitContext, getVisitId, trackEvent } from "@/lib/visit";
 import { serif } from "./booking-button";
@@ -606,6 +608,10 @@ function useRotatingExample(enabled: boolean) {
   return examples[index % examples.length];
 }
 
+function useChatClosed() {
+  return useThread((state) => threadIsClosed(state.messages));
+}
+
 function Composer({
   variant,
   onCancel,
@@ -614,6 +620,7 @@ function Composer({
   onCancel: () => void;
 }) {
   const composerRuntime = useComposerRuntime();
+  const closed = useChatClosed();
   const isRunning = useThread((state) => state.isRunning);
   const charCount = useComposer((state) => state.text.length);
   const isBlank = useComposer((state) => state.text.trim().length === 0);
@@ -656,7 +663,7 @@ function Composer({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (!isLanding || !isBlank || isRunning) return;
+    if (closed || !isLanding || !isBlank || isRunning) return;
     if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
       sendExample();
@@ -670,8 +677,13 @@ function Composer({
     ? "min-h-12 py-2.5 text-base sm:min-h-14 sm:py-4 sm:text-xl"
     : "min-h-11 py-2.5 text-base sm:min-h-12 sm:text-lg";
 
+  const closedNoteId = useId();
+  const keepClosed = (event: FormEvent) => {
+    event.preventDefault();
+  };
+
   return (
-    <ComposerPrimitive.Root>
+    <ComposerPrimitive.Root onSubmit={closed ? keepClosed : undefined}>
       <motion.div
         layoutId="composer"
         layout="position"
@@ -689,15 +701,17 @@ function Composer({
             rows={1}
             unstable_focusOnScrollToBottom={false}
             unstable_focusOnRunStart={false}
+            disabled={closed}
+            submitOnEnter={!closed}
             onFocus={handleFocus}
             onKeyDown={handleKeyDown}
-            className={`max-h-[160px] w-full resize-none overflow-y-auto bg-transparent leading-6 outline-none placeholder:text-[var(--muted)] ${textClass}`}
-            placeholder={isLanding ? "" : "Reply\u2026"}
-            aria-label={isLanding ? "Tell me what you\u2019re working on" : "Reply"}
+            className={`max-h-[160px] w-full resize-none overflow-y-auto bg-transparent leading-6 outline-none placeholder:text-[var(--muted)] disabled:cursor-not-allowed disabled:text-[var(--muted)] ${textClass}`}
+            placeholder={closed ? "This chat is closed" : isLanding ? "" : "Reply\u2026"}
+            aria-label={closed ? "This chat is closed" : isLanding ? "Tell me what you\u2019re working on" : "Reply"}
             maxLength={MAX_MESSAGE_CHARS}
-            aria-describedby={charCount >= CHAR_COUNTER_FROM ? charCounterId : undefined}
+            aria-describedby={closed ? closedNoteId : charCount >= CHAR_COUNTER_FROM ? charCounterId : undefined}
           />
-          {isLanding && charCount === 0 ? (
+          {isLanding && charCount === 0 && !closed ? (
             // The example slides up and out as the next one slides in.
             <div
               aria-hidden
@@ -718,7 +732,11 @@ function Composer({
             </div>
           ) : null}
         </div>
-        {isRunning ? (
+        {closed ? (
+          <span className={`${buttonClass} cursor-not-allowed`} aria-hidden>
+            <Lock size={isLanding ? 20 : 18} />
+          </span>
+        ) : isRunning ? (
           <ComposerPrimitive.Cancel
             onClick={onCancel}
             className={buttonClass}
@@ -743,7 +761,12 @@ function Composer({
           </ComposerPrimitive.Send>
         )}
       </motion.div>
-      {charCount >= CHAR_COUNTER_FROM ? (
+      {closed ? (
+        <p id={closedNoteId} className="mt-2 px-1 text-center text-sm text-[var(--muted)]">
+          This chat is closed.
+        </p>
+      ) : null}
+      {!closed && charCount >= CHAR_COUNTER_FROM ? (
         <p
           id={charCounterId}
           className="mt-1.5 px-1 text-right text-[11px] leading-4 text-[var(--muted)]"

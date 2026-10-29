@@ -37,16 +37,19 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
         <p>
           Before a reply is written, the same messages may also go to TypeSafe. Their model, Jev,
           does not write the reply. It checks the latest message for spam, attempts to override
-          the assistant, and requests for harmful or illegal help, and it scores the chat: how
-          well it fits the work I do, and whether to suggest a discovery call or an email. If
-          that check blocks a message, the message is not sent to OpenAI or Anthropic. When
-          TypeSafe is not configured, this check is skipped.
+          or jailbreak the assistant (including requests for API keys, credentials, passwords,
+          tokens, the system prompt, environment variables, or anything else behind the scenes),
+          and requests for harmful, illegal, or abusive help, including taking or using secrets
+          that aren&apos;t yours. It also scores the chat: how well it fits the work I do, and
+          whether to suggest a discovery call or an email. If that check blocks a message, the
+          message is not sent to OpenAI or Anthropic, and the chat ends there. When TypeSafe
+          is not configured, this check is skipped.
         </p>
         <p>
           I save a copy of each chat, your messages and the assistant&apos;s replies, in my
           database (hosted by Convex), so I can see what&apos;s useful and where the assistant
-          falls short. Saved chats are deleted automatically after 90 days, and so are the block
-          and the fit score stored with a chat. They aren&apos;t
+          falls short. Saved chats are deleted automatically after 90 days, and so are the block,
+          the fit score, and any IP address stored with a blocked chat. They aren&apos;t
           linked to your name or email unless you leave your email on a brief. If you leave your
           email, the fit score at that moment is saved with it. If you&apos;d like
           a chat deleted sooner, email me.
@@ -124,7 +127,10 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
       <>
         <p>
           The site is hosted on Vercel, which processes standard request data such as your IP
-          address to serve pages. I don&apos;t store IP addresses.
+          address to serve pages. I don&apos;t store IP addresses for ordinary chats, and I
+          don&apos;t store user agents. If a message is blocked as spam, a jailbreak, or abuse,
+          I save the IP address with that chat so I can review the flagged conversation. It is
+          deleted with the chat after 90 days.
         </p>
         <p>
           To limit abuse, my server counts requests per IP address in memory over a short
@@ -132,7 +138,8 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
           restarts. When you send a message, rate a reply or leave your email, Vercel BotID also
           runs a check in your browser and on the server to tell people from bots. The TypeSafe
           check described above is what stops a message that looks like spam, a jailbreak or
-          abuse before a reply is written.
+          abuse before a reply is written. Once a chat is blocked, further messages in it are
+          refused.
         </p>
       </>
     ),
