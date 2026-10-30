@@ -116,7 +116,7 @@ lib/
   chat-tools.ts                # showBookingCta, showBrief
   tool-results.ts              # Tool input schemas + pure output builders (shared)
   brief.ts                     # Brief fields, text, mailto and Cal links (client-safe)
-  feedback.ts                  # Feedback payload + submitFeedback() stub (sends nothing yet, issue #47)
+  feedback.ts                  # Feedback payload + submitFeedback() → POST /api/feedback
   sanitize-messages.ts         # Untrusted chat body → last 20 UIMessages
   request-body.ts              # Body size cap (Content-Length, then UTF-8 bytes)
   rate-limit.ts                # In-memory per-IP / global fixed-window limiter
