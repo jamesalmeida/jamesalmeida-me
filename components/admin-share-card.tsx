@@ -293,6 +293,8 @@ export function AdminShareCard() {
           value={card.avatar}
           onChange={(avatar) => update({ avatar })}
           preview={false}
+          // A still image: pokes and dozing don't apply.
+          behaviour={false}
           style={editorTheme}
         />
       </div>

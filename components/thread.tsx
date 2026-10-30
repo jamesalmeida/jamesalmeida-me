@@ -380,22 +380,32 @@ function hasVisibleContent(message: ThreadMessage) {
   );
 }
 
+// A visitor message that thanks Skaffen: its reply gets a heart-eyed moment.
+const THANKS = /\b(thanks|thank you|thank u|thx|cheers|much appreciated|appreciate it)\b/i;
+
+function isThanks(message: ThreadMessage | undefined) {
+  if (message?.role !== "user") return false;
+  return message.content.some((part) => part.type === "text" && THANKS.test(part.text));
+}
+
 // Shows the last run's error under the last user message when the run failed
 // before the assistant produced any content. Errors after some content show
 // inside the assistant message (MessagePrimitive.Error).
+// No reply shows then, so Skaffen (looking sorry) sits above the error instead.
 function RunErrorNotice({ error }: { error: string | null }) {
+  const avatar = useContext(SkaffenAvatarContext);
   const isRunning = useThread((state) => state.isRunning);
   const last = useThread((state) => state.messages[state.messages.length - 1]);
   if (!error || isRunning || !last) return null;
   if (last.role === "assistant" && hasVisibleContent(last)) return null;
 
   return (
-    <p
-      role="alert"
-      className="mt-7 self-start rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-    >
-      {error}
-    </p>
+    <div className="mt-7 flex flex-col items-start gap-3">
+      <SkaffenAvatar avatar={avatar} mood="sorry" />
+      <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        {error}
+      </p>
+    </div>
   );
 }
 
@@ -437,8 +447,9 @@ function useThinkingHold(isNew: boolean) {
 
 // Skaffen above the latest reply, as its status: thinking from the moment a message
 // is sent until the reply shows (at least the minimum thinking time), writing while
-// it streams, a happy moment when a new reply brings the brief, listening while the
-// visitor types, otherwise idle. Beside it, "Thinking…" / "Writing…" and then
+// it streams, a heart-eyed moment when it answers a thank-you, a happy moment when
+// a new reply brings the brief, listening while the visitor types, sorry when the
+// reply failed partway, otherwise idle. Beside it, "Thinking…" / "Writing…" and then
 // "James' AI assistant". It pops in under each new
 // message and shrinks away from the previous reply. Tapping it is the PlayfulAvatar
 // easter egg.
@@ -450,17 +461,28 @@ function ReplyAvatar({ isNew, isThinking }: { isNew: boolean; isThinking: boolea
   const bringsBrief = useMessage((message) =>
     message.content.some((part) => part.type === "tool-call" && part.toolName === "showBrief"),
   );
+  const failed = useMessage((message) => message.status?.type === "incomplete" && message.status.reason === "error");
+  const messageId = useMessage((message) => message.id);
+  const answersThanks = useThread((state) => {
+    const index = state.messages.findIndex((message) => message.id === messageId);
+    return index > 0 && isThanks(state.messages[index - 1]);
+  });
   const isVisitorTyping = useThreadComposer((state) => state.text.trim().length > 0);
+  const isLoved = useHappyMoment(isNew && answersThanks && !isRunning);
   const isHappy = useHappyMoment(isNew && bringsBrief && !isRunning);
   const mood: AvatarMood = isThinking || (isRunning && !hasContent)
     ? "thinking"
     : isRunning
       ? "writing"
-      : isHappy
-      ? "happy"
-      : isVisitorTyping
-        ? "listening"
-        : "idle";
+      : isLoved
+        ? "love"
+        : isHappy
+          ? "happy"
+          : isVisitorTyping
+            ? "listening"
+            : failed
+              ? "sorry"
+              : "idle";
   const status = mood === "thinking" ? "Thinking" : mood === "writing" ? "Writing" : SITE.assistant.role;
   const isWorking = mood === "thinking" || mood === "writing";
 

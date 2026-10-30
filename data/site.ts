@@ -28,6 +28,9 @@ export const SITE = {
       fill: "gradient",
       eyes: "tall",
       eyeColor: "white",
+      // Pokes startle it and stroking it makes it happy; it dozes off after a quiet minute.
+      interactive: true,
+      sleepAfter: 60_000,
     },
   },
   company: {

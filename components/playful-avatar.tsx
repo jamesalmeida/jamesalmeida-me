@@ -1,6 +1,14 @@
 "use client";
 
-import { AgentAvatar, EYES, type AvatarConfig, type AvatarEyes, type AvatarMood } from "@jamesalmeida/agent-avatars";
+import {
+  AgentAvatar,
+  EYES,
+  useGesture,
+  type AvatarConfig,
+  type AvatarEyes,
+  type AvatarGesture,
+  type AvatarMood,
+} from "@jamesalmeida/agent-avatars";
 import { play } from "cuelume";
 import { useAnimate } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
@@ -8,7 +16,19 @@ import { useMotion } from "./motion-settings";
 
 // How long a tap's trick lasts before Skaffen goes back to its own mood.
 const TRICK_MS = 2600;
-const TRICK_MOODS: AvatarMood[] = ["happy", "listening", "thinking", "writing"];
+const TRICK_MOODS: AvatarMood[] = [
+  "happy",
+  "love",
+  "surprised",
+  "confused",
+  "dizzy",
+  "thinking",
+  "searching",
+  "listening",
+  "writing",
+];
+// The package's gestures; its turn ("spin") is its own trick below.
+const TRICK_GESTURES: AvatarGesture[] = ["nod", "shake", "wink", "jump", "wiggle", "peek"];
 const EYE_SHAPES = Object.keys(EYES) as AvatarEyes[];
 
 type Trick = { eyes: AvatarEyes; mood: AvatarMood };
@@ -19,10 +39,12 @@ function pick<T>(items: readonly T[], not?: T): T {
 }
 
 // Skaffen's avatar as a little easter egg: tapping it swaps the eye shape and mood
-// for a few seconds, then it goes back to `mood`. Some taps also move it: half the
-// time nothing extra, otherwise a flat spin with a hop or a turn: the eyes wind up,
-// slide off one side of the body and come back from the other (the package's
-// `spin`). Reduced motion drops the movement.
+// for a few seconds, then it goes back to `mood`. Some taps also move it: a flat
+// spin with a hop (20%), a turn: the eyes wind up, slide off one side of the body
+// and come back from the other (the package's `spin`, 15%), or one of the
+// package's gestures: nod, shake, wink, jump, wiggle or peek (35%). Reduced motion
+// drops the movement. With the avatar setting's `interactive`, the press itself
+// also squashes it (a poke), and stroking it makes it happy.
 export function PlayfulAvatar({
   avatar,
   mood,
@@ -36,6 +58,7 @@ export function PlayfulAvatar({
 }) {
   const [trick, setTrick] = useState<Trick | null>(null);
   const [turns, setTurns] = useState(0);
+  const [gesture, playGesture] = useGesture();
   const timer = useRef<number | undefined>(undefined);
   const [scope, animate] = useAnimate<HTMLButtonElement>();
   const { seconds } = useMotion();
@@ -52,15 +75,17 @@ export function PlayfulAvatar({
     timer.current = window.setTimeout(() => setTrick(null), TRICK_MS);
 
     const roll = Math.random();
-    if (roll < 0.25) {
+    if (roll < 0.2) {
       // A flat spin with a hop.
       void animate(
         scope.current,
         { rotate: [0, 360], y: [0, -size * 0.3, 0] },
         { duration: seconds(0.9), ease: [0.34, 1.3, 0.64, 1] },
       );
-    } else if (roll < 0.5) {
+    } else if (roll < 0.35) {
       setTurns((count) => count + 1);
+    } else if (roll < 0.7) {
+      playGesture(pick(TRICK_GESTURES));
     }
   };
 
@@ -87,6 +112,7 @@ export function PlayfulAvatar({
         outline
         spin={turns}
         spinMs={seconds(1.1) * 1000}
+        gesture={gesture}
       />
     </button>
   );

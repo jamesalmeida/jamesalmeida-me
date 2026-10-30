@@ -1,7 +1,13 @@
-import { COLORS, EYES, EYE_COLORS, SHAPES, resolveConfig } from "@jamesalmeida/agent-avatars";
+import { COLORS, EYES, EYE_COLORS, MAX_SLEEP_AFTER as PACKAGE_MAX_SLEEP_AFTER, SHAPES, resolveConfig } from "@jamesalmeida/agent-avatars";
 import { describe, expect, it, vi } from "vitest";
 import { SITE } from "@/data/site";
-import { AVATAR_OPTIONS, DEFAULT_SITE_AVATAR, parseAvatarSetting, storedAvatarOrDefault } from "@/lib/avatar-settings";
+import {
+  AVATAR_OPTIONS,
+  DEFAULT_SITE_AVATAR,
+  MAX_SLEEP_AFTER,
+  parseAvatarSetting,
+  storedAvatarOrDefault,
+} from "@/lib/avatar-settings";
 import { getSiteAvatar } from "@/lib/avatar-settings.server";
 
 describe("SITE.assistant.avatar", () => {
@@ -16,15 +22,34 @@ describe("AVATAR_OPTIONS", () => {
     expect(AVATAR_OPTIONS.color).toEqual(Object.keys(COLORS));
     expect(AVATAR_OPTIONS.eyes).toEqual(Object.keys(EYES));
     expect(AVATAR_OPTIONS.eyeColor).toEqual(Object.keys(EYE_COLORS));
+    expect(MAX_SLEEP_AFTER).toBe(PACKAGE_MAX_SLEEP_AFTER);
   });
 });
 
 describe("parseAvatarSetting", () => {
-  const valid = { shape: "pill", color: "#ff8800", fill: "solid", eyes: "calm", eyeColor: "ink" };
+  const valid = { shape: "pill", color: "#ff8800", fill: "solid", eyes: "calm", eyeColor: "ink", interactive: false, sleepAfter: 30_000 };
+  // A look saved before the behaviour options existed.
+  const { interactive: _interactive, sleepAfter: _sleepAfter, ...lookOnly } = valid;
 
   it("accepts presets and hex colours", () => {
     expect(parseAvatarSetting(valid)).toEqual(valid);
     expect(parseAvatarSetting(DEFAULT_SITE_AVATAR)).toEqual(DEFAULT_SITE_AVATAR);
+  });
+
+  it("fills missing behaviour options from the site default, so an older saved look still loads", () => {
+    expect(parseAvatarSetting(lookOnly)).toEqual({
+      ...lookOnly,
+      interactive: DEFAULT_SITE_AVATAR.interactive,
+      sleepAfter: DEFAULT_SITE_AVATAR.sleepAfter,
+    });
+  });
+
+  it("rejects bad behaviour options", () => {
+    expect(parseAvatarSetting({ ...valid, interactive: "yes" })).toBeNull();
+    expect(parseAvatarSetting({ ...valid, sleepAfter: -1 })).toBeNull();
+    expect(parseAvatarSetting({ ...valid, sleepAfter: MAX_SLEEP_AFTER + 1 })).toBeNull();
+    expect(parseAvatarSetting({ ...valid, sleepAfter: 1.5 })).toBeNull();
+    expect(parseAvatarSetting({ ...valid, sleepAfter: "60000" })).toBeNull();
   });
 
   it("rejects unknown values, missing or extra keys, and non-objects", () => {
