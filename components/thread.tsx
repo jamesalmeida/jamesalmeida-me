@@ -10,6 +10,7 @@ import {
   useComposer,
   useComposerRuntime,
   useMessage,
+  useMessagePartText,
   useThread,
   useThreadComposer,
   type ThreadMessage,
@@ -28,6 +29,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ComponentPropsWithoutRef,
@@ -44,6 +46,7 @@ import { LandingHeadline } from "./landing-headline";
 import { useLanding } from "./landing-settings";
 import { MessageActions } from "./message-actions";
 import { useMotion } from "./motion-settings";
+import { usePacedText } from "./paced-text";
 import { BouncingDots } from "./bouncing-dots";
 import { SkaffenAvatar } from "./playful-avatar";
 import { PrivacyNotice } from "./privacy-notice";
@@ -122,6 +125,45 @@ function followKeyboard(scroll: () => void, ms = 1000) {
   window.setTimeout(() => viewport.removeEventListener("resize", onResize), ms);
 }
 
+// The message viewport, so the composer can glide it when a message is sent.
+const ViewportRefContext = createContext<RefObject<HTMLDivElement | null>>({ current: null });
+
+const glides = new WeakMap<HTMLElement, () => void>();
+
+// Scrolls the viewport to the bottom over `ms`, easing in and out, so the previous
+// messages visibly move up instead of jumping away. The target is read every frame,
+// because the reply's room and the phone keyboard change it on the way. A call while
+// it's gliding lets it carry on. The visitor scrolling stops it. Instant with
+// reduced motion.
+function glideToBottom(element: HTMLElement | null, ms: number) {
+  if (!element || glides.has(element)) return;
+  if (ms <= 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    element.scrollTop = element.scrollHeight;
+    return;
+  }
+  const from = element.scrollTop;
+  const start = performance.now();
+  let frame = 0;
+  const stop = () => {
+    cancelAnimationFrame(frame);
+    glides.delete(element);
+    element.removeEventListener("wheel", stop);
+    element.removeEventListener("touchstart", stop);
+  };
+  const tick = (now: number) => {
+    const t = Math.min(1, (now - start) / ms);
+    const eased = t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2;
+    const target = element.scrollHeight - element.clientHeight;
+    element.scrollTop = from + (target - from) * eased;
+    if (t < 1) frame = requestAnimationFrame(tick);
+    else stop();
+  };
+  glides.set(element, stop);
+  element.addEventListener("wheel", stop, { passive: true });
+  element.addEventListener("touchstart", stop, { passive: true });
+  frame = requestAnimationFrame(tick);
+}
+
 
 export function Thread({
   avatar = SITE.assistant.avatar,
@@ -187,6 +229,7 @@ function ThreadBody({
 }) {
   const isEmpty = useThread((state) => state.messages.length === 0);
   const landingExitSeconds = useMotion().seconds(0.45);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className="relative min-h-0 flex-1">
@@ -212,19 +255,23 @@ function ThreadBody({
         ) : null}
       </AnimatePresence>
       {isEmpty ? null : (
-        <>
+        <ViewportRefContext.Provider value={viewportRef}>
           <h1 className="sr-only">Chat with {SITE.assistant.name}, {SITE.assistant.role}</h1>
           <ConversationPresence onConversationChange={onConversationChange} />
           <KeepAnchorOnRunEnd />
           {/* turnAnchor="top": each new message scrolls to the top of the viewport and
               the reply streams in below it (MessagePrimitive.Root adds the room for it).
+              The Composer glides it there (glideToBottom), so assistant-ui's instant
+              scroll on run start is off.
               Spacing is padding on each message, not a flex gap, so the anchored
               message's measured height includes it. The composer is a sticky footer,
               so messages slide behind it, and its height counts too. The message
               column grows to push the footer down; don't use mt-auto on a footer,
               because assistant-ui counts a footer's top margin in its height. */}
           <ThreadPrimitive.Viewport
+            ref={viewportRef}
             turnAnchor="top"
+            scrollToBottomOnRunStart={false}
             className="absolute inset-0 flex flex-col overflow-y-auto"
           >
             <div className="mx-auto flex w-full max-w-[760px] shrink-0 grow flex-col px-4 sm:box-content sm:px-12">
@@ -252,7 +299,7 @@ function ThreadBody({
             aria-hidden
             className="pointer-events-none absolute inset-x-0 top-0 z-10 h-7 bg-[linear-gradient(to_bottom,var(--background),transparent)]"
           />
-        </>
+        </ViewportRefContext.Provider>
       )}
     </div>
   );
@@ -453,7 +500,7 @@ function useThinkingHold(isNew: boolean) {
 // "James' AI assistant". It pops in under each new
 // message and shrinks away from the previous reply. Tapping it is the PlayfulAvatar
 // easter egg.
-function ReplyAvatar({ isNew, isThinking }: { isNew: boolean; isThinking: boolean }) {
+function ReplyAvatar({ isNew, isRevealing, isThinking }: { isNew: boolean; isRevealing: boolean; isThinking: boolean }) {
   const avatar = useContext(SkaffenAvatarContext);
   const { spring, seconds } = useMotion();
   const isRunning = useMessage((message) => message.status?.type === "running");
@@ -468,11 +515,13 @@ function ReplyAvatar({ isNew, isThinking }: { isNew: boolean; isThinking: boolea
     return index > 0 && isThanks(state.messages[index - 1]);
   });
   const isVisitorTyping = useThreadComposer((state) => state.text.trim().length > 0);
-  const isLoved = useHappyMoment(isNew && answersThanks && !isRunning);
-  const isHappy = useHappyMoment(isNew && bringsBrief && !isRunning);
+  // Writing while the reply streams and until its text has all appeared.
+  const isWriting = isRunning || isRevealing;
+  const isLoved = useHappyMoment(isNew && answersThanks && !isWriting);
+  const isHappy = useHappyMoment(isNew && bringsBrief && !isWriting);
   const mood: AvatarMood = isThinking || (isRunning && !hasContent)
     ? "thinking"
-    : isRunning
+    : isWriting
       ? "writing"
       : isLoved
         ? "love"
@@ -494,7 +543,7 @@ function ReplyAvatar({ isNew, isThinking }: { isNew: boolean; isThinking: boolea
       exit={{ scale: 0, opacity: 0, height: 0 }}
       transition={isNew ? { ...spring(0.8, 0.3), delay: seconds(0.25) } : spring(0.6, 0.1)}
     >
-      <SkaffenAvatar avatar={avatar} mood={mood} />
+      <SkaffenAvatar avatar={avatar} mood={mood === "writing" ? "idle" : mood} speaking={mood === "writing"} />
       {/* Its status, a little dimmer than the reply: what it's doing while it works,
           then who it is. Hidden from screen readers: the sr-only heading says who's
           talking and "Writing a reply" covers the wait. */}
@@ -526,6 +575,18 @@ function AssistantMessage() {
   const hasContent = hasVisibleContent(message);
   const isWriting = message.status?.type === "running";
   const hasText = message.content.some((part) => part.type === "text" && part.text.trim().length > 0);
+  // Text parts still appearing (MarkdownText paces them), by part index.
+  const [revealing, setRevealing] = useState<ReadonlySet<number>>(() => new Set());
+  const reportRevealing = useCallback((index: number, on: boolean) => {
+    setRevealing((current) => {
+      if (current.has(index) === on) return current;
+      const next = new Set(current);
+      if (on) next.add(index);
+      else next.delete(index);
+      return next;
+    });
+  }, []);
+  const isRevealing = revealing.size > 0;
 
   // An empty reply that is no longer running failed or was stopped: show nothing
   // here (RunErrorNotice shows the error) instead of an empty reply.
@@ -542,7 +603,7 @@ function AssistantMessage() {
         <h2 className="sr-only">{SITE.assistant.role} said:</h2>
         {/* Only the latest reply has Skaffen above it. */}
         <AnimatePresence initial={false}>
-          {isLast ? <ReplyAvatar key="avatar" isNew={isNew} isThinking={isHeld} /> : null}
+          {isLast ? <ReplyAvatar key="avatar" isNew={isNew} isRevealing={isRevealing} isThinking={isHeld} /> : null}
         </AnimatePresence>
         {hasContent && !isHeld ? (
           <motion.div
@@ -551,11 +612,13 @@ function AssistantMessage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: seconds(0.5), ease: "easeOut" }}
           >
-            <MessagePrimitive.Parts
-              components={{
-                Text: MarkdownText,
-              }}
-            />
+            <RevealContext.Provider value={reportRevealing}>
+              <MessagePrimitive.Parts
+                components={{
+                  Text: MarkdownText,
+                }}
+              />
+            </RevealContext.Provider>
           </motion.div>
         ) : isWriting || isHeld ? (
           // Skaffen's thinking avatar above is the visual cue; this is for screen readers.
@@ -566,7 +629,7 @@ function AssistantMessage() {
             <ErrorPrimitive.Message />
           </ErrorPrimitive.Root>
         </MessagePrimitive.Error>
-        {hasText && !isWriting && !isHeld ? (
+        {hasText && !isWriting && !isRevealing && !isHeld ? (
           <motion.div
             initial={isNew || wasHeld ? { opacity: 0, y: 6 } : false}
             animate={{ opacity: 1, y: 0 }}
@@ -652,6 +715,8 @@ function Composer({
   const wasRunningRef = useRef(false);
   const charCounterId = useId();
   const scrollToBottom = useThreadViewport((state) => state.scrollToBottom);
+  const viewportRef = useContext(ViewportRefContext);
+  const glideMs = useMotion().seconds(1.4) * 1000;
 
   // Focusing the docked composer opens the phone keyboard, which shrinks the
   // viewport. Jump to the latest message, and follow the resize while the
@@ -665,16 +730,18 @@ function Composer({
 
   useEffect(() => {
     if (isRunning && !wasRunningRef.current) {
-      // Dismiss the phone keyboard once a message starts sending. The run start
-      // already scrolled the new message to the top, but the viewport grows as the
-      // keyboard closes, so scroll again to keep the message anchored at the top.
+      // Once a message starts sending, glide it up to the top of the viewport
+      // (slowly, so the earlier messages are seen moving up) and dismiss the phone
+      // keyboard. The viewport grows as the keyboard closes; the glide follows it.
+      const glide = () => glideToBottom(viewportRef.current, glideMs);
+      requestAnimationFrame(glide);
       if (typeof document !== "undefined") {
         (document.activeElement as HTMLElement | null)?.blur();
-        followKeyboard(() => scrollToBottom({ behavior: "auto" }));
+        followKeyboard(glide);
       }
     }
     wasRunningRef.current = isRunning;
-  }, [isRunning, scrollToBottom]);
+  }, [isRunning, viewportRef, glideMs]);
 
   // On the landing, sending an empty composer sends the example being shown. The
   // admin dashboard counts which examples get people started.
@@ -868,11 +935,35 @@ function MarkdownAnchor({
 
 const markdownComponents = { a: MarkdownAnchor };
 
+// Tells the reply which of its text parts are still appearing.
+const RevealContext = createContext<(index: number, revealing: boolean) => void>(() => {});
+
+// A reply's text, appearing at the site's text speed (Settings → Motion): a new
+// reply from its first character, a restored one all at once. assistant-ui's own
+// smoothing is off; `preprocess` swaps in the part shown so far.
 function MarkdownText() {
+  const { text } = useMessagePartText();
+  const { textCharsPerSecond } = useMotion();
+  const isNew = useIsNewMessage();
+  const parentId = useMessage((message) => message.parentId);
+  const index = useMessage((message) =>
+    Math.max(0, message.content.findIndex((part) => part.type === "text" && part.text.startsWith(text))),
+  );
+  const paced = usePacedText(text, textCharsPerSecond, {
+    from: isNew ? 0 : text.length,
+    key: parentId ? `${parentId}:${index}` : null,
+  });
+  const report = useContext(RevealContext);
+  useLayoutEffect(() => report(index, !paced.done), [report, index, paced.done]);
+  useLayoutEffect(() => () => report(index, false), [report, index]);
+  const preprocess = useCallback(() => paced.text, [paced.text]);
+
   return (
     <MarkdownTextPrimitive
       className="message-markdown"
       components={markdownComponents}
+      smooth={false}
+      preprocess={preprocess}
     />
   );
 }

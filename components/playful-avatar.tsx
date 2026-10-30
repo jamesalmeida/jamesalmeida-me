@@ -49,11 +49,13 @@ export function PlayfulAvatar({
   avatar,
   mood,
   size,
+  speaking = false,
   className = "",
 }: {
   avatar: AvatarConfig;
   mood: AvatarMood;
   size: number;
+  speaking?: boolean;
   className?: string;
 }) {
   const [trick, setTrick] = useState<Trick | null>(null);
@@ -113,6 +115,7 @@ export function PlayfulAvatar({
         spin={turns}
         spinMs={seconds(1.1) * 1000}
         gesture={gesture}
+        speaking={speaking}
       />
     </button>
   );
@@ -120,11 +123,11 @@ export function PlayfulAvatar({
 
 // Skaffen at its one size: 56 px, scaled to 52 px on phones with CSS (so the server
 // render and the first client render agree). The header and the reply both use it.
-export function SkaffenAvatar({ avatar, mood }: { avatar: AvatarConfig; mood: AvatarMood }) {
+export function SkaffenAvatar({ avatar, mood, speaking }: { avatar: AvatarConfig; mood: AvatarMood; speaking?: boolean }) {
   return (
     <span className="block h-13 w-13 shrink-0 sm:h-14 sm:w-14">
       <span className="block origin-top-left scale-[0.9286] sm:scale-100">
-        <PlayfulAvatar avatar={avatar} mood={mood} size={56} />
+        <PlayfulAvatar avatar={avatar} mood={mood} size={56} speaking={speaking} />
       </span>
     </span>
   );
