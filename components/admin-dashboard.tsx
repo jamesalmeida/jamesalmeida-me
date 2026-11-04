@@ -3,14 +3,19 @@
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
 import { briefEntries, type Brief } from "@/lib/brief";
+import { jobCardEntries, type JobCard } from "@/lib/job-card";
 import {
   BLOCK_REASON_LABEL,
   formatFit,
   fitLabel,
+  GOING_NOWHERE_FLAG,
   INTENT_LABEL,
+  OFFER_REASON_LABEL,
   SENTIMENT_LABEL,
   type BlockReason,
   type JevIntent,
+  type OfferReason,
+  type Readiness,
   type Sentiment,
 } from "@/lib/jev-decision";
 import { serif } from "./booking-button";
@@ -30,8 +35,9 @@ type Funnel = {
 
 type Dashboard = {
   funnel: Funnel;
+  offers: { shown: number; accepted: number; declined: number };
   headlines: { headline: string; views: number; chats: number }[];
-  examples: { example: string; sent: number; briefs: number }[];
+  examples: { example: string; sent: number; briefs: number; accepted: number }[];
   ownWords: number;
   referrers: { referrer: string; visits: number }[];
   depth: { one: number; two: number; three: number; fourPlus: number };
@@ -63,6 +69,10 @@ type Dashboard = {
     wentBadly: boolean;
     wentBadlyScore: number | null;
     reason: string | null;
+    readiness: Readiness | null;
+    hasJobCard: boolean;
+    offersShown: number;
+    offerTaken: boolean;
     firstMessage: string;
   }[];
   feedback: {
@@ -83,6 +93,8 @@ export type Lead = {
   email: string;
   name?: string;
   brief: Brief;
+  /** The visitor's own words. Not screened by Jev. */
+  note?: string;
   conversationId?: string;
   /** Fit score copied from the chat when the lead was saved. */
   fitScore?: number;
@@ -105,7 +117,19 @@ type Transcript = {
   wentBadly?: boolean;
   wentBadlyScore?: number | null;
   reason?: string | null;
+  jobCard?: JobCard;
+  readiness?: Readiness;
+  offers?: Offer[];
   messages: { role: "user" | "assistant"; text: string; tools?: string[]; createdAt: number }[];
+};
+
+type Offer = {
+  at: number;
+  turn: number;
+  kind: "brief" | "booking";
+  lead?: "book" | "note";
+  reason?: OfferReason;
+  outcome?: "accepted" | "declined";
 };
 
 type DashboardState =
@@ -258,6 +282,59 @@ function BlockedIp({ ip }: { ip: string }) {
   );
 }
 
+const score = (value: number) => value.toFixed(2);
+
+function GoingNowhereBadge({ value }: { value: number }) {
+  return <Badge>Going nowhere {score(value)}</Badge>;
+}
+
+function offerLabel(offer: Offer): string {
+  const shown = offer.kind === "brief" ? "Brief" : "Booking card";
+  const lead = offer.lead ? ` · leads with ${offer.lead === "book" ? "booking" : "a note"}` : "";
+  const why = offer.reason ? ` · ${OFFER_REASON_LABEL[offer.reason]}` : " · Skaffen's own call";
+  const outcome = offer.outcome === "accepted" ? " · Taken" : offer.outcome === "declined" ? " · Not yet" : "";
+  return `Turn ${offer.turn} · ${shown}${lead}${why}${outcome}`;
+}
+
+// Next to Fit, Blocked and Went badly: what the chat has learned and what it offered.
+function JobCardPanel({ transcript }: { transcript: Transcript }) {
+  const entries = jobCardEntries(transcript.jobCard);
+  const { readiness, offers = [] } = transcript;
+  if (entries.length === 0 && !readiness && offers.length === 0) return null;
+  return (
+    <section aria-label="Job card" className="mb-5 rounded-[1.25rem] border border-[var(--border)] bg-[var(--panel)] p-4 text-sm">
+      <h3 className="font-medium">Job card</h3>
+      {entries.length > 0 ? (
+        <dl className="mt-2 grid grid-cols-[8.5rem_minmax(0,1fr)] gap-x-3 gap-y-1 leading-6">
+          {entries.map(({ label, value }) => (
+            <div key={label} className="contents">
+              <dt className="text-[var(--muted)]">{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className="mt-1 text-[var(--muted)]">Nothing on the card yet.</p>
+      )}
+      {readiness ? (
+        <p className="mt-3 flex flex-wrap gap-1.5">
+          <Badge>Card {Math.round(readiness.cardCompleteness * 100)}%</Badge>
+          <Badge>Buying signal {score(readiness.buyingSignal)}</Badge>
+          <Badge>Fading {score(readiness.engagementFading)}</Badge>
+          <GoingNowhereBadge value={readiness.goingNowhere} />
+        </p>
+      ) : null}
+      {offers.length > 0 ? (
+        <ul className="mt-3 space-y-1 text-[var(--muted)]">
+          {offers.map((offer) => (
+            <li key={offer.at}>{offerLabel(offer)}</li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
+
 export function RangePicker({ days, onChange }: { days: number; onChange: (days: (typeof RANGES)[number]) => void }) {
   return (
     <div role="group" aria-label="Date range" className="flex gap-1.5">
@@ -290,6 +367,17 @@ export function Insights({ dashboard, onOpenConversation }: { dashboard: Dashboa
         </div>
         <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
           Visits are page loads of the chat in one browser tab. Booking clicks open Cal.com; whether they booked shows in Cal.com.
+        </p>
+      </Panel>
+
+      <Panel title="Offers">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+          <Stat label="Saw an offer" value={dashboard.offers.shown} note={`${percent(dashboard.offers.shown, funnel.chat_started)} of chats`} />
+          <Stat label="Took one" value={dashboard.offers.accepted} note={`${percent(dashboard.offers.accepted, dashboard.offers.shown)} of offers`} />
+          <Stat label="Said not yet" value={dashboard.offers.declined} note={`${percent(dashboard.offers.declined, dashboard.offers.shown)} of offers`} />
+        </div>
+        <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+          An offer is the brief or booking card. Taking it means booking, emailing or sending the brief. Open a chat to see each offer, why it was made, and the job card.
         </p>
       </Panel>
 
@@ -381,6 +469,7 @@ export function Insights({ dashboard, onOpenConversation }: { dashboard: Dashboa
                 <th className="pb-2 font-normal">First message</th>
                 <th className="pb-2 text-right font-normal">Chats</th>
                 <th className="pb-2 text-right font-normal">Got a brief</th>
+                <th className="pb-2 text-right font-normal">Took an offer</th>
               </tr>
             </thead>
             <tbody>
@@ -389,11 +478,13 @@ export function Insights({ dashboard, onOpenConversation }: { dashboard: Dashboa
                   <td className="py-2 pr-3">&ldquo;{row.example}&rdquo;</td>
                   <td className="py-2 text-right tabular-nums">{row.sent}</td>
                   <td className="py-2 text-right tabular-nums">{percent(row.briefs, row.sent)}</td>
+                  <td className="py-2 text-right tabular-nums">{percent(row.accepted, row.sent)}</td>
                 </tr>
               ))}
               <tr className="border-t border-[var(--border)] text-[var(--muted)]">
                 <td className="py-2 pr-3">Typed their own</td>
                 <td className="py-2 text-right tabular-nums">{dashboard.ownWords}</td>
+                <td className="py-2 text-right" />
                 <td className="py-2 text-right" />
               </tr>
             </tbody>
@@ -485,6 +576,16 @@ export function Insights({ dashboard, onOpenConversation }: { dashboard: Dashboa
                     {chat.clicked ? <Badge>Clicked</Badge> : null}
                     {chat.leadCaptured ? <Badge>Lead</Badge> : null}
                     {typeof chat.fitScore === "number" ? <Badge>{formatFit(chat.fitScore)}</Badge> : null}
+                    {chat.hasJobCard ? <Badge>Job card{chat.readiness ? ` ${Math.round(chat.readiness.cardCompleteness * 100)}%` : ""}</Badge> : null}
+                    {chat.offersShown > 0 ? (
+                      <Badge>
+                        {chat.offersShown} {chat.offersShown === 1 ? "offer" : "offers"}
+                        {chat.offerTaken ? " · taken" : ""}
+                      </Badge>
+                    ) : null}
+                    {chat.readiness && chat.readiness.goingNowhere >= GOING_NOWHERE_FLAG ? (
+                      <GoingNowhereBadge value={chat.readiness.goingNowhere} />
+                    ) : null}
                     {chat.sentiment ? <span>{SENTIMENT_LABEL[chat.sentiment]}</span> : null}
                     {chat.intent && chat.intent !== "continue_chat" ? <Badge>{INTENT_LABEL[chat.intent]}</Badge> : null}
                   </span>
@@ -523,7 +624,7 @@ export function Leads({
   };
 
   return (
-    <Panel title="Leads" aside={<span className="text-sm text-[var(--muted)]">Kept until you delete them</span>}>
+    <Panel title="Leads" aside={<span className="text-sm text-[var(--muted)]">Kept until you delete them. The job card stays with the chat.</span>}>
       {error ? <p role="alert" className="mb-3 text-sm text-[var(--muted)]">{error}</p> : null}
       {leads.length === 0 ? (
         <p className="text-sm text-[var(--muted)]">No one has left their email yet.</p>
@@ -559,6 +660,12 @@ export function Leads({
                     <dd>{value}</dd>
                   </div>
                 ))}
+                {lead.note ? (
+                  <div className="contents">
+                    <dt className="text-[var(--muted)]">Their note</dt>
+                    <dd className="whitespace-pre-wrap">{lead.note}</dd>
+                  </div>
+                ) : null}
               </dl>
             </li>
           ))}
@@ -630,6 +737,7 @@ export function TranscriptDialog({ conversationId, onClose, onLocked }: { conver
         <div className="overflow-y-auto p-5">
           {error ? <p className="text-sm text-[var(--muted)]">{error}</p> : null}
           {!transcript && !error ? <p className="text-sm text-[var(--muted)]">Loading…</p> : null}
+          {transcript ? <JobCardPanel transcript={transcript} /> : null}
           {transcript ? (
             <ol className="space-y-4">
               {transcript.messages.map((message, index) => (

@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { RETENTION_MS, assertServer, mutation } from "./lib";
+import { RETENTION_MS, answerLatestOffer, assertServer, mutation } from "./lib";
 import { visitContext } from "./schema";
 
 const CONVERSATION_FLAGS = {
@@ -8,7 +8,8 @@ const CONVERSATION_FLAGS = {
 } as const;
 
 // Events the browser reports through /api/events (landing_view, booking_clicked,
-// email_clicked, example_sent). chat_started and brief_shown are recorded by chats.ts.
+// email_clicked, example_sent, offer_declined). chat_started, brief_shown and
+// offer_shown are recorded by chats.ts. A booking or email click answers the offer.
 export const record = mutation({
   args: {
     secret: v.string(),
@@ -21,21 +22,26 @@ export const record = mutation({
   handler: async (ctx, { secret, type, visitId, conversationId, example, context }) => {
     assertServer(secret);
     const now = Date.now();
-    await ctx.db.insert("events", {
-      type,
-      visitId,
-      conversationId,
-      example,
-      ...context,
-      at: now,
-      expiresAt: now + RETENTION_MS,
-    });
+    // answerLatestOffer records a decline, once, and only if there was an offer.
+    if (type !== "offer_declined") {
+      await ctx.db.insert("events", {
+        type,
+        visitId,
+        conversationId,
+        example,
+        ...context,
+        at: now,
+        expiresAt: now + RETENTION_MS,
+      });
+    }
     const flag = CONVERSATION_FLAGS[type as keyof typeof CONVERSATION_FLAGS];
-    if (!flag || !conversationId) return;
+    if ((!flag && type !== "offer_declined") || !conversationId) return;
     const conversation = await ctx.db
       .query("conversations")
       .withIndex("by_conversationId", (q) => q.eq("conversationId", conversationId))
       .unique();
-    if (conversation && !conversation[flag]) await ctx.db.patch(conversation._id, { [flag]: true });
+    if (!conversation) return;
+    if (flag && !conversation[flag]) await ctx.db.patch(conversation._id, { [flag]: true });
+    await answerLatestOffer(ctx, conversation, flag ? "accepted" : "declined");
   },
 });

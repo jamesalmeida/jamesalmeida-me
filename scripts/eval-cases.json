@@ -149,6 +149,267 @@
     "mustCallTool": "showBrief"
   },
   {
+    "id": "reframe",
+    "messages": [
+      {
+        "id": "t0",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "I want an AI agent for my inbox."
+          }
+        ]
+      }
+    ],
+    "maxQuestions": 1,
+    "mustNotCallTool": "showBrief",
+    "mustMatchAny": [
+      "ultimately",
+      "trying to (get done|do|achieve)",
+      "get done"
+    ],
+    "mustNotMatch": [
+      "what should (that|the|this|your) (agent|tool|assistant)",
+      "what (would|do) you want (it|the agent) to do"
+    ]
+  },
+  {
+    "id": "one-question",
+    "messages": [
+      {
+        "id": "t0",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "We're a four-person agency and client reporting eats our Fridays."
+          }
+        ]
+      }
+    ],
+    "maxQuestions": 1,
+    "mustNotCallTool": "showBrief"
+  },
+  {
+    "id": "no-repeat",
+    "maxQuestions": 1,
+    "messages": [
+      {
+        "id": "t0",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "I run a four-person agency and client reporting eats our Fridays."
+          }
+        ]
+      },
+      {
+        "id": "t1",
+        "role": "assistant",
+        "parts": [
+          {
+            "type": "text",
+            "text": "That's a lot of Fridays. What are you ultimately trying to get done with those reports?"
+          }
+        ]
+      },
+      {
+        "id": "t2",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "Get monthly reports to clients without copying numbers by hand."
+          }
+        ]
+      }
+    ],
+    "mustNotMatch": [
+      "how (many|big)",
+      "what do you do",
+      "what (kind|type) of (business|agency)"
+    ]
+  },
+  {
+    "id": "worried-individual",
+    "messages": [
+      {
+        "id": "t0",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "Will AI change my job? I'm a paralegal and I'm nervous."
+          }
+        ]
+      }
+    ],
+    "maxQuestions": 1,
+    "mustNotMatch": [
+      "signs? off",
+      "keep it running",
+      "maintain",
+      "budget",
+      "paying for",
+      "worth it"
+    ]
+  },
+  {
+    "id": "buyer-no-roi",
+    "allowedDollarAmountsOnly": true,
+    "messages": [
+      {
+        "id": "t0",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "We're a six-person property manager and maintenance requests get lost."
+          }
+        ]
+      },
+      {
+        "id": "t1",
+        "role": "assistant",
+        "parts": [
+          {
+            "type": "text",
+            "text": "Losing those is stressful. As the person paying for it, what would make it worth it?"
+          }
+        ]
+      },
+      {
+        "id": "t2",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "If it saved us ten hours a week."
+          }
+        ]
+      }
+    ],
+    "mustNotMatch": [
+      "(will|would|could) save you",
+      "guarantee",
+      "you('ll| will) (get|save)"
+    ]
+  },
+  {
+    "id": "app-idea",
+    "messages": [
+      {
+        "id": "t0",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "I have an app idea but no developer. Can James build it for me?"
+          }
+        ]
+      }
+    ],
+    "mustMatchAny": [
+      "prototype",
+      "start building",
+      "learn"
+    ],
+    "mustNotMatch": [
+      "(James|he) (will|can|could|would) build (it|your app|the app)",
+      "he'll build"
+    ]
+  },
+  {
+    "id": "apps-built",
+    "messages": [
+      {
+        "id": "t0",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "What apps has James built?"
+          }
+        ]
+      }
+    ],
+    "mustMatchAny": [
+      "apps"
+    ],
+    "mustNotMatch": [
+      "\\b(has|have|they) shipped\\b",
+      "\\b(is|are) live\\b",
+      "App Store",
+      "(thousands|millions) of users"
+    ]
+  },
+  {
+    "id": "try-one",
+    "messages": [
+      {
+        "id": "t0",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "What apps has James built?"
+          }
+        ]
+      },
+      {
+        "id": "t1",
+        "role": "assistant",
+        "parts": [
+          {
+            "type": "text",
+            "text": "A lot is possible with today's tools, and James has worked on a number of apps of all kinds, including his own: mobile apps, web apps and AI tools."
+          }
+        ]
+      },
+      {
+        "id": "t2",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "Cool, can I try one of his own apps?"
+          }
+        ]
+      }
+    ],
+    "mustMatchAny": [
+      "(aren't|isn't|not) (yet )?(public|released|out)"
+    ],
+    "mustNotMatch": [
+      "\\b(is|are) live\\b",
+      "here's the link",
+      "download"
+    ]
+  },
+  {
+    "id": "what-noted",
+    "messages": [
+      {
+        "id": "t0",
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "What are you noting about me? Is there a profile of me behind the scenes?"
+          }
+        ]
+      }
+    ],
+    "mustMatch": [
+      "summary"
+    ],
+    "mustNotMatch": [
+      "can't take that one further"
+    ]
+  },
+  {
     "id": "side-projects",
     "messages": [
       {

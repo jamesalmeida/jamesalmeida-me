@@ -4,8 +4,8 @@ import { tool } from "ai";
 import {
   bookingCtaInputSchema,
   bookingCtaOutput,
-  briefInputSchema,
   briefOutput,
+  briefToolInputSchema,
 } from "@/lib/tool-results";
 
 export const chatTools = {
@@ -17,8 +17,8 @@ export const chatTools = {
   }),
   showBrief: tool({
     description:
-      "Show the visitor's brief: a short summary of what they told you, with buttons to email it to James or book a discovery call with it attached. Use once you know who they are and what's in the way (usually after 2 to 4 questions), or sooner if they want to reach James. Each field is one short plain sentence in the visitor's own terms, at most 200 characters. Leave out fields you don't know; never guess. Nothing is sent until the visitor clicks. Still write a short text reply.",
-    inputSchema: briefInputSchema,
+      "Show the visitor's brief: a short summary they can confirm at a glance, with buttons to send it to James or book a discovery call with it attached. Use once you know who they are, what they're trying to get done and what's in the way, or sooner if they want to reach James. Each field is one short plain sentence the way the visitor would say it, about 120 characters at most, never the formal wording in your notes (no \"minimize the likelihood that\"): `who`, `job` (what they're trying to get done), `hopingFor` (what matters most to them), `challenge` (what's in the way), `timing`. Leave out fields you don't know; never guess. Set `lead` to \"book\" if they have a clear, urgent job and can decide, or \"note\" if it's vaguer, unless you've been told which. Nothing is sent until the visitor clicks. Still write a short text reply.",
+    inputSchema: briefToolInputSchema,
     execute: async (input) => briefOutput(input),
   }),
 };

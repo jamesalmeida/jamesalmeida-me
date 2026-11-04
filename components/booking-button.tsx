@@ -16,10 +16,12 @@ export const outlineButtonClass =
 export function BookingButton({
   href = SITE.bookingUrl,
   label = SITE.bookingLabel,
+  variant = "primary",
   className = "",
 }: {
   href?: string;
   label?: string;
+  variant?: "primary" | "outline";
   className?: string;
 }) {
   return (
@@ -27,7 +29,7 @@ export function BookingButton({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className={`${primaryButtonClass} ${className}`}
+      className={`${variant === "primary" ? primaryButtonClass : outlineButtonClass} ${className}`}
       data-track="booking_clicked"
       data-cuelume-hover="whisper"
       data-cuelume-press="tick"

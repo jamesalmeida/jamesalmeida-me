@@ -62,6 +62,29 @@ describe("getKnowledge / getSystemPrompt", () => {
     expect(prompt).toMatch(/personal apps and side projects haven't shipped/i);
   });
 
+  it("keeps Skaffen high level about James' own apps, and honest", () => {
+    expect(knowledge).toContain("James has also worked on apps of his own, including mobile apps, web apps and AI tools.");
+    expect(prompt).toMatch(/never say any of them shipped, are live or have users/i);
+    expect(prompt).toMatch(/answer honestly that they aren't public yet/i);
+    expect(prompt).toMatch(/Never write the name they asked about/);
+  });
+
+  it("offers help with app ideas without promising to build them", () => {
+    expect(knowledge).toMatch(/prototype it or learn how to start building it/i);
+    expect(prompt).toMatch(/Never promise that James will build the app/);
+    expect(OFFER.faq.some((item) => /prototype/.test(item.answer))).toBe(true);
+  });
+
+  it("runs discovery one question at a time, with no question limit", () => {
+    expect(prompt).toMatch(/Never more than one question per reply/);
+    expect(prompt).toMatch(/There's no set number of questions/);
+    expect(prompt).not.toMatch(/3 or 4 questions/);
+    expect(prompt).toMatch(/What are you ultimately trying to get done/);
+    expect(prompt).toMatch(/As the person paying for it/);
+    expect(prompt).toMatch(/call showBrief/);
+    expect(prompt).toMatch(/keep a short summary of what they've shared/);
+  });
+
   it("includes the published offer price ranges", () => {
     for (const step of OFFER.steps) {
       expect(prompt).toContain(step.priceRange);

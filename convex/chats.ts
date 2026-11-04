@@ -1,8 +1,12 @@
 import { v } from "convex/values";
 import { parseClientIp } from "../lib/client-ip";
 import { MAX_REASON_CHARS } from "../lib/jev-quality";
+import { mergeJobCard } from "../lib/job-card";
 import { RETENTION_MS, assertServer, mutation, query } from "./lib";
-import { blockReason, jevIntent, sentiment, visitContext } from "./schema";
+import { blockReason, jevIntent, jobCard, offerKind, offerLead, offerReason, readiness, sentiment, visitContext } from "./schema";
+
+// The card history kept on a conversation. The cooldown only needs the latest few.
+const MAX_STORED_OFFERS = 10;
 
 // Fields written onto the conversation from one Jev screen. A later passing turn
 // does not clear `blocked`; the first reason that stopped a message stays put
@@ -13,6 +17,7 @@ function screenFields(screen: {
   intent?: "continue_chat" | "suggest_book_call" | "suggest_email";
   fitScore?: number;
   clientIp?: string;
+  readiness?: { buyingSignal: number; engagementFading: number; goingNowhere: number; cardCompleteness: number };
 } | undefined) {
   if (!screen) return {};
   const fitScore =
@@ -24,6 +29,7 @@ function screenFields(screen: {
   return {
     ...(screen.intent ? { intent: screen.intent } : {}),
     ...(fitScore !== undefined ? { fitScore } : {}),
+    ...(screen.readiness ? { readiness: screen.readiness } : {}),
     ...(screen.blocked
       ? {
           blocked: true as const,
@@ -51,6 +57,7 @@ export const recordUserMessage = mutation({
         intent: v.optional(jevIntent),
         fitScore: v.optional(v.number()),
         clientIp: v.optional(v.string()),
+        readiness: v.optional(readiness),
       }),
     ),
   },
@@ -113,8 +120,16 @@ export const recordReply = mutation({
     conversationId: v.string(),
     text: v.string(),
     tools: v.array(v.string()),
+    offer: v.optional(
+      v.object({
+        kind: offerKind,
+        lead: v.optional(offerLead),
+        reason: v.optional(offerReason),
+        readiness: v.optional(readiness),
+      }),
+    ),
   },
-  handler: async (ctx, { secret, conversationId, text, tools }) => {
+  handler: async (ctx, { secret, conversationId, text, tools, offer }) => {
     assertServer(secret);
     const now = Date.now();
     await ctx.db.insert("messages", {
@@ -125,12 +140,29 @@ export const recordReply = mutation({
       createdAt: now,
       expiresAt: now + RETENTION_MS,
     });
-    if (!tools.includes("showBrief")) return;
     const conversation = await ctx.db
       .query("conversations")
       .withIndex("by_conversationId", (q) => q.eq("conversationId", conversationId))
       .unique();
-    if (!conversation || conversation.briefShown) return;
+    if (!conversation) return;
+    if (offer) {
+      const { readiness: _scores, ...shown } = offer;
+      const turn = conversation.userMessages;
+      await ctx.db.patch(conversation._id, {
+        offers: [...(conversation.offers ?? []), { ...shown, at: now, turn }].slice(-MAX_STORED_OFFERS),
+      });
+      if (conversation.visitId) {
+        await ctx.db.insert("events", {
+          type: "offer_shown",
+          visitId: conversation.visitId,
+          conversationId,
+          offer: { ...offer, turn },
+          at: now,
+          expiresAt: now + RETENTION_MS,
+        });
+      }
+    }
+    if (!tools.includes("showBrief") || conversation.briefShown) return;
     await ctx.db.patch(conversation._id, { briefShown: true });
     if (conversation.visitId) {
       await ctx.db.insert("events", {
@@ -171,7 +203,23 @@ export const recordQuality = mutation({
   },
 });
 
-// Whether this conversation was already stopped. /api/chat refuses later turns.
+// Merges what changed into the job card here, against the stored card, so overlapping
+// turns can't undo each other. A blocked chat is left unchanged.
+export const recordJobCard = mutation({
+  args: { secret: v.string(), conversationId: v.string(), changes: jobCard },
+  handler: async (ctx, { secret, conversationId, changes }) => {
+    assertServer(secret);
+    const existing = await ctx.db
+      .query("conversations")
+      .withIndex("by_conversationId", (q) => q.eq("conversationId", conversationId))
+      .unique();
+    if (!existing || existing.blocked) return;
+    await ctx.db.patch(existing._id, { jobCard: mergeJobCard(existing.jobCard, changes), jobCardAt: Date.now() });
+  },
+});
+
+// What /api/chat needs before a reply, in one read: whether this conversation was
+// already stopped (later turns are refused), the job card, and the offer history.
 export const blockState = query({
   args: { secret: v.string(), conversationId: v.string() },
   handler: async (ctx, { secret, conversationId }) => {
@@ -180,6 +228,19 @@ export const blockState = query({
       .query("conversations")
       .withIndex("by_conversationId", (q) => q.eq("conversationId", conversationId))
       .unique();
-    return { blocked: conversation?.blocked === true };
+    const offers = conversation?.offers ?? [];
+    return {
+      blocked: conversation?.blocked === true,
+      jobCard: conversation?.jobCard ?? null,
+      offers: {
+        shown: offers.length,
+        lastTurn: offers.at(-1)?.turn ?? null,
+        taken:
+          conversation?.leadCaptured === true ||
+          conversation?.bookingClicked === true ||
+          conversation?.emailClicked === true,
+        turn: (conversation?.userMessages ?? 0) + 1,
+      },
+    };
   },
 });

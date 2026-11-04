@@ -7,7 +7,16 @@ import { parseId, parseVisitContext } from "@/lib/analytics";
 import { blockedChatResponse } from "@/lib/blocked-chat";
 import { chatTools } from "@/lib/chat-tools";
 import { parseClientIp } from "@/lib/client-ip";
-import { BLOCKED_REPLY, intentNudge, screenForStore, threadIsClosed } from "@/lib/jev-decision";
+import { jobCardPromptNote, type JobCard } from "@/lib/job-card";
+import { updateJobCard } from "@/lib/job-card.server";
+import {
+  BLOCKED_REPLY,
+  intentNudge,
+  offerFromReply,
+  screenForStore,
+  threadIsClosed,
+  type OfferHistory,
+} from "@/lib/jev-decision";
 import { scoreConversationQuality, screenVisitorTurn } from "@/lib/jev.server";
 import { getModelOption, MODEL_COOKIE_NAME } from "@/lib/models";
 import { createModel } from "@/lib/models.server";
@@ -20,7 +29,7 @@ import {
 } from "@/lib/rate-limit";
 import { payloadTooLargeResponse, readBodyWithLimit } from "@/lib/request-body";
 import { sanitizeMessages } from "@/lib/sanitize-messages";
-import { storeApi, storeMutationQuietly, storeQuery } from "@/lib/store.server";
+import { isStoreConfigured, storeApi, storeMutationQuietly, storeQuery } from "@/lib/store.server";
 import { getSystemPrompt } from "@/lib/system-prompt";
 
 export const maxDuration = 30;
@@ -62,8 +71,9 @@ export async function POST(req: Request) {
   // already blocked stays closed, and does not call Jev or the reply model again.
   const conversationId = parseId(fields.conversationId);
   const transcriptClosed = threadIsClosed(messages);
-  const chatClosed = transcriptClosed || (await storedChatIsBlocked(transcriptClosed ? undefined : conversationId));
-  const decision = chatClosed ? null : await screenVisitorTurn(messages);
+  const stored = await readChatState(transcriptClosed ? undefined : conversationId);
+  const chatClosed = transcriptClosed || stored.blocked;
+  const decision = chatClosed ? null : await screenVisitorTurn(messages, stored);
   const refusing = chatClosed || decision?.action === "block";
   const screen = screenForStore(decision, {
     chatClosed,
@@ -99,8 +109,8 @@ export async function POST(req: Request) {
   const modelOption = getModelOption(modelId);
 
   // The system prompt is static, so let Anthropic cache it. OpenAI caches
-  // long prefixes automatically and ignores this. A Jev nudge, when there is
-  // one, is a second system message so the cached prefix stays stable.
+  // long prefixes automatically and ignores this. The job card and a Jev nudge
+  // are separate system messages, so the cached prefix stays stable.
   const system: SystemModelMessage = {
     role: "system",
     content: getSystemPrompt(),
@@ -110,10 +120,12 @@ export async function POST(req: Request) {
   };
   const nudgeKind = decision?.nudge;
   const nudge = nudgeKind === "book" || nudgeKind === "email" ? intentNudge(nudgeKind) : null;
+  const cardNote = jobCardPromptNote(stored.jobCard);
+  const turnNotes = [cardNote, nudge].flatMap((content) => (content ? [{ role: "system" as const, content }] : []));
 
   const result = streamText({
     model,
-    messages: [system, ...(nudge ? [{ role: "system" as const, content: nudge }] : []), ...convertToModelMessages(messages)],
+    messages: [system, ...turnNotes, ...convertToModelMessages(messages)],
     tools: chatTools,
     stopWhen: stepCountIs(3),
     maxOutputTokens: 800,
@@ -134,10 +146,22 @@ export async function POST(req: Request) {
       try {
         const steps = await result.steps;
         const text = steps.map((step) => step.text).filter(Boolean).join("\n\n");
-        const tools = steps.flatMap((step) => step.toolCalls.map((call) => call.toolName));
-        await storeMutationQuietly(storeApi.chats.recordReply, { conversationId, text, tools });
-        // After the reply is stored. Scoring never runs on the request path.
-        await storeQuality(messages, { text, tools }, conversationId);
+        // A call that failed validation never rendered a card, so it isn't an offer.
+        const calls = steps.flatMap((step) => step.toolCalls).filter((call) => !call.invalid);
+        const tools = calls.map((call) => call.toolName);
+        const offer = offerFromReply(calls, decision);
+        await storeMutationQuietly(storeApi.chats.recordReply, {
+          conversationId,
+          text,
+          tools,
+          ...(offer ? { offer } : {}),
+        });
+        // After the reply is stored, side by side because they share maxDuration.
+        // Neither runs on the request path.
+        await Promise.all([
+          storeQuality(messages, { text, tools }, conversationId),
+          storeJobCard(messages, { text }, stored.jobCard, conversationId),
+        ]);
       } catch {
         // The run failed or was stopped; the user's message is still recorded.
       }
@@ -147,16 +171,32 @@ export async function POST(req: Request) {
   return result.toUIMessageStreamResponse();
 }
 
-async function storedChatIsBlocked(conversationId: string | undefined): Promise<boolean> {
-  if (!conversationId) return false;
+type ChatState = { blocked: boolean; jobCard: JobCard | null; offers: OfferHistory | null };
+
+// One read before the reply. Without it the chat works as it would with no storage.
+async function readChatState(conversationId: string | undefined): Promise<ChatState> {
+  const nothing: ChatState = { blocked: false, jobCard: null, offers: null };
+  if (!conversationId) return nothing;
   try {
-    const state = await storeQuery<{ blocked?: boolean } | null>(storeApi.chats.blockState, { conversationId });
-    return state?.blocked === true;
+    const state = await storeQuery<Partial<ChatState>>(storeApi.chats.blockState, { conversationId });
+    if (!state) return nothing;
+    return { blocked: state.blocked === true, jobCard: state.jobCard ?? null, offers: state.offers ?? null };
   } catch {
     // The transcript check still closes an honest client. Don't echo the visitor's text.
     console.error("Could not read whether this chat was already blocked.");
-    return false;
+    return nothing;
   }
+}
+
+async function storeJobCard(
+  messages: readonly UIMessage[],
+  reply: { text: string },
+  previous: JobCard | null,
+  conversationId: string,
+) {
+  if (!isStoreConfigured()) return;
+  const changes = await updateJobCard(messages, reply, previous);
+  if (changes) await storeMutationQuietly(storeApi.chats.recordJobCard, { conversationId, changes });
 }
 
 async function storeQuality(

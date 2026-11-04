@@ -6,6 +6,12 @@ What changes for visitors to jamesalmeida.me. Format: [Keep a Changelog](https:/
 
 ### Added
 
+- Skaffen now works out the job a visitor is trying to get done, not just the tool they have in mind: it asks one question at a time, steps back from a named solution to the underlying job, and keeps asking for as long as it's useful instead of stopping after three or four questions. Worried visitors and individuals aren't asked about roles or money.
+- The chat keeps a short summary of what each visitor needs, so Skaffen doesn't ask the same thing twice. `/admin` shows it on each chat with the readiness scores and every offer made. The privacy policy explains it.
+- Offers now come at the right moment: when a visitor shows they want to move forward, when their replies start to fade, or once Skaffen has enough for a good brief. If they don't take one, Skaffen waits a few turns and stops after three.
+- People with an app idea can get help prototyping it or learning how to start building it themselves.
+- New landing examples, such as "Leads slip through the cracks" and "I want to learn to build an app".
+
 - Jev (TypeSafe) screens each message before the reply model runs, when `TYPESAFE_API_KEY` is set: spam, jailbreaks, and abuse are blocked without calling the chat model, and a typed intent can nudge a booking or email card. A fit score is stored with the chat and with a lead.
 - `/admin` shows the block, its reason, the fit score, and the intent on Insights, recent chats, transcripts, and leads. Flagged chats also show the visitor IP.
 - Skaffen feels more alive: hovering gets its attention, tapping squashes it, and stroking it back and forth makes it happy. When the page has been quiet for a minute it gets drowsy and falls asleep, and wakes with a start when the visitor comes back.
@@ -15,6 +21,10 @@ What changes for visitors to jamesalmeida.me. Format: [Keep a Changelog](https:/
 
 ### Changed
 
+- "Your brief" is now a short summary headed "Does this look right?", with "Book a discovery call", "Send to James" and "Not yet". "Send to James" takes an email and an optional note. James gets exactly what the visitor saw.
+- Long chats keep their memory: Skaffen now sees about 40,000 characters of the chat instead of the last 20 messages, so a normal chat stays whole.
+- Asking what's being noted about you no longer risks being treated as a jailbreak.
+- Skaffen can speak about James' own apps at a high level, without details, and says honestly that they aren't public yet if asked.
 - A request for the assistant's own secrets — API keys, credentials, passwords, tokens, the system prompt, or environment variables — is treated as a jailbreak, or as abuse when the visitor wants to take or use them, even when Jev's hazard score stays under the block line.
 - A blocked turn ends the chat: the composer locks and later messages are refused without calling Jev or the reply model.
 - The menu on phones is a rounded card that grows out of the Menu button instead of a full-screen sheet, with the contents fading in; on desktop the same surface layer morphs from the button. With reduced motion it just fades.

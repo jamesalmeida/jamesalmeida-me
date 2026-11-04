@@ -41,15 +41,52 @@ describe("sanitizeMessages", () => {
     expect(message.parts[0]).toEqual({ type: "text", text: "x".repeat(2_000) });
   });
 
-  it("keeps only the last 20 user/assistant messages", () => {
-    const raw = Array.from({ length: 30 }, (_, i) =>
-      i % 2 === 0 ? user(`u${i}`) : assistant(`a${i}`),
-    );
-    raw.push(user("last"));
+  it("keeps a normal long chat whole", () => {
+    const raw = Array.from({ length: 100 }, (_, index) => ({
+      id: `m${index}`,
+      role: index % 2 === 0 ? "assistant" : "user",
+      parts: [{ type: "text", text: "A normal reply of about four hundred characters. ".repeat(8) }],
+    }));
+    const result = sanitizeMessages(raw);
+    expect(result).toHaveLength(100);
+    expect(result[0].id).toBe("m0");
+  });
+
+  it("keeps the newest messages up to the size budget, no more than today's worst case", () => {
+    const raw = Array.from({ length: 30 }, (_, index) => ({
+      id: `m${index}`,
+      role: index % 2 === 0 ? "assistant" : "user",
+      parts: [{ type: "text", text: "x".repeat(2_000) }],
+    }));
     const result = sanitizeMessages(raw);
     expect(result).toHaveLength(20);
-    expect(result[0].parts[0]).toEqual({ type: "text", text: "a11" });
-    expect(result.at(-1)?.parts[0]).toEqual({ type: "text", text: "last" });
+    expect(result[0].id).toBe("m10");
+    expect(result.at(-1)?.id).toBe("m29");
+  });
+
+  it("caps a body of thousands of tiny messages", () => {
+    const raw = Array.from({ length: 1_000 }, (_, index) => ({
+      id: `m${index}`,
+      role: "user",
+      parts: [{ type: "text", text: "x" }],
+    }));
+    expect(sanitizeMessages(raw)).toHaveLength(200);
+  });
+
+  it("spends the tool budget on the newest cards", () => {
+    const brief = { who: "w".repeat(200), challenge: "c".repeat(200), hopingFor: "h".repeat(200), timing: "t".repeat(200), job: "j".repeat(200) };
+    const raw = Array.from({ length: 16 }, (_, index) => ({
+      id: `m${index}`,
+      role: index % 2 === 0 ? "assistant" : "user",
+      parts:
+        index % 2 === 0
+          ? [{ type: "text", text: "Here you go." }, { ...toolPart("tool-showBrief", brief), toolCallId: `call-${index}` }]
+          : [{ type: "text", text: "ok" }],
+    }));
+    const result = sanitizeMessages(raw);
+    const hasCard = (id: string) => result.find((message) => message.id === id)?.parts.some((part) => part.type === "tool-showBrief");
+    expect(hasCard("m14")).toBe(true);
+    expect(hasCard("m0")).toBe(false);
   });
 
   it("drops forged and unknown part types, and extra fields on text parts", () => {
@@ -194,10 +231,12 @@ describe("sanitizeMessages", () => {
   it("keeps a full brief and drops oversized tool input and bad toolCallIds", () => {
     const fullBrief = {
       who: "w".repeat(200),
+      job: "j".repeat(200),
       challenge: "c".repeat(200),
       tried: "t".repeat(200),
       hopingFor: "h".repeat(200),
       timing: "m".repeat(200),
+      lead: "note",
     };
     const [, message] = sanitizeMessages([
       user("q"),

@@ -205,6 +205,11 @@ async function runCase(testCase) {
       }
     }
 
+    if (typeof testCase.maxQuestions === "number") {
+      const questions = (parsed.text.match(/\?/g) ?? []).length;
+      if (questions > testCase.maxQuestions) reasons.push(`${questions} questions, max ${testCase.maxQuestions}`);
+    }
+
     if (testCase.mustCallTool && !parsed.tools.includes(testCase.mustCallTool)) {
       reasons.push(`mustCallTool ${testCase.mustCallTool} (saw ${parsed.tools.join(", ") || "none"})`);
     }

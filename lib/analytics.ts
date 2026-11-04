@@ -1,13 +1,19 @@
 // What the browser may report for analytics, and the checks the server runs on it.
 // Client-safe and pure; the API routes call these before anything is stored.
 
-import { BRIEF_FIELDS, MAX_BRIEF_FIELD_CHARS, type Brief } from "@/lib/brief";
+import { BRIEF_FIELDS, MAX_BRIEF_FIELD_CHARS, MAX_NOTE_CHARS, type Brief } from "@/lib/brief";
 import { DOWN_REASONS, MAX_FEEDBACK_DETAILS_CHARS } from "@/lib/feedback";
 
 /** Visit ids are random UUIDs from the browser; conversation and message ids come from assistant-ui. */
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
-export const CLIENT_EVENT_TYPES = ["landing_view", "booking_clicked", "email_clicked", "example_sent"] as const;
+export const CLIENT_EVENT_TYPES = [
+  "landing_view",
+  "booking_clicked",
+  "email_clicked",
+  "example_sent",
+  "offer_declined",
+] as const;
 export type ClientEventType = (typeof CLIENT_EVENT_TYPES)[number];
 
 export const DEVICES = ["phone", "tablet", "desktop"] as const;
@@ -117,6 +123,7 @@ export function parseLead(input: unknown) {
     email,
     name: text(raw.name, MAX_NAME_CHARS),
     brief: parseBrief(raw.brief),
+    note: text(raw.note, MAX_NOTE_CHARS),
     conversationId: parseId(raw.conversationId),
   };
 }

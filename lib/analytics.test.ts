@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HEADLINES } from "@/data/site";
+import { BRIEF_FIELDS, MAX_BRIEF_FIELD_CHARS, MAX_NOTE_CHARS } from "@/lib/brief";
 import { DOWN_REASONS } from "@/lib/feedback";
 import { parseClientEvent, parseFeedback, parseId, parseLead, parseVisitContext } from "./analytics";
 
@@ -92,5 +93,28 @@ describe("parseLead", () => {
     expect(parseLead({ email: "not-an-email" })).toBeNull();
     expect(parseLead({ email: `${"a".repeat(250)}@x.co` })).toBeNull();
     expect(parseLead({})).toBeNull();
+  });
+
+  it("accepts a declined offer and a capped note on a lead", () => {
+    expect(parseClientEvent({ type: "offer_declined", visitId: "v1", conversationId: "c1" })).toMatchObject({
+      type: "offer_declined",
+      conversationId: "c1",
+    });
+    const lead = parseLead({ email: "a@b.co", note: `  ${"n".repeat(600)}  `, brief: { job: "close the books" } });
+    expect(lead?.note).toHaveLength(MAX_NOTE_CHARS);
+    expect(lead?.brief).toEqual({ job: "close the books" });
+    expect(parseLead({ email: "a@b.co", note: "   " })?.note).toBeUndefined();
+  });
+
+  it("fits the largest brief and note in the /api/leads body limit, even in a three-byte script", () => {
+    const brief = Object.fromEntries(BRIEF_FIELDS.map(({ key }) => [key, "字".repeat(MAX_BRIEF_FIELD_CHARS)]));
+    const body = JSON.stringify({
+      email: `${"e".repeat(240)}@example.com`,
+      name: "字".repeat(100),
+      note: "字".repeat(MAX_NOTE_CHARS),
+      brief,
+      conversationId: "c".repeat(64),
+    });
+    expect(new TextEncoder().encode(body).length).toBeLessThan(8 * 1024);
   });
 });

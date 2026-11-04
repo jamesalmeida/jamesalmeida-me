@@ -6,6 +6,7 @@ import { assertServer, query } from "./lib";
 // for a signed-in admin (app/api/admin/dashboard).
 
 const FUNNEL_STEPS = ["landing_view", "chat_started", "brief_shown", "booking_clicked", "email_clicked"] as const;
+const OFFER_STEPS = ["offer_shown", "offer_accepted", "offer_declined"] as const;
 const MAX_EVENTS = 10_000;
 const MAX_CONVERSATIONS = 2_000;
 const RECENT_LIMIT = 50;
@@ -23,7 +24,7 @@ export const dashboard = query({
       .query("events")
       .withIndex("by_at", (q) => q.gte("at", since))
       .take(MAX_EVENTS);
-    const visitsByStep = new Map<string, Set<string>>(FUNNEL_STEPS.map((step) => [step, new Set()]));
+    const visitsByStep = new Map<string, Set<string>>([...FUNNEL_STEPS, ...OFFER_STEPS].map((step) => [step, new Set()]));
     const headlines = new Map<string, { views: Set<string>; chats: Set<string> }>();
     const referrers = new Map<string, Set<string>>();
     const headlineByVisit = new Map<string, string>();
@@ -134,6 +135,10 @@ export const dashboard = query({
           wentBadlyScore: quality.wentBadlyScore,
           reason: quality.reason,
           scoredAt: quality.scoredAt,
+          readiness: conversation.readiness ?? null,
+          hasJobCard: conversation.jobCard !== undefined,
+          offersShown: conversation.offers?.length ?? 0,
+          offerTaken: conversation.offers?.some((offer) => offer.outcome === "accepted") ?? false,
           firstMessage: first?.text.slice(0, 160) ?? "",
         };
       }),
@@ -150,6 +155,12 @@ export const dashboard = query({
         ...Object.fromEntries(FUNNEL_STEPS.map((step) => [step, visitsByStep.get(step)!.size])),
         leads: leads.length,
       },
+      // Distinct visits, like the funnel. A visit can take one offer and decline another.
+      offers: {
+        shown: visitsByStep.get("offer_shown")!.size,
+        accepted: visitsByStep.get("offer_accepted")!.size,
+        declined: visitsByStep.get("offer_declined")!.size,
+      },
       headlines: [...headlines].map(([headline, { views, chats }]) => ({
         headline,
         views: views.size,
@@ -161,6 +172,7 @@ export const dashboard = query({
           example,
           sent: visits.size,
           briefs: [...visits].filter((visitId) => visitsByStep.get("brief_shown")!.has(visitId)).length,
+          accepted: [...visits].filter((visitId) => visitsByStep.get("offer_accepted")!.has(visitId)).length,
         }))
         .sort((a, b) => b.sent - a.sent),
       ownWords: [...visitsByStep.get("chat_started")!].filter(

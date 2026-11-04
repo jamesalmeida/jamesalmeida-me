@@ -1,13 +1,15 @@
 import { v } from "convex/values";
-import { assertServer, mutation } from "./lib";
+import { answerLatestOffer, assertServer, mutation } from "./lib";
 
-// From the optional email field on the brief card. Kept until James deletes it.
+// "Send to James" on the brief card. Kept until James deletes it. Only what the
+// visitor saw and approved is stored here: the job card stays with the chat.
 export const submit = mutation({
   args: {
     secret: v.string(),
     email: v.string(),
     name: v.optional(v.string()),
     brief: v.record(v.string(), v.string()),
+    note: v.optional(v.string()),
     conversationId: v.optional(v.string()),
   },
   handler: async (ctx, { secret, conversationId, ...lead }) => {
@@ -21,6 +23,7 @@ export const submit = mutation({
       if (conversation) {
         if (!conversation.leadCaptured) await ctx.db.patch(conversation._id, { leadCaptured: true });
         if (typeof conversation.fitScore === "number") fitScore = conversation.fitScore;
+        await answerLatestOffer(ctx, conversation, "accepted");
       }
     }
     await ctx.db.insert("leads", {

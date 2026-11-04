@@ -8,10 +8,13 @@ import {
   briefOutput,
 } from "@/lib/tool-results";
 
-const MAX_MESSAGES = 20;
+// The newest messages up to this much text, the same worst case as 20 full messages.
+// A normal chat fits whole. MAX_MESSAGES only stops a body of thousands of tiny ones.
+const MAX_HISTORY_CHARS = 40_000;
+const MAX_MESSAGES = 200;
 const MAX_TEXT_CHARS = 2_000;
 const MAX_TOOL_PARTS_PER_MESSAGE = 4;
-// A full brief is five fields of up to 200 characters, plus keys and quotes.
+// A full brief is six fields of up to 200 characters, plus keys, quotes and `lead`.
 const MAX_TOOL_INPUT_CHARS = 1_536;
 const MAX_TOTAL_TOOL_INPUT_CHARS = 8 * 1_024;
 const TOOL_CALL_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
@@ -97,6 +100,10 @@ function sanitizeParts(raw: unknown, budget: ToolBudget): UIMessage["parts"] {
   return parts;
 }
 
+function textChars(parts: UIMessage["parts"]): number {
+  return parts.reduce((total, part) => total + (part.type === "text" ? part.text.length : 0), 0);
+}
+
 export function sanitizeMessages(raw: unknown): UIMessage[] {
   if (!Array.isArray(raw)) return [];
 
@@ -106,18 +113,25 @@ export function sanitizeMessages(raw: unknown): UIMessage[] {
     return role === "user" || role === "assistant";
   });
 
-  const messages: UIMessage[] = [];
+  // Newest first, so the size and tool budgets drop the oldest messages and cards.
+  const newestFirst: UIMessage[] = [];
   const budget: ToolBudget = { inputChars: 0 };
-  for (const [index, candidate] of roleKept.slice(-MAX_MESSAGES).entries()) {
+  let historyChars = 0;
+  const recent = roleKept.slice(-MAX_MESSAGES);
+  for (let index = recent.length - 1; index >= 0; index -= 1) {
+    const candidate = recent[index];
     const parts = sanitizeParts(candidate.parts, budget);
     if (parts.length === 0) continue;
+    historyChars += textChars(parts);
+    if (historyChars > MAX_HISTORY_CHARS && newestFirst.length > 0) break;
     const role = candidate.role === "assistant" ? "assistant" : "user";
-    messages.push({
+    newestFirst.push({
       id: typeof candidate.id === "string" ? candidate.id : `msg-${index}`,
       role,
       parts,
     });
   }
+  const messages = newestFirst.reverse();
 
   if (!messages.some((message) => message.role === "user")) {
     return messages;

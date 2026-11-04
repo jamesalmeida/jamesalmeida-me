@@ -11,6 +11,73 @@ export const jevIntent = v.union(
 );
 export const sentiment = v.union(v.literal("positive"), v.literal("neutral"), v.literal("negative"));
 
+// The job card (lib/job-card.ts), a running summary of what the visitor needs.
+export const jobCard = v.object({
+  who: v.optional(v.string()),
+  visitorType: v.optional(v.union(v.literal("team"), v.literal("individual"))),
+  jobStatement: v.optional(v.string()),
+  situation: v.optional(v.string()),
+  currentApproach: v.optional(v.string()),
+  outcomes: v.optional(v.array(v.string())),
+  worstStep: v.optional(
+    v.object({
+      text: v.string(),
+      jobMapStep: v.optional(
+        v.union(
+          v.literal("define"),
+          v.literal("locate"),
+          v.literal("prepare"),
+          v.literal("confirm"),
+          v.literal("execute"),
+          v.literal("monitor"),
+          v.literal("modify"),
+          v.literal("conclude"),
+        ),
+      ),
+    }),
+  ),
+  roles: v.optional(
+    v.object({
+      executor: v.optional(v.string()),
+      maintainer: v.optional(v.string()),
+      buyer: v.optional(v.string()),
+    }),
+  ),
+  financialOutcomes: v.optional(v.string()),
+  relatedJobs: v.optional(v.array(v.string())),
+  emotionalSocial: v.optional(v.string()),
+  timing: v.optional(v.string()),
+  budgetSignal: v.optional(v.string()),
+  quotes: v.optional(v.array(v.string())),
+});
+
+// Jev's latest readiness scores, each 0–1 (lib/jev-decision.ts).
+export const readiness = v.object({
+  buyingSignal: v.number(),
+  engagementFading: v.number(),
+  goingNowhere: v.number(),
+  cardCompleteness: v.number(),
+});
+
+export const offerReason = v.union(
+  v.literal("intent"),
+  v.literal("buying_signal"),
+  v.literal("fading"),
+  v.literal("card_ready"),
+);
+export const offerKind = v.union(v.literal("brief"), v.literal("booking"));
+export const offerLead = v.union(v.literal("book"), v.literal("note"));
+
+// One card shown to the visitor. `reason` is unset when the reply model offered on its own.
+export const offer = v.object({
+  at: v.number(),
+  turn: v.number(),
+  kind: offerKind,
+  lead: v.optional(offerLead),
+  reason: v.optional(offerReason),
+  outcome: v.optional(v.union(v.literal("accepted"), v.literal("declined"))),
+});
+
 // Where a visit came from. Captured in the browser (lib/visit.ts) and checked on the
 // server (lib/analytics.ts). No IP addresses or user agents on the visit itself.
 export const visitContext = {
@@ -53,6 +120,12 @@ export default defineSchema({
     wentBadly: v.optional(v.number()),
     reason: v.optional(v.string()),
     scoredAt: v.optional(v.number()),
+    // Updated after each reply. Deleted with the conversation; never copied onto a lead.
+    jobCard: v.optional(jobCard),
+    jobCardAt: v.optional(v.number()),
+    // Latest screen's scores, and every card shown so far (the cooldown reads these).
+    readiness: v.optional(readiness),
+    offers: v.optional(v.array(offer)),
     expiresAt: v.number(),
   })
     .index("by_conversationId", ["conversationId"])
@@ -76,6 +149,16 @@ export default defineSchema({
     conversationId: v.optional(v.string()),
     // example_sent: the landing example the visitor sent.
     example: v.optional(v.string()),
+    // offer_shown, offer_accepted, offer_declined. Thresholds are tuned from these.
+    offer: v.optional(
+      v.object({
+        kind: offerKind,
+        turn: v.number(),
+        lead: v.optional(offerLead),
+        reason: v.optional(offerReason),
+        readiness: v.optional(readiness),
+      }),
+    ),
     ...visitContext,
     at: v.number(),
     expiresAt: v.number(),
@@ -102,6 +185,8 @@ export default defineSchema({
     email: v.string(),
     name: v.optional(v.string()),
     brief: v.record(v.string(), v.string()),
+    // The visitor's own note. Written by them and not screened, so it's untrusted text.
+    note: v.optional(v.string()),
     conversationId: v.optional(v.string()),
     // Copied from the conversation when the lead is saved, so it outlives the 90-day transcript.
     fitScore: v.optional(v.number()),

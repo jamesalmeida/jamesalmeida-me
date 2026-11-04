@@ -7,9 +7,10 @@ import { storeApi, storeMutation } from "@/lib/store.server";
 
 export const dynamic = "force-dynamic";
 
-const MAX_BODY_BYTES = 4 * 1024;
+// parseLead caps each field in characters. This leaves room for three-byte scripts.
+const MAX_BODY_BYTES = 8 * 1024;
 
-// The optional email field on the brief card. Unlike analytics this is stored before
+// "Send to James" on the brief card. Unlike analytics this is stored before
 // responding, so the visitor only sees "Thanks" once it's saved.
 export async function POST(request: Request) {
   const result = await readPublicJson(request, leadIpLimiter, MAX_BODY_BYTES);

@@ -61,6 +61,11 @@ export const PROMPT_EXAMPLES = [
   "We tried ChatGPT and it didn't stick",
   "I have an idea but no developer",
   "How do I stay safe from AI scams?",
+  "We redo the same reports every week",
+  "Leads slip through the cracks",
+  "Our tools don't talk to each other",
+  "Where does AI fit in my work?",
+  "I want to learn to build an app",
 ] as const;
 
 const AUDIT_CREDIT =
@@ -174,6 +179,11 @@ export const OFFER = {
       question: "It's just me, not a business. Can you still help?",
       answer:
         "Yes. Helping one person find where AI fits in their week is exactly the kind of work I want to do. I scope it with you on the discovery call.",
+    },
+    {
+      question: "I have an app idea. Can you help?",
+      answer:
+        "Yes. I can help you prototype it, or help you learn how to start building it yourself. I scope it with you on the discovery call.", // PROVISIONAL: app help has no published price; scoped on the call
     },
     {
       question: "Is the audit fee wasted if I go ahead?",

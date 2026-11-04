@@ -3,15 +3,22 @@ import { SITE } from "@/data/site";
 import {
   BLOCKED_REPLY,
   replyWasBlocked,
+  BUYING_SIGNAL_THRESHOLD,
+  ENGAGEMENT_FADING_THRESHOLD,
+  MAX_OFFERS_PER_CHAT,
+  OFFER_COOLDOWN_TURNS,
   ctaAlreadyShown,
   decideJev,
   formatFit,
   fitLabel,
   intentNudge,
+  offerAllowed,
+  offerFromReply,
   screenForStore,
   storedScreen,
   threadIsClosed,
   type JevReadings,
+  type OfferHistory,
 } from "./jev-decision";
 
 const calm: JevReadings = {
@@ -22,7 +29,12 @@ const calm: JevReadings = {
   intent: "continue_chat",
   intentConfidence: 0.9,
   fitScore: 1.2,
+  buyingSignal: 0.05,
+  engagementFading: 0.05,
+  goingNowhere: 0.05,
 };
+
+const readiness = { buyingSignal: 0.05, engagementFading: 0.05, goingNowhere: 0.05, cardCompleteness: 0 };
 
 function decide(readings: Partial<JevReadings>, ctaShown = false) {
   return decideJev({ ...calm, ...readings }, { ctaAlreadyShown: ctaShown });
@@ -36,7 +48,7 @@ describe("decideJev", () => {
     expect(decision.nudge).toBe("none");
     expect(decision.forceTool).toBe(false);
     expect(decision.fitScore).toBe(2.15);
-    expect(storedScreen(decision)).toEqual({ blocked: false, intent: "continue_chat", fitScore: 2.15 });
+    expect(storedScreen(decision)).toEqual({ blocked: false, intent: "continue_chat", fitScore: 2.15, readiness });
   });
 
   it("blocks the strongest hazard at or above 0.7", () => {
@@ -87,6 +99,88 @@ describe("decideJev", () => {
   });
 });
 
+describe("offers", () => {
+  const fresh: OfferHistory = { shown: 0, lastTurn: null, taken: false, turn: 4 };
+  const offer = (readings: Partial<JevReadings>, offers: OfferHistory | null, cardCompleteness = 0) =>
+    decideJev({ ...calm, ...readings }, { ctaAlreadyShown: false, offers, cardCompleteness });
+
+  it("offers on a buying signal even with an empty card, leading with booking", () => {
+    expect(offer({ buyingSignal: BUYING_SIGNAL_THRESHOLD }, fresh)).toMatchObject({
+      nudge: "book",
+      forceTool: true,
+      offerReason: "buying_signal",
+    });
+    expect(offer({ buyingSignal: BUYING_SIGNAL_THRESHOLD - 0.01 }, fresh).nudge).toBe("none");
+  });
+
+  it("offers a note when engagement fades, whatever the card has", () => {
+    expect(offer({ engagementFading: ENGAGEMENT_FADING_THRESHOLD }, fresh)).toMatchObject({
+      nudge: "email",
+      offerReason: "fading",
+    });
+    expect(offer({ engagementFading: ENGAGEMENT_FADING_THRESHOLD - 0.01 }, fresh).nudge).toBe("none");
+  });
+
+  it("offers a note once the card is good enough, and not before", () => {
+    expect(offer({}, fresh, 1)).toMatchObject({ nudge: "email", offerReason: "card_ready" });
+    expect(offer({}, fresh, 0.75).nudge).toBe("none");
+  });
+
+  it("lets a confident intent choose what the card leads with", () => {
+    const shared = { intentConfidence: 0.8, engagementFading: 0.9 };
+    expect(offer({ ...shared, intent: "suggest_book_call" }, fresh)).toMatchObject({ nudge: "book", offerReason: "intent" });
+    expect(offer({ ...shared, intent: "suggest_email", buyingSignal: 0.9 }, fresh).nudge).toBe("email");
+  });
+
+  it("waits out the cooldown after an offer", () => {
+    const after = (turn: number): OfferHistory => ({ shown: 1, lastTurn: 2, taken: false, turn });
+    expect(offerAllowed(after(2 + OFFER_COOLDOWN_TURNS), false)).toBe(false);
+    expect(offerAllowed(after(3 + OFFER_COOLDOWN_TURNS), false)).toBe(true);
+    expect(offer({ buyingSignal: 0.9 }, after(4)).nudge).toBe("none");
+    expect(offer({ buyingSignal: 0.9 }, after(6)).nudge).toBe("book");
+  });
+
+  it("stops at the maximum, and once the visitor has taken an offer", () => {
+    const history: OfferHistory = { shown: MAX_OFFERS_PER_CHAT, lastTurn: 1, taken: false, turn: 20 };
+    expect(offer({ buyingSignal: 0.9 }, history).nudge).toBe("none");
+    expect(offer({ buyingSignal: 0.9 }, { shown: 1, lastTurn: 1, taken: true, turn: 20 }).nudge).toBe("none");
+  });
+
+  it("falls back to one offer per thread without stored history", () => {
+    expect(offerAllowed(null, false)).toBe(true);
+    expect(offerAllowed(null, true)).toBe(false);
+    expect(offerAllowed(undefined, true)).toBe(false);
+  });
+
+  it("never offers on a blocked turn", () => {
+    expect(offer({ spam: 0.99, buyingSignal: 0.9 }, fresh, 1)).toMatchObject({ action: "block", nudge: "none", offerReason: null });
+  });
+
+  it("only scores goingNowhere: it changes nothing about the turn", () => {
+    const decision = offer({ goingNowhere: 0.99 }, fresh);
+    expect(decision).toMatchObject({ action: "pass", nudge: "none", forceTool: false });
+    expect(decision.readiness?.goingNowhere).toBe(0.99);
+  });
+
+  it("clamps bad readiness numbers", () => {
+    const decision = offer({ buyingSignal: Number.NaN, engagementFading: 4, goingNowhere: -1 }, null, 7);
+    expect(decision.readiness).toEqual({ buyingSignal: 0, engagementFading: 1, goingNowhere: 0, cardCompleteness: 1 });
+  });
+
+  it("describes the card a reply showed", () => {
+    const decision = offer({ buyingSignal: 0.9 }, fresh);
+    expect(offerFromReply([], decision)).toBeUndefined();
+    expect(offerFromReply([{ toolName: "showBrief", input: { who: "x", lead: "note" } }], decision)).toEqual({
+      kind: "brief",
+      lead: "note",
+      reason: "buying_signal",
+      readiness: decision.readiness,
+    });
+    expect(offerFromReply([{ toolName: "showBookingCta", input: {} }], null)).toEqual({ kind: "booking" });
+    expect(offerFromReply([{ toolName: "showBrief", input: { lead: "soon" } }], null)).toEqual({ kind: "brief" });
+  });
+});
+
 describe("cta and copy", () => {
   it("sees a booking or brief card already in the thread", () => {
     expect(ctaAlreadyShown([{ parts: [{ type: "text" }] }])).toBe(false);
@@ -116,7 +210,8 @@ describe("cta and copy", () => {
     expect(threadIsClosed([{ role: "assistant", content: [{ type: "text", text: "A useful thought." }] }])).toBe(false);
     for (const nudge of ["book", "email"] as const) {
       const text = intentNudge(nudge);
-      expect(text).toContain(nudge === "book" ? "discovery call" : "emailing James");
+      expect(text).toContain(nudge === "book" ? "discovery call" : "sending James");
+      expect(text).toContain(`lead set to "${nudge === "book" ? "book" : "note"}"`);
       expect(text).toContain("showBrief");
       expect(text).not.toMatch(/\bminutes?\b|we |Konteks/i);
     }
@@ -128,6 +223,7 @@ describe("cta and copy", () => {
       blocked: false,
       intent: "continue_chat",
       fitScore: 2,
+      readiness,
     });
     expect(screenForStore(decide({ jailbreak: 0.91, fitScore: 0 }), { clientIp: "203.0.113.4" })).toMatchObject({
       blocked: true,

@@ -27,21 +27,23 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     body: (
       <>
         <p>
-          When you send a message, the recent messages in that chat (up to the last 20) go to my
-          server and, unless the check below blocks them, on to the AI model provider that writes
+          When you send a message, the recent messages in that chat (up to about 40,000 characters,
+          which is usually the whole chat) go to my server and, unless the check below blocks them, on to the AI model provider that writes
           the reply: OpenAI or Anthropic, depending on which model I have the chat set to. The
           first message of a new chat is also sent to generate a short title for it, unless that
           message was blocked. The providers
           handle that data under their API terms.
         </p>
         <p>
-          Before a reply is written, the same messages may also go to TypeSafe. Their model, Jev,
+          Before a reply is written, the same messages, and the summary described below, may also
+          go to TypeSafe. Their model, Jev,
           does not write the reply. It checks the latest message for spam, attempts to override
           or jailbreak the assistant (including requests for API keys, credentials, passwords,
           tokens, the system prompt, environment variables, or anything else behind the scenes),
           and requests for harmful, illegal, or abusive help, including taking or using secrets
-          that aren&apos;t yours. It also scores the chat: how well it fits the work I do, and
-          whether to suggest a discovery call or an email. If that check blocks a message, the
+          that aren&apos;t yours. It also scores the chat: how well it fits the work I do,
+          whether to suggest a discovery call or an email, how ready you seem for that, and whether
+          the chat is going anywhere. If that check blocks a message, the
           message is not sent to OpenAI or Anthropic, and the chat ends there. After a reply is
           written, the conversation may be sent to TypeSafe again so Jev can note how you seemed
           (positive, neutral, or negative) and whether the chat went badly. That second check
@@ -49,13 +51,21 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
           skipped.
         </p>
         <p>
+          The chat also keeps a short summary of what you need: things like what you&apos;re trying
+          to get done, what matters to you, and who&apos;s involved. After each reply, your recent
+          messages go to an AI model from Anthropic or OpenAI, which writes the summary, and the
+          assistant uses it so it doesn&apos;t ask you the same thing twice. It&apos;s saved with the
+          chat, I can see it on my admin page along with the chat, and it&apos;s deleted with the chat
+          after 90 days.
+        </p>
+        <p>
           I save a copy of each chat, your messages and the assistant&apos;s replies, in my
           database (hosted by Convex), so I can see what&apos;s useful and where the assistant
           falls short. Saved chats are deleted automatically after 90 days, and so are the block,
-          the fit score, the sentiment note, the went-badly score, and any IP address stored
+          the scores above, the sentiment note, the went-badly score, and any IP address stored
           with a blocked chat. They aren&apos;t
-          linked to your name or email unless you leave your email on a brief. If you leave your
-          email, the fit score at that moment is saved with it. If you&apos;d like
+          linked to your name or email unless you send me your brief. If you do, the fit score at
+          that moment is saved with it. If you&apos;d like
           a chat deleted sooner, email me.
         </p>
         <p>Please don&apos;t share sensitive information, such as patient or customer details.</p>
@@ -77,8 +87,8 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
       <>
         <p>
           To learn what works, I record a few events: that the chat page loaded, that a chat
-          started, that the assistant wrote a brief, clicks on the booking and email links, and
-          which suggested question you sent if you used one. With them I keep the headline you
+          started, that the assistant wrote a brief or offered a next step, whether you took it, clicks
+          on the booking and email links, and which suggested question you sent if you used one. With them I keep the headline you
           saw, the website that sent you here (just its
           domain), any campaign tags in the link, and whether you&apos;re on a phone, tablet or
           desktop. A random id, kept in your browser tab until you close it, ties one visit&apos;s
@@ -92,13 +102,15 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     ),
   },
   {
-    title: "Leaving your email",
+    title: "Sending me your brief",
     body: (
       <p>
-        If you leave your email on your brief, I save it with your name (if you give it), the
-        brief and the chat it came from, so I can follow up, and I may get an email about it. I
-        keep it until you ask me to delete it or I no longer need it. I won&apos;t add you to a
-        mailing list or share it.
+        The brief is a short version of that summary, and you can check and edit it first. It&apos;s
+        only sent to me as a message when you press Send. I then save your email, your name (if
+        you give it), the brief as you left it, any note you add, and which chat it came from, so
+        I can follow up, and I may get an email about it. I keep those until you ask me to delete
+        them or I no longer need them. The fuller summary isn&apos;t kept with them: it&apos;s deleted
+        with the chat. I won&apos;t add you to a mailing list or share your email.
       </p>
     ),
   },
@@ -139,7 +151,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
         <p>
           To limit abuse, my server counts requests per IP address in memory over a short
           window. Those counts aren&apos;t written to storage and reset whenever the server
-          restarts. When you send a message, rate a reply or leave your email, Vercel BotID also
+          restarts. When you send a message, rate a reply or send your brief, Vercel BotID also
           runs a check in your browser and on the server to tell people from bots. The TypeSafe
           check described above is what stops a message that looks like spam, a jailbreak or
           abuse before a reply is written. Once a chat is blocked, further messages in it are
@@ -167,8 +179,9 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
           me, the message goes to my inbox.
         </p>
         <p>
-          The booking button puts your brief in the notes on the Cal.com booking page, and the
-          email button puts it in a new email in your own mail app. You can edit it first.
+          The booking button puts your brief in the notes on the Cal.com booking page. If sending it
+          doesn&apos;t work, the email button puts it in a new email in your own mail app. You can
+          edit it first.
         </p>
       </>
     ),
@@ -185,7 +198,7 @@ export default function PrivacyPage() {
           <p className="max-w-2xl text-sm leading-6 text-[var(--muted)] sm:text-base">
             What happens to what you type in the chat, in plain terms.
           </p>
-          <p className="text-xs text-[var(--muted)]">Last updated October 2026</p>
+          <p className="text-xs text-[var(--muted)]">Last updated November 2026</p>
         </header>
 
         {SECTIONS.map((section) => (

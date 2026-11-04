@@ -29,9 +29,9 @@ Deployed on Vercel as project `jamesalmeida-portfolio`, team GSV (slug `gsv-2`).
 | `/api/chat` | Streaming chat. A turn in a chat that was already blocked is refused without calling Jev or the reply model. |
 | `/api/generate-title` | Short title for a saved chat |
 | `/api/admin/model` | Read or set the signed model cookie |
-| `/api/events` | Funnel events from the browser (`landing_view`, `booking_clicked`, `email_clicked`, `example_sent`) |
+| `/api/events` | Funnel events from the browser (`landing_view`, `booking_clicked`, `email_clicked`, `example_sent`, `offer_declined`) |
 | `/api/feedback` | Thumbs up/down and the feedback form under each reply |
-| `/api/leads` | The optional email on the brief card (saved before it answers) |
+| `/api/leads` | "Send to James" on the brief card (saved before it answers) |
 
 There is no `/api/admin/verify`.
 
@@ -50,9 +50,9 @@ The pages speak as James ("I", "my"). The chat is Skaffen, James' AI assistant (
 
 ## Chat tools
 
-Asking how to book or contact James shows a booking card (`showBookingCta`). Once Skaffen understands what the visitor needs, it shows "Your brief" (`showBrief`): an editable summary whose buttons put it in a Cal booking's notes or an email to James. Nothing is sent unless the visitor clicks. Both tools are defined in `lib/chat-tools.ts` and rendered in `components/tool-cards.tsx`.
+Asking how to book or contact James shows a booking card (`showBookingCta`). Once Skaffen understands what the visitor needs, it shows a short brief headed "Does this look right?" (`showBrief`): an editable summary the visitor can book with (it goes in the Cal booking's notes), send to James with their email and a note, or put off with "Not yet". Nothing is sent unless the visitor clicks. Both tools are defined in `lib/chat-tools.ts` and rendered in `components/tool-cards.tsx`.
 
-`/api/chat` rejects bodies over 200 KB, drops system messages and unknown parts, keeps the last 20 messages, and truncates each text part to 2,000 characters. Title generation rejects bodies over 10 KB.
+`/api/chat` rejects bodies over 200 KB, drops system messages and unknown parts, keeps the newest messages up to 40,000 characters, and truncates each text part to 2,000 characters. Title generation rejects bodies over 10 KB.
 
 The admin model override is an httpOnly cookie signed with `ADMIN_PASSWORD`. An unsigned cookie is ignored.
 

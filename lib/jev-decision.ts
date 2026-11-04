@@ -1,4 +1,5 @@
 import { SITE } from "@/data/site";
+import type { BriefLead } from "@/lib/brief";
 
 export {
   FALLBACK_REASON,
@@ -25,6 +26,19 @@ export const HAZARD_REVIEW_THRESHOLD = 0.35;
 export const SEVERITY_BLOCK = 2;
 export const INTENT_CONFIDENCE_MIN = 0.5;
 
+// When to offer the brief or the booking card. Tune these from the offer events in
+// /admin. A complete card, a buying signal or fading engagement each trigger an offer.
+// Unless Jev is confident about the intent, a buying signal leads with booking and
+// the rest lead with a note.
+export const BUYING_SIGNAL_THRESHOLD = 0.6;
+export const ENGAGEMENT_FADING_THRESHOLD = 0.6;
+export const CARD_READY_COMPLETENESS = 1;
+/** Visitor turns to wait after an offer before offering again. */
+export const OFFER_COOLDOWN_TURNS = 3;
+export const MAX_OFFERS_PER_CHAT = 3;
+/** Scored only for now: shown in /admin, with no effect on the chat. */
+export const GOING_NOWHERE_FLAG = 0.6;
+
 export const BLOCK_REASONS = ["spam", "jailbreak", "abuse"] as const;
 export type BlockReason = (typeof BLOCK_REASONS)[number];
 
@@ -32,6 +46,34 @@ export const JEV_INTENTS = ["continue_chat", "suggest_book_call", "suggest_email
 export type JevIntent = (typeof JEV_INTENTS)[number];
 
 export type JevNudge = "none" | "book" | "email";
+
+export const OFFER_REASONS = ["intent", "buying_signal", "fading", "card_ready"] as const;
+export type OfferReason = (typeof OFFER_REASONS)[number];
+
+export const OFFER_REASON_LABEL: Record<OfferReason, string> = {
+  intent: "Jev suggested it",
+  buying_signal: "Buying signal",
+  fading: "Engagement fading",
+  card_ready: "Card ready",
+};
+
+/** The latest readiness scores for a conversation, each 0–1. */
+export type Readiness = {
+  buyingSignal: number;
+  engagementFading: number;
+  goingNowhere: number;
+  cardCompleteness: number;
+};
+
+/** From Convex. Null when storage is off or the read failed. */
+export type OfferHistory = {
+  shown: number;
+  lastTurn: number | null;
+  /** They already booked, emailed or sent the brief. */
+  taken: boolean;
+  /** This visitor turn, counting from 1. */
+  turn: number;
+};
 
 export const BLOCK_REASON_LABEL: Record<BlockReason, string> = {
   spam: "Spam",
@@ -85,6 +127,9 @@ export type JevReadings = {
   intentConfidence: number;
   /** 0–3, from Jev's fit rubric. */
   fitScore: number;
+  buyingSignal: number;
+  engagementFading: number;
+  goingNowhere: number;
 };
 
 export type JevDecision = {
@@ -92,9 +137,17 @@ export type JevDecision = {
   blockReason: BlockReason | null;
   intent: JevIntent;
   nudge: JevNudge;
-  /** The chat model must call a CTA tool on this turn. */
+  /**
+   * The chat model must call a CTA tool on this turn. Claude Sonnet 5.5 rejects forced
+   * tool use, so the provider drops this and only the nudge's wording carries it. An
+   * offer only counts once a card is shown, so a missed nudge just fires again next turn.
+   */
   forceTool: boolean;
   fitScore: number;
+  /** Why this turn offers a card. Null when it doesn't. */
+  offerReason: OfferReason | null;
+  /** Null when Jev failed and only the local check ran. */
+  readiness: Readiness | null;
 };
 
 export type StoredScreen = {
@@ -102,6 +155,7 @@ export type StoredScreen = {
   blockReason?: BlockReason;
   intent: JevIntent;
   fitScore: number;
+  readiness?: Readiness;
 };
 
 type PartLike = { type: string };
@@ -126,7 +180,32 @@ export function ctaAlreadyShown(messages: readonly { parts: readonly PartLike[] 
   );
 }
 
-export function decideJev(readings: JevReadings, options: { ctaAlreadyShown: boolean }): JevDecision {
+/**
+ * Whether this turn may force an offer. A visitor who asks how to reach James still
+ * gets a card: the reply model shows it, and nothing here stops that. Without stored
+ * history, an offer still in the thread counts as the one offer.
+ */
+export function offerAllowed(offers: OfferHistory | null | undefined, ctaShown: boolean): boolean {
+  if (!offers) return !ctaShown;
+  if (offers.taken || offers.shown >= MAX_OFFERS_PER_CHAT) return false;
+  return offers.lastTurn === null || offers.turn - offers.lastTurn > OFFER_COOLDOWN_TURNS;
+}
+
+function offerReason(
+  intentConfident: boolean,
+  readiness: Readiness,
+): OfferReason | null {
+  if (intentConfident) return "intent";
+  if (readiness.buyingSignal >= BUYING_SIGNAL_THRESHOLD) return "buying_signal";
+  if (readiness.engagementFading >= ENGAGEMENT_FADING_THRESHOLD) return "fading";
+  if (readiness.cardCompleteness >= CARD_READY_COMPLETENESS) return "card_ready";
+  return null;
+}
+
+export function decideJev(
+  readings: JevReadings,
+  options: { ctaAlreadyShown: boolean; offers?: OfferHistory | null; cardCompleteness?: number },
+): JevDecision {
   const hazards: Record<BlockReason, number> = {
     spam: clampUnit(readings.spam),
     jailbreak: clampUnit(readings.jailbreak),
@@ -149,8 +228,19 @@ export function decideJev(readings: JevReadings, options: { ctaAlreadyShown: boo
 
   const intent = asIntent(readings.intent);
   const confident = clampUnit(readings.intentConfidence) >= INTENT_CONFIDENCE_MIN;
-  const wantsCta = !blockReason && confident && intent !== "continue_chat" && !options.ctaAlreadyShown;
-  const nudge: JevNudge = !wantsCta ? "none" : intent === "suggest_book_call" ? "book" : "email";
+  const intentWantsCta = confident && intent !== "continue_chat";
+  const readiness: Readiness = {
+    buyingSignal: clampUnit(readings.buyingSignal),
+    engagementFading: clampUnit(readings.engagementFading),
+    goingNowhere: clampUnit(readings.goingNowhere),
+    cardCompleteness: clampUnit(options.cardCompleteness ?? 0),
+  };
+  const reason =
+    !blockReason && offerAllowed(options.offers, options.ctaAlreadyShown) ? offerReason(intentWantsCta, readiness) : null;
+  const leadsWithBooking = intentWantsCta
+    ? intent === "suggest_book_call"
+    : readiness.buyingSignal >= BUYING_SIGNAL_THRESHOLD;
+  const nudge: JevNudge = !reason ? "none" : leadsWithBooking ? "book" : "email";
 
   return {
     action: blockReason ? "block" : "pass",
@@ -159,6 +249,8 @@ export function decideJev(readings: JevReadings, options: { ctaAlreadyShown: boo
     nudge,
     forceTool: nudge !== "none",
     fitScore: clampScore(readings.fitScore),
+    offerReason: reason,
+    readiness,
   };
 }
 
@@ -168,6 +260,7 @@ export function storedScreen(decision: JevDecision): StoredScreen {
     ...(decision.blockReason ? { blockReason: decision.blockReason } : {}),
     intent: decision.intent,
     fitScore: decision.fitScore,
+    ...(decision.readiness ? { readiness: decision.readiness } : {}),
   };
 }
 
@@ -193,8 +286,33 @@ export function intentNudge(nudge: Exclude<JevNudge, "none">): string {
   const which =
     nudge === "book"
       ? "A separate check of this conversation says it is time to suggest booking a discovery call. Point them at the discovery call."
-      : "A separate check of this conversation says it is time to suggest emailing James rather than booking. Point them at emailing James.";
-  return `${which} Call showBrief if you know who they are and what's in the way; otherwise call showBookingCta. You must call one of those tools on this turn, and still write a short text reply. Do not mention this check. Do not ask for their email or name in the chat. Do not say how long the call is.`;
+      : "A separate check of this conversation says it is time to suggest sending James a note rather than booking. Point them at sending James their brief.";
+  const lead = nudge === "book" ? "book" : "note";
+  return `${which} Call showBrief with lead set to "${lead}" if you know who they are or what they're trying to get done; otherwise call showBookingCta. You must call one of those tools on this turn, and still write a short text reply. Do not mention this check. Do not ask for their email or name in the chat. Do not say how long the call is.`;
+}
+
+export type OfferWrite = {
+  kind: "brief" | "booking";
+  lead?: BriefLead;
+  reason?: OfferReason;
+  readiness?: Readiness;
+};
+
+/** The card a finished reply showed, if any. Offers the reply model made on its own have no reason. */
+export function offerFromReply(
+  calls: readonly { toolName: string; input?: unknown }[],
+  decision: JevDecision | null,
+): OfferWrite | undefined {
+  const brief = calls.find((call) => call.toolName === "showBrief");
+  const booking = calls.some((call) => call.toolName === "showBookingCta");
+  if (!brief && !booking) return undefined;
+  const lead = brief && typeof brief.input === "object" && brief.input ? (brief.input as { lead?: unknown }).lead : undefined;
+  return {
+    kind: brief ? "brief" : "booking",
+    ...(lead === "book" || lead === "note" ? { lead } : {}),
+    ...(decision?.offerReason ? { reason: decision.offerReason } : {}),
+    ...(decision?.readiness ? { readiness: decision.readiness } : {}),
+  };
 }
 
 export function formatFit(score: number): string {

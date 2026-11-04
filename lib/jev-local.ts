@@ -9,7 +9,16 @@ const OWNED =
   /\b(?:your|ur|the assistant|the bot|the model|skaffen|james)(?:'s|'|s)?\s+(?:\w+\s+){0,3}?(?:api[\s_-]*keys?|openai[\s_-]*keys?|anthropic[\s_-]*keys?|access[\s_-]*tokens?|auth(?:entication)?[\s_-]*tokens?|bearer[\s_-]*tokens?|secret[\s_-]*keys?|private[\s_-]*keys?|credentials?|passwords?|system[\s_-]*prompts?|environment[\s_-]*variables?|env[\s_-]*vars?|env[\s_-]*files?|\.env\b|secrets\b|tokens?\b)\b/i;
 
 const REVEAL =
-  /\b(?:give|send|share|show|tell|reveal|print|dump|leak|paste|expose|disclose|hand|output|repeat|drop)\b.{0,60}(?:\.env\b|\b(?:system[\s_-]*prompts?|developer[\s_-]*messages?|hidden[\s_-]*prompts?|environment[\s_-]*variables?|env[\s_-]*vars?|env[\s_-]*files?|behind the scenes|your\s+instructions|your\s+prompt|your\s+rules|your\s+secret\b))/i;
+  /\b(?:give|send|share|show|tell|reveal|print|dump|leak|paste|expose|disclose|hand|output|repeat|drop)\b.{0,60}(?:\.env\b|\b(?:system[\s_-]*prompts?|developer[\s_-]*messages?|hidden[\s_-]*prompts?|environment[\s_-]*variables?|env[\s_-]*vars?|env[\s_-]*files?|your\s+instructions|your\s+prompt|your\s+rules|your\s+secret\b))/i;
+
+const BEHIND_THE_SCENES =
+  /\b(?:give|send|share|show|tell|reveal|print|dump|leak|paste|expose|disclose|hand|output|repeat|drop)\b.{0,60}\bbehind the scenes\b/i;
+
+// "What are you tracking about me behind the scenes?" is a fair privacy question. It has
+// to be a question about the visitor; "dump it all, including my data" is still fishing.
+const PRIVACY_QUESTION = /\b(?:what|which|how|is there|are you|do you)\b/i;
+const ABOUT_THE_VISITOR = /\b(?:about|on|of)\s+me\b|\bmy\s+(?:data|info|information|details|messages?|chats?|conversations?)\b/i;
+const DEMANDS_A_DUMP = /\b(?:dump|leak|print|paste|expose)\b/i;
 
 const ASK_WHAT_YOU_USE =
   /\b(?:what|which)\b.{0,40}\b(?:api[\s_-]*keys?|credentials?|passwords?|secret[\s_-]*keys?|access[\s_-]*tokens?|system[\s_-]*prompts?)\b.{0,40}\b(?:do you|are you|you)\s+(?:use|have|run|with)\b/i;
@@ -34,8 +43,18 @@ function normalize(text: string): string {
     .trim();
 }
 
+function asksAboutThemselves(text: string): boolean {
+  return PRIVACY_QUESTION.test(text) && ABOUT_THE_VISITOR.test(text) && !DEMANDS_A_DUMP.test(text);
+}
+
 function asksToReveal(text: string): boolean {
-  return OWNED.test(text) || REVEAL.test(text) || ASK_WHAT_YOU_USE.test(text) || IGNORE_INSTRUCTIONS.test(text);
+  return (
+    OWNED.test(text) ||
+    REVEAL.test(text) ||
+    (BEHIND_THE_SCENES.test(text) && !asksAboutThemselves(text)) ||
+    ASK_WHAT_YOU_USE.test(text) ||
+    IGNORE_INSTRUCTIONS.test(text)
+  );
 }
 
 /**
@@ -67,5 +86,6 @@ export function applyLocalHazard(decision: JevDecision, text: string): JevDecisi
     blockReason: keepModel ? modelReason : local,
     nudge: "none",
     forceTool: false,
+    offerReason: null,
   };
 }
