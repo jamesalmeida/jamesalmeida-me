@@ -15,7 +15,8 @@ export type BriefCardState = {
   brief: Brief;
   view: "card" | "collapsed";
   editing: boolean;
-  form: "unopened" | "open";
+  /** "closed" keeps the form mounted, so what was typed stays. */
+  form: "unopened" | "open" | "closed";
   send: SendState;
 };
 
@@ -23,6 +24,7 @@ export type BriefCardEvent =
   | { type: "edit_field"; key: keyof Brief; value: string }
   | { type: "toggle_edit" }
   | { type: "open_form" }
+  | { type: "toggle_form" }
   | { type: "dismiss" }
   | { type: "restore" }
   | { type: "submit_started" }
@@ -70,6 +72,10 @@ export function reduceBriefCard(state: BriefCardState, event: BriefCardEvent): B
     case "open_form":
       if (isSent(state) || state.send.status === "submitting") return state;
       return { ...state, form: "open" };
+    case "toggle_form":
+      // "Send to James" opens the form and closes it again, keeping what was typed.
+      if (isSent(state) || state.send.status === "submitting") return state;
+      return { ...state, form: state.form === "open" ? "closed" : "open" };
     case "dismiss":
       if (!canDismiss(state)) return state;
       return { ...state, view: "collapsed", editing: false };

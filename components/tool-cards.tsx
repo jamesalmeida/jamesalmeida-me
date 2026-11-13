@@ -154,7 +154,7 @@ function BriefCard({
         {sent ? null : (
           <button
             type="button"
-            onClick={() => dispatch({ type: "open_form" })}
+            onClick={() => dispatch({ type: "toggle_form" })}
             aria-expanded={state.form === "open"}
             className={sendLeads ? primaryButtonClass : outlineButtonClass}
             data-cuelume-hover="whisper"
@@ -185,7 +185,7 @@ function BriefCard({
         <p role="status" className="mt-5 rounded-[1rem] bg-[var(--surface-muted)] px-4 py-3 text-[15px] leading-6">
           Thanks. James has your email and this brief.
         </p>
-      ) : state.form === "open" ? (
+      ) : state.form !== "unopened" ? (
         <SendForm
           brief={state.brief}
           conversationId={conversationId}

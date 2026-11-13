@@ -3,7 +3,8 @@ import type { FeedbackRating } from "@/lib/feedback";
 // One reply's feedback controls. Rating, the popover and the form used to be three
 // booleans; they are one panel now. The rating and the details are kept per reply,
 // and each write carries a sequence number so a quick click can't land after a
-// newer one.
+// newer one. The number never goes below the clock, so a counter that restarts
+// (storage cleared, or this reply dropped out of the cap) still beats the stored one.
 
 export type FeedbackPanel = "none" | "thanks" | "form";
 
@@ -34,6 +35,11 @@ export function initialFeedback(): FeedbackState {
   };
 }
 
+/** The next write's sequence: one more than the last, and never behind the clock. */
+export function nextSequence(previous: number, now: number = Date.now()): number {
+  return Math.max(previous + 1, now);
+}
+
 export function reduceFeedback(state: FeedbackState, event: FeedbackEvent): FeedbackState {
   switch (event.type) {
     case "restored":
@@ -51,7 +57,7 @@ export function reduceFeedback(state: FeedbackState, event: FeedbackEvent): Feed
         rating: event.rating,
         panel: event.rating ? "thanks" : "none",
         hasSentDetails: event.rating ? state.hasSentDetails : false,
-        sequence: state.sequence + 1,
+        sequence: nextSequence(state.sequence),
       };
     case "open_form":
       return state.rating ? { ...state, panel: "form" } : state;
@@ -64,7 +70,7 @@ export function reduceFeedback(state: FeedbackState, event: FeedbackEvent): Feed
         details: event.details,
         hasSentDetails: true,
         panel: "thanks",
-        sequence: state.sequence + 1,
+        sequence: nextSequence(state.sequence),
       };
   }
 }

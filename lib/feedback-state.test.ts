@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { initialFeedback, reduceFeedback } from "./feedback-state";
+import { initialFeedback, nextSequence, reduceFeedback } from "./feedback-state";
 
 describe("feedback state", () => {
+  it("never lets a restarted counter fall behind a stored sequence", () => {
+    // The server keeps the highest sequence it has seen. A counter that restarted at
+    // 0 would be ignored; the clock floor keeps new writes ahead of old ones.
+    expect(nextSequence(0, 1_800_000_000_000)).toBe(1_800_000_000_000);
+    expect(nextSequence(1_800_000_000_000, 1_800_000_000_000)).toBe(1_800_000_000_001);
+    expect(nextSequence(0)).toBeGreaterThan(1_700_000_000_000);
+  });
+
   it("restores a rating and its details after a reload", () => {
     const state = reduceFeedback(initialFeedback(), {
       type: "restored",
@@ -29,7 +37,7 @@ describe("feedback state", () => {
     expect(state.rating).toBe("up");
     expect(state.reasons).toEqual(["It didn't answer my question"]);
     expect(state.details).toBe("I wanted pricing");
-    expect(state.sequence).toBe(5);
+    expect(state.sequence).toBeGreaterThan(4);
     expect(state.panel).toBe("thanks");
   });
 
@@ -41,7 +49,7 @@ describe("feedback state", () => {
     state = reduceFeedback(state, { type: "details_sent", reasons: ["Too long"], details: "" });
     expect(state.panel).toBe("thanks");
     expect(state.hasSentDetails).toBe(true);
-    expect(state.sequence).toBe(2);
+    expect(state.sequence).toBeGreaterThan(1);
     state = reduceFeedback(state, { type: "close_panel" });
     expect(state.panel).toBe("none");
   });

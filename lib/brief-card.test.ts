@@ -66,4 +66,15 @@ describe("brief card", () => {
     expect(restored.send).toEqual({ status: "sent", sentBrief: { job: "y" } });
     expect(restored.view).toBe("collapsed");
   });
+  it("Send to James toggles the form and keeps it mounted when closed", () => {
+    let state = initialBriefCard({ who: "Dental office" });
+    state = reduceBriefCard(state, { type: "toggle_form" });
+    expect(state.form).toBe("open");
+    state = reduceBriefCard(state, { type: "toggle_form" });
+    expect(state.form).toBe("closed");
+    state = reduceBriefCard(state, { type: "toggle_form" });
+    expect(state.form).toBe("open");
+    state = reduceBriefCard(state, { type: "submit_started" });
+    expect(reduceBriefCard(state, { type: "toggle_form" })).toBe(state);
+  });
 });

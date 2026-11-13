@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { completedTurn, hasReply, stoppedTurn } from "./turn-result";
+import { replyFromSteps as replyFromOneStep } from "./turn-result";
 
 const call = (toolName: string, input: unknown = {}, invalid = false) => ({
   toolName,
@@ -42,5 +43,15 @@ describe("turn result", () => {
     expect(hasReply(stoppedTurn([], null))).toBe(false);
     expect(hasReply({ kind: "failed" })).toBe(false);
     expect(hasReply(completedTurn([{ text: "Hi", toolCalls: [] }], null))).toBe(true);
+  });
+  it("a card that failed validation in a finished step is not an offer", () => {
+    // /api/chat records offers from onStepFinish with this, one step at a time.
+    const step = {
+      text: "",
+      toolCalls: [{ toolName: "showBrief", toolCallId: "call_bad", input: {}, invalid: true }],
+    };
+    expect(replyFromOneStep([step], null).offer).toBeUndefined();
+    const valid = { text: "", toolCalls: [{ toolName: "showBrief", toolCallId: "call_ok", input: { who: "x" } }] };
+    expect(replyFromOneStep([valid], null).offer?.id).toBe("call_ok");
   });
 });
