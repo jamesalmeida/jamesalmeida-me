@@ -49,6 +49,19 @@ export async function storeMutation(
   return true;
 }
 
+/**
+ * Runs a Convex mutation and returns its result. Null when storage isn't configured.
+ * Used where the route needs to know what happened (a lead was created or updated).
+ */
+export async function storeMutationResult<T>(
+  ref: FunctionReference<"mutation">,
+  args: Record<string, unknown>,
+): Promise<T | null> {
+  const config = storeConfig();
+  if (!config) return null;
+  return (await new ConvexHttpClient(config.url).mutation(ref, { ...args, secret: config.secret })) as T;
+}
+
 /** Runs a Convex query. Returns null when storage isn't configured; throws on errors. */
 export async function storeQuery<T>(
   ref: FunctionReference<"query">,

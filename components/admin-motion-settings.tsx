@@ -1,9 +1,8 @@
 "use client";
 
 import { AgentAvatar, type AvatarConfig } from "@jamesalmeida/agent-avatars";
-import { play } from "cuelume";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { SITE } from "@/data/site";
 import { BouncingDots } from "./bouncing-dots";
 import { usePacedText } from "./paced-text";
@@ -12,6 +11,7 @@ import {
   MOTION_LIMITS,
   type MotionSettings,
 } from "@/lib/motion-settings";
+import { formNotice, useSettingsForm, type SettingsLoad, type SettingsSave } from "./use-settings-form";
 
 // The chat's pace for every visitor: how slow the transitions run, how long
 // Skaffen always thinks before a reply shows and how fast a reply's text appears.
@@ -19,76 +19,74 @@ import {
 // then speaking while the reply appears, at the slider values, so the pace can be
 // judged before saving.
 export function AdminMotionSettings({ onLocked }: { onLocked: () => void }) {
-  const [saved, setSaved] = useState<MotionSettings>(DEFAULT_MOTION);
-  const [draft, setDraft] = useState<MotionSettings>(DEFAULT_MOTION);
-  const [canSave, setCanSave] = useState(true);
-  const [status, setStatus] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const scaleId = useId();
   const thinkingId = useId();
   const textSpeedId = useId();
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/admin/motion", { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) return;
-        const payload = (await response.json()) as {
-          motion?: MotionSettings;
-          canSave?: boolean;
-        };
-        if (cancelled || !payload.motion) return;
-        setSaved(payload.motion);
-        setDraft(payload.motion);
-        setCanSave(payload.canSave === true);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
+  const load = useCallback(async (): Promise<SettingsLoad<MotionSettings>> => {
+    try {
+      const response = await fetch("/api/admin/motion", { cache: "no-store" });
+      const payload = (await response.json().catch(() => ({}))) as {
+        motion?: MotionSettings;
+        canSave?: boolean;
+        error?: string;
+      };
+      if (!response.ok || !payload.motion) {
+        return { error: payload.error ?? "Could not load the motion settings." };
+      }
+      return { draft: payload.motion, canSave: payload.canSave === true };
+    } catch {
+      return { error: "Could not load the motion settings." };
+    }
   }, []);
 
-  const update = (change: Partial<MotionSettings>) => {
-    setDraft((current) => ({ ...current, ...change }));
-    setStatus(null);
-  };
-  const isDirty =
-    draft.durationScale !== saved.durationScale ||
-    draft.minThinkingMs !== saved.minThinkingMs ||
-    draft.textCharsPerSecond !== saved.textCharsPerSecond;
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    setStatus(null);
+  const save = useCallback(async (draft: MotionSettings): Promise<SettingsSave<MotionSettings>> => {
     try {
       const response = await fetch("/api/admin/motion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ motion: draft }),
       });
-      const payload = (await response.json().catch(() => ({}))) as {
-        error?: string;
-      };
-      if (response.status === 401) {
-        play("error");
-        onLocked();
-        return;
-      }
-      if (!response.ok) {
-        play("error");
-        setStatus(payload.error ?? "Unable to save.");
-        return;
-      }
-      play("success");
-      setSaved(draft);
-      setStatus("Saved. Reload the site to try it.");
+      if (response.status === 401) return { locked: true };
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) return { error: payload.error ?? "Unable to save." };
+      return { ok: true };
     } catch {
-      play("error");
-      setStatus("Request failed before it could be saved.");
-    } finally {
-      setIsSaving(false);
+      return { error: "Request failed before it could be saved." };
     }
+  }, []);
+
+  const { state, canSave, edit, submit, retry } = useSettingsForm<MotionSettings>({
+    load,
+    save,
+    onLocked,
+    savedNotice: "Saved. Reload the site to try it.",
+  });
+
+  if (state.status === "loading") {
+    return <p className="text-sm text-[var(--muted)]">Loading…</p>;
+  }
+  if (state.status === "load_failed") {
+    return (
+      <p role="alert" className="text-sm leading-6 text-[var(--muted)]">
+        {state.message}{" "}
+        <button type="button" onClick={() => void retry()} className="underline underline-offset-4">
+          Retry
+        </button>
+      </p>
+    );
+  }
+
+  const draft = state.draft;
+  const isSaving = state.status === "saving";
+  const notice = formNotice(state);
+  const update = (change: Partial<MotionSettings>) => {
+    edit((current) => ({ ...current, ...change }));
   };
+  const isDirty =
+    draft.durationScale !== state.saved.durationScale ||
+    draft.minThinkingMs !== state.saved.minThinkingMs ||
+    draft.textCharsPerSecond !== state.saved.textCharsPerSecond;
 
   return (
     <div className="grid gap-8 md:grid-cols-[1fr_280px]">
@@ -190,7 +188,7 @@ export function AdminMotionSettings({ onLocked }: { onLocked: () => void }) {
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={handleSave}
+            onClick={() => void submit()}
             disabled={!canSave || !isDirty || isSaving}
             className="rounded-full bg-[var(--foreground)] px-5 py-3 text-sm font-medium text-[var(--background)] transition hover:opacity-85 disabled:opacity-50"
             data-cuelume-press="tick"
@@ -209,9 +207,9 @@ export function AdminMotionSettings({ onLocked }: { onLocked: () => void }) {
           >
             Reset to default
           </button>
-          {status ? (
+          {notice ? (
             <p role="status" className="text-sm text-[var(--muted)]">
-              {status}
+              {notice.message}
             </p>
           ) : null}
         </div>

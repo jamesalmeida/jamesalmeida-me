@@ -35,6 +35,7 @@ function MenuIcon() {
 // new chat. Server-renderable: StaticIntro passes no handlers.
 export function SiteHeader({
   avatar = SITE.assistant.avatar,
+  conversationId,
   isConversation = false,
   menuButtonRef,
   onNewChat,
@@ -42,6 +43,8 @@ export function SiteHeader({
 }: {
   /** Skaffen's look: the saved site setting, else SITE.assistant.avatar. */
   avatar?: AvatarConfig;
+  /** The chat on screen, so a booking from here answers its offer. */
+  conversationId?: string;
   /** True once the visitor has sent a message; the avatar then lives in the thread. */
   isConversation?: boolean;
   menuButtonRef?: Ref<HTMLButtonElement>;
@@ -101,6 +104,7 @@ export function SiteHeader({
         <a
           href={SITE.bookingUrl}
           data-track="booking_clicked"
+          data-conversation-id={conversationId}
           target="_blank"
           rel="noopener noreferrer"
           className="hidden h-12 items-center gap-2.5 rounded-full bg-[var(--accent)] px-5 text-[15px] font-semibold text-[var(--accent-foreground)] transition hover:opacity-90 sm:inline-flex"

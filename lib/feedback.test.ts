@@ -9,10 +9,12 @@ describe("feedback", () => {
       reasons: [DOWN_REASONS[0], "made up"],
       details: `  ${"x".repeat(MAX_FEEDBACK_DETAILS_CHARS + 10)}  `,
       replyText: "Hi",
+      update: "details",
+      sequence: 2,
     });
     expect(payload.reasons).toEqual([DOWN_REASONS[0]]);
     expect(payload.details).toHaveLength(MAX_FEEDBACK_DETAILS_CHARS);
-    expect(payload).toMatchObject({ messageId: "m1", rating: "down", replyText: "Hi" });
+    expect(payload).toMatchObject({ messageId: "m1", rating: "down", replyText: "Hi", update: "details", sequence: 2 });
   });
 
   afterEach(() => {
@@ -22,7 +24,13 @@ describe("feedback", () => {
   it("defaults to no reasons, details or user text, and posts to /api/feedback", () => {
     const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })));
     vi.stubGlobal("fetch", fetchMock);
-    const payload = buildFeedbackPayload({ messageId: "m2", rating: "up", replyText: "Hi" });
+    const payload = buildFeedbackPayload({
+      messageId: "m2",
+      rating: "up",
+      replyText: "Hi",
+      update: "rating",
+      sequence: 1,
+    });
     expect(payload).toMatchObject({ reasons: [], details: "", userText: "" });
     submitFeedback(payload);
     expect(fetchMock).toHaveBeenCalledWith("/api/feedback", expect.objectContaining({ method: "POST", keepalive: true }));
@@ -30,6 +38,10 @@ describe("feedback", () => {
 
   it("never throws when sending fails", () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("offline"))));
-    expect(() => submitFeedback(buildFeedbackPayload({ messageId: "m3", rating: null, replyText: "" }))).not.toThrow();
+    expect(() =>
+      submitFeedback(
+        buildFeedbackPayload({ messageId: "m3", rating: null, replyText: "", update: "rating", sequence: 3 }),
+      ),
+    ).not.toThrow();
   });
 });

@@ -23,6 +23,20 @@ export const BRIEF_LEADS = ["book", "note"] as const;
 export type BriefLead = (typeof BRIEF_LEADS)[number];
 
 // The filled fields, in display order.
+// Only known string fields are kept, each capped like the server does.
+export function toBrief(value: unknown): Brief {
+  if (!value || typeof value !== "object") return {};
+  const candidate = value as Record<string, unknown>;
+  const brief: Brief = {};
+  for (const { key } of BRIEF_FIELDS) {
+    const field = candidate[key];
+    if (typeof field === "string" && field.trim()) {
+      brief[key] = field.trim().slice(0, MAX_BRIEF_FIELD_CHARS);
+    }
+  }
+  return brief;
+}
+
 export function briefEntries(brief: Brief): { key: BriefKey; label: string; value: string }[] {
   return BRIEF_FIELDS.flatMap(({ key, label }) => {
     const value = brief[key]?.trim();

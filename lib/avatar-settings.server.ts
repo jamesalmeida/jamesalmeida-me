@@ -32,6 +32,25 @@ export async function getSiteAvatar(): Promise<{ avatar: AvatarConfig; source: "
   }
 }
 
+/**
+ * The avatar setting for /admin. A failed read returns null (the route answers 503)
+ * instead of the default, so Save can't overwrite the real avatar with the fallback.
+ */
+export async function getSiteAvatarForAdmin(): Promise<{
+  avatar: AvatarConfig;
+  source: "saved" | "default";
+} | null> {
+  if (!isStoreConfigured()) return { avatar: DEFAULT_SITE_AVATAR, source: "default" };
+  try {
+    const value = await readStoredAvatar();
+    if (value === null || value === undefined) return { avatar: DEFAULT_SITE_AVATAR, source: "default" };
+    return { avatar: storedAvatarOrDefault(value), source: "saved" };
+  } catch (error) {
+    console.error("Reading the avatar setting failed.", error);
+    return null;
+  }
+}
+
 /** Saves the avatar for every visitor. Returns an error message, or null. */
 export async function saveSiteAvatar(avatar: AvatarConfig): Promise<string | null> {
   try {

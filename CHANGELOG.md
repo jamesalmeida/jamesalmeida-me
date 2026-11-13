@@ -32,3 +32,18 @@ What changes for visitors to jamesalmeida.me. Format: [Keep a Changelog](https:/
 - Sending a message glides the chat up slowly instead of jumping to the new turn.
 - Skaffen mouths the reply as it appears, and stops once all of it has shown.
 - `/admin` motion settings gain a **Text speed** slider (characters a second) for how fast a reply's text appears. A reply never shows faster than it arrives, and Skaffen talks until all of it has appeared.
+
+### Fixed
+
+- A chat is saved when you send its first message, so a failed or stopped chat is in Recent chats straight away, and New chat can't reopen it. Text typed while a reply is arriving is no longer wiped when the chat is saved.
+- Stop now actually stops Skaffen, and the button stays until the reply has finished appearing. Pressing it after the stream has ended shows the rest of the text at once.
+- A brief can be sent only once: the sent state, your edits and "Not yet" survive a reload, and a retry can't create a second lead or a second email.
+- A failed admin settings load shows an error instead of letting Save replace the real headlines, examples, avatar or motion settings with the defaults.
+- Two tabs no longer overwrite each other's chats, and saving under a full browser store no longer evicts the chat you're in.
+- Your rating and feedback details stay after a reload, and quick clicks can't overwrite a newer answer.
+- An answer to a brief or booking card is tied to that card, so "Not yet" on an older card can't decline the newest offer. Booking or emailing from the header or menu now counts toward the chat's offer.
+- The app no longer mounts twice on every page load.
+- A blocked chat stays closed even if the refusal wording changes later.
+- The landing no longer sends an example prompt you couldn't see, and the menu can't take a second click while it's closing.
+- A lead sent from a chat that closed after its brief card appeared is still accepted, and `/admin` marks it Blocked.
+- The share card's video recorder can't start twice from a double click, and a failed recording says so.

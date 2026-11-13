@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { RETENTION_MS, answerLatestOffer, assertServer, mutation } from "./lib";
+import { RETENTION_MS, answerOffer, assertServer, mutation } from "./lib";
 import { visitContext } from "./schema";
 
 const CONVERSATION_FLAGS = {
@@ -17,9 +17,11 @@ export const record = mutation({
     visitId: v.string(),
     conversationId: v.optional(v.string()),
     example: v.optional(v.string()),
+    // The card's tool call id, so a click or "Not yet" answers that offer.
+    offerId: v.optional(v.string()),
     context: v.object(visitContext),
   },
-  handler: async (ctx, { secret, type, visitId, conversationId, example, context }) => {
+  handler: async (ctx, { secret, type, visitId, conversationId, example, offerId, context }) => {
     assertServer(secret);
     const now = Date.now();
     // answerLatestOffer records a decline, once, and only if there was an offer.
@@ -42,6 +44,6 @@ export const record = mutation({
       .unique();
     if (!conversation) return;
     if (flag && !conversation[flag]) await ctx.db.patch(conversation._id, { [flag]: true });
-    await answerLatestOffer(ctx, conversation, flag ? "accepted" : "declined");
+    await answerOffer(ctx, conversation, offerId, flag ? "accepted" : "declined");
   },
 });

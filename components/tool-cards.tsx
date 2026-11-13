@@ -1,10 +1,10 @@
 "use client";
 
-import { makeAssistantToolUI, useThread } from "@assistant-ui/react";
+import { makeAssistantToolUI } from "@assistant-ui/react";
 import { play } from "cuelume";
 import { Send } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useReducer, useRef, useState, type FormEvent } from "react";
 import { SITE } from "@/data/site";
 import {
   BRIEF_FIELDS,
@@ -13,60 +13,82 @@ import {
   briefBookingHref,
   briefEntries,
   briefMailtoHref,
+  toBrief,
   type Brief,
   type BriefLead,
 } from "@/lib/brief";
+import {
+  canDismiss,
+  canEdit,
+  initialBriefCard,
+  isSent,
+  reduceBriefCard,
+  toPersisted,
+  type BriefCardState,
+  type SendState,
+} from "@/lib/brief-card";
+import { readBriefCard, writeBriefCard } from "@/lib/brief-store";
+import { useConversationId } from "./conversation-id";
 import { trackEvent } from "@/lib/visit";
 import { BookingButton, BookingCard, EmailButton, outlineButtonClass, primaryButtonClass, serif } from "./booking-button";
 
-// Only known string fields are kept, each capped like the server does.
-function toBrief(value: unknown): Brief {
-  if (!value || typeof value !== "object") return {};
-  const candidate = value as Record<string, unknown>;
-  const brief: Brief = {};
-  for (const { key } of BRIEF_FIELDS) {
-    const field = candidate[key];
-    if (typeof field === "string" && field.trim()) {
-      brief[key] = field.trim().slice(0, MAX_BRIEF_FIELD_CHARS);
-    }
-  }
-  return brief;
-}
-
-// The conversation id the server uses: the thread's first message id (see /api/chat).
-function useConversationId() {
-  return useThread((thread) => thread.messages[0]?.id);
-}
-
-function BriefCard({ initial, lead = "book" }: { initial: Brief; lead?: BriefLead }) {
+function BriefCard({
+  initial,
+  lead = "book",
+  toolCallId,
+}: {
+  initial: Brief;
+  lead?: BriefLead;
+  toolCallId: string;
+}) {
   const conversationId = useConversationId();
-  const [brief, setBrief] = useState(initial);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [hasOpenedForm, setHasOpenedForm] = useState(false);
-  const [isSent, setIsSent] = useState(false);
-  const [isDismissed, setIsDismissed] = useState(false);
+  // The card's own state, restored from this browser so a reload can't send the
+  // same brief twice or bring back Edit on a sent card.
+  const [state, dispatch] = useReducer(
+    (current: BriefCardState, event: Parameters<typeof reduceBriefCard>[1]) =>
+      reduceBriefCard(current, event),
+    { initial, toolCallId },
+    ({ initial: brief, toolCallId: id }) => {
+      let base = initialBriefCard(brief);
+      const stored = readBriefCard(id);
+      if (stored) {
+        base = reduceBriefCard(base, {
+          type: "restored",
+          brief: stored.brief,
+          view: stored.view,
+          sentBrief: stored.sentBrief,
+        });
+      }
+      return base;
+    },
+  );
   const titleId = useId();
   const fieldId = useId();
-  const entries = briefEntries(brief);
+  const entries = briefEntries(state.brief);
   // Only fields with something in them, plus the ones new briefs use, so old ones stay editable.
-  const editableFields = BRIEF_FIELDS.filter(({ key }) => key !== "tried" || brief.tried);
+  const editableFields = BRIEF_FIELDS.filter(({ key }) => key !== "tried" || state.brief.tried);
 
-  const bookingHref = briefBookingHref(SITE.bookingUrl, brief);
+  const bookingHref = briefBookingHref(SITE.bookingUrl, state.brief);
   const sendLeads = lead === "note";
+  const sent = isSent(state);
+
+  useEffect(() => {
+    writeBriefCard(toolCallId, toPersisted(state));
+  }, [state, toolCallId]);
 
   // Hidden rather than unmounted, so "Not yet" keeps what the visitor typed in the form.
   return (
     <>
-    {isDismissed ? (
+    {state.view === "collapsed" ? (
       <div
         data-conversation-id={conversationId}
+        data-offer-id={toolCallId}
         className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface)] px-5 py-3"
       >
         <p className="text-[15px] leading-6 text-[var(--muted)]">No problem. Your brief is here when you want it.</p>
         <button
           type="button"
-          onClick={() => setIsDismissed(false)}
+          onClick={() => dispatch({ type: "restore" })}
           className="py-1.5 text-[15px] text-[var(--accent)] underline underline-offset-4"
           data-cuelume-press="tick"
         >
@@ -75,27 +97,30 @@ function BriefCard({ initial, lead = "book" }: { initial: Brief; lead?: BriefLea
       </div>
     ) : null}
     <section
-      hidden={isDismissed}
+      hidden={state.view === "collapsed"}
       aria-labelledby={titleId}
       data-conversation-id={conversationId}
+      data-offer-id={toolCallId}
       className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)] sm:p-7"
     >
       <div className="flex items-baseline justify-between gap-4">
         <h3 id={titleId} className={`text-2xl tracking-[-0.02em] ${serif} sm:text-[28px]`}>
           Does this look right?
         </h3>
-        <button
-          type="button"
-          onClick={() => setIsEditing((value) => !value)}
-          className="py-2.5 text-[15px] text-[var(--accent)] underline underline-offset-4"
-          aria-expanded={isEditing}
-          data-cuelume-press="tick"
-        >
-          {isEditing ? "Done" : "Edit"}
-        </button>
+        {canEdit(state) ? (
+          <button
+            type="button"
+            onClick={() => dispatch({ type: "toggle_edit" })}
+            className="py-2.5 text-[15px] text-[var(--accent)] underline underline-offset-4"
+            aria-expanded={state.editing}
+            data-cuelume-press="tick"
+          >
+            {state.editing ? "Done" : "Edit"}
+          </button>
+        ) : null}
       </div>
 
-      {isEditing ? (
+      {state.editing ? (
         <div className="mt-4 flex flex-col gap-4">
           {editableFields.map(({ key, label }) => (
             <div key={key} className="flex flex-col gap-1.5">
@@ -106,8 +131,8 @@ function BriefCard({ initial, lead = "book" }: { initial: Brief; lead?: BriefLea
                 id={`${fieldId}-${key}`}
                 rows={2}
                 maxLength={MAX_BRIEF_FIELD_CHARS}
-                value={brief[key] ?? ""}
-                onChange={(event) => setBrief((current) => ({ ...current, [key]: event.target.value }))}
+                value={state.brief[key] ?? ""}
+                onChange={(event) => dispatch({ type: "edit_field", key, value: event.target.value })}
                 className="resize-none rounded-[0.9rem] border border-[var(--border)] bg-[var(--background)] px-3.5 py-2.5 text-[15px] leading-6 outline-none transition focus:border-[var(--border-strong)]"
               />
             </div>
@@ -125,15 +150,12 @@ function BriefCard({ initial, lead = "book" }: { initial: Brief; lead?: BriefLea
       )}
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        {sendLeads && !isSent ? null : <BookingButton href={bookingHref} variant={isSent ? "outline" : "primary"} />}
-        {isSent ? null : (
+        {sendLeads && !sent ? null : <BookingButton href={bookingHref} variant={sent ? "outline" : "primary"} />}
+        {sent ? null : (
           <button
             type="button"
-            onClick={() => {
-              setHasOpenedForm(true);
-              setIsSending((value) => !value);
-            }}
-            aria-expanded={isSending}
+            onClick={() => dispatch({ type: "toggle_form" })}
+            aria-expanded={state.form === "open"}
             className={sendLeads ? primaryButtonClass : outlineButtonClass}
             data-cuelume-hover="whisper"
             data-cuelume-press="tick"
@@ -142,27 +164,39 @@ function BriefCard({ initial, lead = "book" }: { initial: Brief; lead?: BriefLea
             Send to James
           </button>
         )}
-        {sendLeads && !isSent ? <BookingButton href={bookingHref} variant="outline" /> : null}
-        {isSent ? null : (
+        {sendLeads && !sent ? <BookingButton href={bookingHref} variant="outline" /> : null}
+        {sent ? null : (
           <button
             type="button"
             onClick={() => {
-              trackEvent("offer_declined", conversationId);
-              setIsDismissed(true);
+              if (!canDismiss(state)) return;
+              trackEvent("offer_declined", conversationId, undefined, toolCallId);
+              dispatch({ type: "dismiss" });
             }}
-            className="h-12 px-2 text-[15px] text-[var(--muted)] underline underline-offset-4 transition hover:text-[var(--foreground)]"
+            disabled={!canDismiss(state)}
+            className="h-12 px-2 text-[15px] text-[var(--muted)] underline underline-offset-4 transition hover:text-[var(--foreground)] disabled:opacity-50"
             data-cuelume-press="tick"
           >
             Not yet
           </button>
         )}
       </div>
-      {isSent ? (
+      {sent ? (
         <p role="status" className="mt-5 rounded-[1rem] bg-[var(--surface-muted)] px-4 py-3 text-[15px] leading-6">
           Thanks. James has your email and this brief.
         </p>
-      ) : hasOpenedForm ? (
-        <SendForm brief={brief} conversationId={conversationId} open={isSending} onSent={() => setIsSent(true)} />
+      ) : state.form !== "unopened" ? (
+        <SendForm
+          brief={state.brief}
+          conversationId={conversationId}
+          toolCallId={toolCallId}
+          open={state.form === "open"}
+          send={state.send}
+          onStart={() => dispatch({ type: "submit_started" })}
+          onInvalid={(message) => dispatch({ type: "submit_invalid", message })}
+          onUnavailable={() => dispatch({ type: "submit_unavailable" })}
+          onSent={(brief) => dispatch({ type: "submit_sent", brief })}
+        />
       ) : null}
       <p className="mt-4 text-[13px] leading-5 text-[var(--muted)]">
         James only gets this as a message if you send it or book.{" "}
@@ -181,23 +215,31 @@ function BriefCard({ initial, lead = "book" }: { initial: Brief; lead?: BriefLea
 function SendForm({
   brief,
   conversationId,
+  toolCallId,
   open,
+  send,
+  onStart,
+  onInvalid,
+  onUnavailable,
   onSent,
 }: {
   brief: Brief;
   conversationId?: string;
+  toolCallId: string;
   open: boolean;
-  onSent: () => void;
+  send: SendState;
+  onStart: () => void;
+  onInvalid: (message: string) => void;
+  onUnavailable: () => void;
+  onSent: (brief: Brief) => void;
 }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [canEmailInstead, setCanEmailInstead] = useState(false);
   const fieldId = useId();
   const formRef = useRef<HTMLFormElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
+  const isSubmitting = send.status === "submitting";
 
   // Opening the form moves focus into it and brings Send out from behind the composer.
   useEffect(() => {
@@ -208,32 +250,37 @@ function SendForm({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setIsSubmitting(true);
-    setError(null);
-    setCanEmailInstead(false);
+    if (isSubmitting) return;
+    onStart();
     try {
       const response = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name, note, brief, conversationId }),
+        body: JSON.stringify({ email, name, note, brief, conversationId, toolCallId }),
       });
       if (!response.ok) {
         const payload = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(response.status === 400 && payload.error ? payload.error : "");
+        play("error");
+        if (response.status === 400 && payload.error) onInvalid(payload.error);
+        else onUnavailable();
+        return;
       }
       play("success");
-      onSent();
-    } catch (caught) {
+      onSent(brief);
+    } catch {
       play("error");
-      setIsSubmitting(false);
-      const message = caught instanceof Error ? caught.message : "";
-      setCanEmailInstead(!message);
-      setError(message || "That didn't go through. You can email it to James instead.");
+      onUnavailable();
     }
   };
 
   const inputClass =
     "h-12 min-w-0 rounded-full border border-[var(--border)] bg-[var(--background)] px-4 text-[15px] outline-none transition focus:border-[var(--border-strong)]";
+  const error =
+    send.status === "invalid"
+      ? send.message
+      : send.status === "unavailable"
+        ? "That didn't go through. You can email it to James instead."
+        : null;
 
   return (
     <form ref={formRef} hidden={!open} onSubmit={handleSubmit} className="mt-5 scroll-mb-40 border-t border-[var(--border)] pt-5">
@@ -251,7 +298,7 @@ function SendForm({
           placeholder="you@example.com"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          aria-invalid={error !== null}
+          aria-invalid={send.status === "invalid"}
           aria-describedby={error ? `${fieldId}-error` : undefined}
           className={`${inputClass} sm:flex-1`}
         />
@@ -296,7 +343,7 @@ function SendForm({
           {error}
         </p>
       ) : null}
-      {canEmailInstead ? (
+      {send.status === "unavailable" ? (
         <div className="mt-3">
           <EmailButton href={briefMailtoHref(SITE.email, brief, note)} />
         </div>
@@ -305,10 +352,10 @@ function SendForm({
   );
 }
 
-function BookingToolCard() {
+function BookingToolCard({ toolCallId }: { toolCallId: string }) {
   const conversationId = useConversationId();
   return (
-    <div data-conversation-id={conversationId}>
+    <div data-conversation-id={conversationId} data-offer-id={toolCallId}>
       <BookingCard />
     </div>
   );
@@ -319,17 +366,23 @@ export const ShowBookingCtaToolUI = makeAssistantToolUI<
   { bookingUrl: string; bookingLabel: string; email: string }
 >({
   toolName: "showBookingCta",
-  render: () => <BookingToolCard />,
+  render: ({ toolCallId }) => <BookingToolCard toolCallId={toolCallId} />,
 });
 
 export const ShowBriefToolUI = makeAssistantToolUI<Brief, { brief: Brief; lead?: BriefLead }>({
   toolName: "showBrief",
   // Waits for the result, so the card's editable copy starts from the full brief
   // rather than half-streamed args.
-  render: ({ result }) => {
+  render: ({ result, toolCallId }) => {
     if (!result) return null;
     const brief = toBrief(result.brief);
     if (briefEntries(brief).length === 0) return null;
-    return <BriefCard initial={brief} lead={result.lead === "note" ? "note" : "book"} />;
+    return (
+      <BriefCard
+        initial={brief}
+        lead={result.lead === "note" ? "note" : "book"}
+        toolCallId={toolCallId}
+      />
+    );
   },
 });

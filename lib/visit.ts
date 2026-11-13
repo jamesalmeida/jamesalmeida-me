@@ -70,12 +70,18 @@ export function postQuietly(url: string, body: unknown): void {
   }
 }
 
-export function trackEvent(type: ClientEventType, conversationId?: string, example?: string): void {
+export function trackEvent(
+  type: ClientEventType,
+  conversationId?: string,
+  example?: string,
+  offerId?: string,
+): void {
   postQuietly("/api/events", {
     type,
     visitId: getVisitId(),
     conversationId,
     example,
+    offerId,
     context: getVisitContext(),
   });
 }

@@ -14,7 +14,8 @@ export function ClickTracker() {
       const type = target?.getAttribute("data-track");
       if (!target || !(CLIENT_EVENT_TYPES as readonly string[]).includes(type ?? "")) return;
       const conversationId = target.closest("[data-conversation-id]")?.getAttribute("data-conversation-id");
-      trackEvent(type as ClientEventType, conversationId ?? undefined);
+      const offerId = target.closest("[data-offer-id]")?.getAttribute("data-offer-id");
+      trackEvent(type as ClientEventType, conversationId ?? undefined, undefined, offerId ?? undefined);
     };
     // Capture, so a handler that stops propagation can't hide the click.
     document.addEventListener("click", handleClick, true);

@@ -107,8 +107,9 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
       <p>
         The brief is a short version of that summary, and you can check and edit it first. It&apos;s
         only sent to me as a message when you press Send. I then save your email, your name (if
-        you give it), the brief as you left it, any note you add, and which chat it came from, so
-        I can follow up, and I may get an email about it. I keep those until you ask me to delete
+        you give it), the brief as you left it, any note you add, which chat it came from and
+        whether that chat had already closed, so I can follow up, and I may get an email about
+        it. I keep those until you ask me to delete
         them or I no longer need them. The fuller summary isn&apos;t kept with them: it&apos;s deleted
         with the chat. I won&apos;t add you to a mailing list or share your email.
       </p>
@@ -122,9 +123,11 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
           Your chats are saved in your browser&apos;s localStorage so they&apos;re still there
           when you come back. That includes your messages, the replies (including any brief
           the assistant writes for you), your recent chats list and which chat you had open.
-          Your theme and sound settings are saved there too. It&apos;s stored as plain text, so
-          anyone using this browser profile can read it. The visit id above is kept in
-          sessionStorage and is gone when you close the tab.
+          The brief card&apos;s edits and whether you sent it are kept there too, so a reload
+          can&apos;t send it twice, and so are your ratings of replies. Your theme and sound
+          settings are saved there too. It&apos;s stored as plain text, so anyone using this
+          browser profile can read it. The visit id above is kept in sessionStorage and is
+          gone when you close the tab.
         </p>
         <p>To delete what&apos;s in your browser:</p>
         <ul className="list-disc space-y-1 pl-5">

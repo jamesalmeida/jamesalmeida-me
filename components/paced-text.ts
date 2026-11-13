@@ -2,24 +2,34 @@
 
 import { useEffect, useRef, useState } from "react";
 
-// How much of each reply's text is on screen, by key. Module-level, because the
-// first reply forks the new chat into history and remounts the thread while its
-// text may still be appearing: the remount picks up where it was.
+// How much of each reply's text is on screen, by key. Module-level, so a message
+// that remounts when the run finishes picks up where it was.
 const revealed = new Map<string, number>();
 
 /**
  * Shows `text` at most `charsPerSecond` characters a second, following it as it
  * streams in. Starts at `from` characters (0 for a new reply, text.length for a
  * restored one), unless `key` was already part shown. `done` once it's all shown.
+ * A change to `finishSignal` shows the rest at once (the visitor pressed Stop
+ * after the stream had already ended).
  */
 export function usePacedText(
   text: string,
   charsPerSecond: number,
-  { from, key }: { from: number; key?: string | null },
+  { from, key, finishSignal = 0 }: { from: number; key?: string | null; finishSignal?: number },
 ) {
   const [shown, setShown] = useState(() => Math.min((key ? revealed.get(key) : undefined) ?? from, text.length));
   const position = useRef(shown);
   const length = text.length;
+  const lastFinish = useRef(finishSignal);
+
+  useEffect(() => {
+    if (finishSignal === lastFinish.current) return;
+    lastFinish.current = finishSignal;
+    position.current = length;
+    if (key) revealed.set(key, length);
+    setShown(length);
+  }, [finishSignal, length, key]);
 
   useEffect(() => {
     if (position.current >= length) return;

@@ -3,14 +3,23 @@
 import { useMessage, useThread } from "@assistant-ui/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Copy, ThumbsDown, ThumbsUp, X } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useReducer, useRef, useState } from "react";
 import {
   DOWN_REASONS,
   MAX_FEEDBACK_DETAILS_CHARS,
   buildFeedbackPayload,
   submitFeedback,
   type FeedbackRating,
+  type FeedbackUpdate,
 } from "@/lib/feedback";
+import {
+  initialFeedback,
+  readFeedback,
+  reduceFeedback,
+  writeFeedback,
+  type FeedbackState,
+} from "@/lib/feedback-state";
+import { useConversationId } from "./conversation-id";
 import { Modal } from "./modal";
 
 const COPIED_MS = 1800;
@@ -27,9 +36,9 @@ export function MessageActions() {
       .join("\n\n")
       .trim(),
   );
-  // Stored with the feedback: the conversation (its first message id, as in
-  // /api/chat) and the visitor's message this reply answered.
-  const conversationId = useThread((thread) => thread.messages[0]?.id);
+  // Stored with the feedback: the chat's conversation id and the visitor's message
+  // this reply answered.
+  const conversationId = useConversationId();
   const userText = useThread((thread) => {
     const index = thread.messages.findIndex((message) => message.id === messageId);
     for (let i = index - 1; i >= 0; i -= 1) {
@@ -39,24 +48,45 @@ export function MessageActions() {
     }
     return "";
   });
-  const feedback = (input: { rating: FeedbackRating | null; reasons?: string[]; details?: string }) =>
-    buildFeedbackPayload({ ...input, messageId, conversationId, replyText: text, userText });
-  const [rating, setRating] = useState<FeedbackRating | null>(null);
-  const [isThanksOpen, setIsThanksOpen] = useState(false);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [hasSentDetails, setHasSentDetails] = useState(false);
+  // Restored from this browser, so a reload keeps the visitor's rating and details.
+  const [state, dispatch] = useReducer(reduceFeedback, initialFeedback(), () => {
+    const stored = readFeedback(messageId);
+    return stored
+      ? reduceFeedback(initialFeedback(), { type: "restored", ...stored })
+      : initialFeedback();
+  });
+
+  const send = (next: FeedbackState, update: FeedbackUpdate) => {
+    writeFeedback(messageId, {
+      rating: next.rating,
+      reasons: next.reasons,
+      details: next.details,
+      sequence: next.sequence,
+    });
+    submitFeedback(
+      buildFeedbackPayload({
+        messageId,
+        conversationId,
+        replyText: text,
+        userText,
+        rating: next.rating,
+        reasons: next.reasons,
+        details: next.details,
+        update,
+        sequence: next.sequence,
+      }),
+    );
+  };
 
   const rate = (next: FeedbackRating) => {
-    if (rating === next) {
-      setRating(null);
-      setIsThanksOpen(false);
-      submitFeedback(feedback({ rating: null }));
-      return;
-    }
-    setRating(next);
-    setHasSentDetails(false);
-    setIsThanksOpen(true);
-    submitFeedback(feedback({ rating: next }));
+    const value = state.rating === next ? null : next;
+    dispatch({ type: "rated", rating: value });
+    send(reduceFeedback(state, { type: "rated", rating: value }), "rating");
+  };
+
+  const submitDetails = (reasons: string[], details: string) => {
+    dispatch({ type: "details_sent", reasons, details });
+    send(reduceFeedback(state, { type: "details_sent", reasons, details }), "details");
   };
 
   return (
@@ -68,13 +98,13 @@ export function MessageActions() {
       >
         <RatingButton
           label="Good reply"
-          isSelected={rating === "up"}
+          isSelected={state.rating === "up"}
           onClick={() => rate("up")}
           icon={<ThumbsUp size={18} aria-hidden />}
         />
         <RatingButton
           label="Bad reply"
-          isSelected={rating === "down"}
+          isSelected={state.rating === "down"}
           onClick={() => rate("down")}
           icon={<ThumbsDown size={18} aria-hidden />}
         />
@@ -82,29 +112,21 @@ export function MessageActions() {
       <CopyButton text={text} />
 
       <AnimatePresence>
-        {isThanksOpen && rating ? (
+        {state.panel === "thanks" && state.rating ? (
           <ThanksPopover
             key="thanks"
-            canShareMore={!hasSentDetails}
-            onClose={() => setIsThanksOpen(false)}
-            onShareMore={() => {
-              setIsThanksOpen(false);
-              setIsFormOpen(true);
-            }}
+            canShareMore={!state.hasSentDetails}
+            onClose={() => dispatch({ type: "close_panel" })}
+            onShareMore={() => dispatch({ type: "open_form" })}
           />
         ) : null}
       </AnimatePresence>
 
-      {isFormOpen && rating ? (
+      {state.panel === "form" && state.rating ? (
         <FeedbackForm
-          rating={rating}
-          onClose={() => setIsFormOpen(false)}
-          onSubmit={(reasons, details) => {
-            submitFeedback(feedback({ rating, reasons, details }));
-            setHasSentDetails(true);
-            setIsFormOpen(false);
-            setIsThanksOpen(true);
-          }}
+          rating={state.rating}
+          onClose={() => dispatch({ type: "close_panel" })}
+          onSubmit={submitDetails}
         />
       ) : null}
     </div>

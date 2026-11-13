@@ -11,12 +11,13 @@ import { jobCardPromptNote, type JobCard } from "@/lib/job-card";
 import { updateJobCard } from "@/lib/job-card.server";
 import {
   BLOCKED_REPLY,
+  closedMessageId,
   intentNudge,
-  offerFromReply,
   screenForStore,
   threadIsClosed,
   type OfferHistory,
 } from "@/lib/jev-decision";
+import { completedTurn, hasReply, replyFromSteps, stoppedTurn, type TurnResult } from "@/lib/turn-result";
 import { scoreConversationQuality, screenVisitorTurn } from "@/lib/jev.server";
 import { getModelOption, MODEL_COOKIE_NAME } from "@/lib/models";
 import { createModel } from "@/lib/models.server";
@@ -80,9 +81,13 @@ export async function POST(req: Request) {
     clientIp: refusing ? parseClientIp(clientIp) : undefined,
   });
   const userText = messageText(messages[messages.length - 1]);
-  const recordUser = () => {
+  let userWrite: Promise<void> | undefined;
+  // Written once, whichever comes first: the first finished step (so a card's offer
+  // can be recorded while it is on screen) or the end of the response. Every caller
+  // gets the same promise, so a later write can wait for the conversation to exist.
+  const recordUserOnce = () => {
     if (!conversationId) return Promise.resolve();
-    return storeMutationQuietly(storeApi.chats.recordUserMessage, {
+    userWrite ??= storeMutationQuietly(storeApi.chats.recordUserMessage, {
       conversationId,
       visitId: parseId(fields.visitId),
       context: parseVisitContext(fields.context),
@@ -90,19 +95,20 @@ export async function POST(req: Request) {
       text: userText,
       ...(screen ? { screen } : {}),
     });
+    return userWrite;
   };
 
   if (refusing) {
     // Write the block before the response, so a follow-up turn already sees it.
     if (conversationId) {
-      await recordUser();
+      await recordUserOnce();
       await storeMutationQuietly(storeApi.chats.recordReply, {
         conversationId,
         text: BLOCKED_REPLY,
         tools: [],
       });
     }
-    return blockedChatResponse(BLOCKED_REPLY);
+    return blockedChatResponse(BLOCKED_REPLY, closedMessageId());
   }
 
   const model = createModel(modelId);
@@ -123,12 +129,39 @@ export async function POST(req: Request) {
   const cardNote = jobCardPromptNote(stored.jobCard);
   const turnNotes = [cardNote, nudge].flatMap((content) => (content ? [{ role: "system" as const, content }] : []));
 
+  // Steps that finished before the visitor pressed Stop. `result.steps` rejects
+  // when the run is aborted, so these are the only record of what was shown.
+  let abortedSteps: Parameters<typeof stoppedTurn>[0] | undefined;
+  // Writes started when a step finished. Awaited in after(), never on the stream.
+  const stepWrites: Promise<void>[] = [];
+
   const result = streamText({
     model,
     messages: [system, ...turnNotes, ...convertToModelMessages(messages)],
     tools: chatTools,
     stopWhen: stepCountIs(3),
     maxOutputTokens: 800,
+    // Stop actually stops the model. Without this it ran to the end, and the route
+    // stored a reply and an offer the visitor never saw.
+    abortSignal: req.signal,
+    onAbort: ({ steps }) => {
+      abortedSteps = steps;
+    },
+    // A card is visible as soon as its step finishes. Record the offer then, so the
+    // visitor's answer has an offer to land on before the reply ends. Not awaited:
+    // the SDK waits for onStepFinish before streaming the next step, so awaiting
+    // would hold the reply on Convex (and stall it if Convex hangs).
+    onStepFinish: (step) => {
+      if (!conversationId) return;
+      // Same rule as the finished reply: a call that failed validation never
+      // rendered a card, so it isn't an offer.
+      const { offer } = replyFromSteps([step], decision);
+      stepWrites.push(
+        recordUserOnce().then(() =>
+          offer ? storeMutationQuietly(storeApi.chats.recordOffer, { conversationId, offer }) : undefined,
+        ),
+      );
+    },
     // Only the first step is forced, so the model can still write the reply after the card.
     ...(decision?.forceTool
       ? {
@@ -142,33 +175,47 @@ export async function POST(req: Request) {
   // reply never waits on it. conversationId is the id of the chat's first message.
   if (conversationId) {
     after(async () => {
-      await recordUser();
+      await recordUserOnce();
+      let turn: TurnResult;
       try {
-        const steps = await result.steps;
-        const text = steps.map((step) => step.text).filter(Boolean).join("\n\n");
-        // A call that failed validation never rendered a card, so it isn't an offer.
-        const calls = steps.flatMap((step) => step.toolCalls).filter((call) => !call.invalid);
-        const tools = calls.map((call) => call.toolName);
-        const offer = offerFromReply(calls, decision);
-        await storeMutationQuietly(storeApi.chats.recordReply, {
-          conversationId,
-          text,
-          tools,
-          ...(offer ? { offer } : {}),
-        });
-        // After the reply is stored, side by side because they share maxDuration.
-        // Neither runs on the request path.
-        await Promise.all([
-          storeQuality(messages, { text, tools }, conversationId),
-          storeJobCard(messages, { text }, stored.jobCard, conversationId),
-        ]);
+        turn = completedTurn(await result.steps, decision);
       } catch {
-        // The run failed or was stopped; the user's message is still recorded.
+        turn = req.signal.aborted
+          ? stoppedTurn(abortedSteps ?? [], decision)
+          : { kind: "failed" };
       }
+      // Offers from finished steps land before the reply is stored.
+      await Promise.all(stepWrites);
+      await recordTurn(turn, messages, stored.jobCard, conversationId);
     });
   }
 
   return result.toUIMessageStreamResponse();
+}
+
+// One place decides what a turn writes. A failed turn stores only the visitor's
+// message (recorded above). A stopped turn stores the steps that finished, including
+// a card that really was shown, but is not scored or used to update the job card.
+async function recordTurn(
+  turn: TurnResult,
+  messages: readonly UIMessage[],
+  previousJobCard: JobCard | null,
+  conversationId: string,
+) {
+  if (turn.kind === "refused" || turn.kind === "failed") return;
+  if (!hasReply(turn)) return;
+  await storeMutationQuietly(storeApi.chats.recordReply, {
+    conversationId,
+    text: turn.text,
+    tools: turn.tools,
+  });
+  if (turn.kind !== "completed") return;
+  // After the reply is stored, side by side because they share maxDuration.
+  // Neither runs on the request path.
+  await Promise.all([
+    storeQuality(messages, { text: turn.text, tools: turn.tools }, conversationId),
+    storeJobCard(messages, { text: turn.text }, previousJobCard, conversationId),
+  ]);
 }
 
 type ChatState = { blocked: boolean; jobCard: JobCard | null; offers: OfferHistory | null };

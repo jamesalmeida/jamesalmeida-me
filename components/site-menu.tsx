@@ -54,6 +54,8 @@ function measureButton(button: HTMLElement | null, panel: HTMLElement | null): B
 
 type SiteMenuProps = {
   activeThreadId: string;
+  /** The chat on screen, so a booking or email from the menu answers its offer. */
+  conversationId?: string;
   hasChats: boolean;
   historyThreads: HistoryThread[];
   onClearAllChats: () => void;
@@ -67,6 +69,7 @@ type SiteMenuProps = {
 
 export function SiteMenu({
   activeThreadId,
+  conversationId,
   hasChats,
   historyThreads,
   onClearAllChats,
@@ -120,10 +123,12 @@ export function SiteMenu({
   // Dismissing (close button, Escape, backdrop) gets a soft sound. Menu actions
   // already play their own tick, so closing after them stays quiet.
   const dismiss = () => {
+    if (isClosing) return;
     play("whisper");
     requestClose();
   };
   const closeAfter = (action: () => void) => () => {
+    if (isClosing) return;
     action();
     requestClose();
   };
@@ -169,6 +174,7 @@ export function SiteMenu({
           </motion.div>
         ) : null}
         <motion.div
+          inert={isClosing}
           className="relative flex min-h-0 flex-col gap-10 overflow-y-auto rounded-[2rem] px-4 pb-6 pt-4 sm:px-10 sm:pb-8 sm:pt-8"
           initial={{ opacity: 0 }}
           animate={{ opacity: isClosing ? 0 : 1 }}
@@ -246,7 +252,13 @@ export function SiteMenu({
             <Link href="/about" className={menuLinkClass} data-cuelume-press="tick">
               Why I do this
             </Link>
-            <a href={`mailto:${SITE.email}`} className={menuLinkClass} data-track="email_clicked" data-cuelume-press="tick">
+            <a
+              href={`mailto:${SITE.email}`}
+              className={menuLinkClass}
+              data-track="email_clicked"
+              data-conversation-id={conversationId}
+              data-cuelume-press="tick"
+            >
               Email me
             </a>
             <Link href="/privacy" className={menuLinkClass} data-cuelume-press="tick">
@@ -254,7 +266,7 @@ export function SiteMenu({
             </Link>
           </div>
 
-          <BookingButton className="self-center" />
+          <BookingButton className="self-center" conversationId={conversationId} />
 
           {hasChats ? (
             <div className="mt-auto flex flex-col items-center gap-1 rounded-[22px] bg-[var(--background)] px-4 py-5 sm:px-6">

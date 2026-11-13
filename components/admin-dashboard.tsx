@@ -1,7 +1,7 @@
 "use client";
 
 import { ThumbsDown, ThumbsUp } from "lucide-react";
-import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { briefEntries, type Brief } from "@/lib/brief";
 import { jobCardEntries, type JobCard } from "@/lib/job-card";
 import {
@@ -98,6 +98,8 @@ export type Lead = {
   conversationId?: string;
   /** Fit score copied from the chat when the lead was saved. */
   fitScore?: number;
+  /** The chat was already closed when this lead was sent. */
+  blocked?: boolean;
   createdAt: number;
 };
 
@@ -136,7 +138,7 @@ type DashboardState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "unconfigured" }
-  | { status: "ready"; dashboard: Dashboard; leads: Lead[] };
+  | { status: "ready"; dashboard: Dashboard; leads: Lead[]; refreshing: boolean };
 
 const RANGES = [7, 30, 90] as const;
 
@@ -154,12 +156,29 @@ const pillClass = (selected: boolean) =>
 export function useAdminDashboard(onLocked: () => void) {
   const [days, setDays] = useState<(typeof RANGES)[number]>(30);
   const [state, setState] = useState<DashboardState>({ status: "loading" });
+  const requestRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
-    setState({ status: "loading" });
+    // A slow 7-day response can't replace a newer 90-day one.
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    // Keep the current data and filters on screen while the next range loads.
+    setState((current) =>
+      current.status === "ready" ? { ...current, refreshing: true } : { status: "loading" },
+    );
     try {
-      const response = await fetch(`/api/admin/dashboard?days=${days}`, { cache: "no-store" });
-      if (response.status === 401) return onLocked();
+      const response = await fetch(`/api/admin/dashboard?days=${days}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (response.status === 401) {
+        // The session expired; keep whatever is on screen, without a stuck "Updating…".
+        setState((current) =>
+          current.status === "ready" ? { ...current, refreshing: false } : current,
+        );
+        return onLocked();
+      }
       const payload = (await response.json()) as {
         configured?: boolean;
         dashboard?: Dashboard;
@@ -172,14 +191,20 @@ export function useAdminDashboard(onLocked: () => void) {
         return setState({ status: "error", message });
       }
       if (!payload.configured || !payload.dashboard) return setState({ status: "unconfigured" });
-      setState({ status: "ready", dashboard: payload.dashboard, leads: payload.leads ?? [] });
-    } catch {
-      setState({ status: "error", message: "Request failed. Try again." });
+      setState({ status: "ready", dashboard: payload.dashboard, leads: payload.leads ?? [], refreshing: false });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      setState((current) =>
+        current.status === "ready"
+          ? { ...current, refreshing: false }
+          : { status: "error", message: "Request failed. Try again." },
+      );
     }
   }, [days, onLocked]);
 
   useEffect(() => {
     void load();
+    return () => requestRef.current?.abort();
   }, [load]);
 
   return { days, setDays, state, reload: load };
@@ -604,10 +629,12 @@ export function Leads({
   leads,
   onOpenConversation,
   onDeleted,
+  onLocked,
 }: {
   leads: Lead[];
   onOpenConversation: (id: string) => void;
   onDeleted: () => void;
+  onLocked: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
 
@@ -619,7 +646,9 @@ export function Leads({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: lead.id }),
     }).catch(() => null);
-    if (!response?.ok) return setError("Could not delete the lead.");
+    if (!response) return setError("Could not delete the lead.");
+    if (response.status === 401) return onLocked();
+    if (!response.ok) return setError("Could not delete the lead.");
     onDeleted();
   };
 
@@ -637,6 +666,7 @@ export function Leads({
                   {lead.name ? `${lead.name} <${lead.email}>` : lead.email}
                 </a>
                 <span className="text-[var(--muted)]">{formatDate(lead.createdAt)}</span>
+                {lead.blocked ? <BlockedBadge reason={null} /> : null}
                 {typeof lead.fitScore === "number" ? (
                   <Badge>
                     {formatFit(lead.fitScore)} · {fitLabel(lead.fitScore)}

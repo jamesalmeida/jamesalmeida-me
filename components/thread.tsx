@@ -35,13 +35,18 @@ import {
   type ComponentPropsWithoutRef,
   type FormEvent,
   type KeyboardEvent,
+  type ReactNode,
   type RefObject,
 } from "react";
 import { SITE } from "@/data/site";
+import { composerInput, sendsExample, showExample } from "@/lib/composer-input";
 import { threadIsClosed } from "@/lib/jev-decision";
 import { toUIMessages } from "@/lib/message-convert";
+import { replyMood, replyPhase, replyStatus, showActions, showStop } from "@/lib/reply-phase";
+import { runChime, runCompletes, runOutcome } from "@/lib/run-lifecycle";
 import { getVisitContext, getVisitId, trackEvent } from "@/lib/visit";
 import { serif } from "./booking-button";
+import { ConversationIdContext } from "./conversation-id";
 import { LandingHeadline } from "./landing-headline";
 import { useLanding } from "./landing-settings";
 import { MessageActions } from "./message-actions";
@@ -53,10 +58,18 @@ import { PrivacyNotice } from "./privacy-notice";
 import { ShowBookingCtaToolUI, ShowBriefToolUI } from "./tool-cards";
 
 type ThreadProps = {
+  /** The storage slot this thread writes to. */
+  threadId: string;
+  /** The chat's conversation id for the server, kept with the chat. */
+  conversationId?: string;
   initialMessages: UIMessage[];
-  onMessagesChange: (messages: UIMessage[]) => void;
+  onMessagesChange: (threadId: string, messages: UIMessage[]) => void;
+  /** Called when the first visitor message is sent, so ChatApp can create the chat. */
+  onFirstSend?: (messages: UIMessage[]) => void;
   onReply?: (text: string) => void;
-  onRunComplete?: (messages: UIMessage[]) => void;
+  onRunComplete?: (threadId: string, messages: UIMessage[]) => void;
+  /** Lets ChatApp stop the run when it leaves this chat (same path as Stop). */
+  cancelRunRef?: RefObject<(() => void) | null>;
   /** Skaffen's look (the site setting); shown above the latest reply. */
   avatar?: AvatarConfig;
   /** True once the thread has messages: ChatApp hides the header avatar then. */
@@ -84,25 +97,27 @@ const chatFetch: typeof fetch = async (input, init) => {
   return response;
 };
 
-// Created once: a new transport per render is wasted work. Each request also carries
-// the conversation id (the chat's first message id, stable when the new chat forks
-// into history) and the visit, for the stored transcript (lib/visit.ts).
-const chatTransport = new DefaultChatTransport({
-  api: "/api/chat",
-  fetch: chatFetch,
-  prepareSendMessagesRequest: ({ id, messages, body, trigger, messageId }) => ({
-    body: {
-      ...body,
-      id,
-      messages,
-      trigger,
-      messageId,
-      conversationId: messages[0]?.id,
-      visitId: getVisitId(),
-      context: getVisitContext(),
-    },
-  }),
-});
+// Created once per mounted thread: a new transport per render is wasted work. Each
+// request carries the chat's stored conversation id (falling back to its first
+// message id) and the visit, for the stored transcript (lib/visit.ts).
+function createChatTransport(conversationIdRef: RefObject<string | undefined>) {
+  return new DefaultChatTransport({
+    api: "/api/chat",
+    fetch: chatFetch,
+    prepareSendMessagesRequest: ({ id, messages, body, trigger, messageId }) => ({
+      body: {
+        ...body,
+        id,
+        messages,
+        trigger,
+        messageId,
+        conversationId: conversationIdRef.current ?? messages[0]?.id,
+        visitId: getVisitId(),
+        context: getVisitContext(),
+      },
+    }),
+  });
+}
 
 // Ids of the messages the thread mounted with. Only messages sent or received after
 // that animate in, so a restored chat doesn't replay its whole history.
@@ -167,40 +182,75 @@ function glideToBottom(element: HTMLElement | null, ms: number) {
 
 export function Thread({
   avatar = SITE.assistant.avatar,
+  cancelRunRef,
+  conversationId,
   initialMessages,
   onConversationChange,
+  onFirstSend,
   onMessagesChange,
   onReply,
   onRunComplete,
+  threadId,
 }: ThreadProps) {
   // The AI SDK chat's error. A run that fails before any assistant content (a 429,
   // a 403, or a stream that errors right after "start") creates no assistant
   // message, so MessagePrimitive.Error has nothing to render in; RunErrorNotice does.
   const [runError, setRunError] = useState<string | null>(null);
-  const clearRunError = useCallback(() => setRunError(null), []);
+  // Set in the same callback as the error, so the run's outcome can't be read
+  // before React has rendered the new error.
+  const runErrorRef = useRef<string | null>(null);
+  const clearRunError = useCallback(() => {
+    runErrorRef.current = null;
+    setRunError(null);
+  }, []);
+  const conversationIdRef = useRef(conversationId);
+  conversationIdRef.current = conversationId;
+  const [transport] = useState(() => createChatTransport(conversationIdRef));
   const runtime = useChatRuntime({
     messages: initialMessages,
-    transport: chatTransport,
+    transport,
     onError: (error) => {
-      setRunError(error.message === BLOCKED_MESSAGE ? BLOCKED_MESSAGE : GENERIC_ERROR_MESSAGE);
+      const message = error.message === BLOCKED_MESSAGE ? BLOCKED_MESSAGE : GENERIC_ERROR_MESSAGE;
+      runErrorRef.current = message;
+      setRunError(message);
     },
   });
-  // Set by the Stop button. A stopped run still ends with a "complete" status.
+  // Set by the Stop button, and when ChatApp leaves this chat. A stopped run still
+  // ends with a "complete" status, so the outcome is read from this flag.
   const cancelledRef = useRef(false);
   const [initialIds] = useState(() => new Set(initialMessages.map((message) => message.id)));
+
+  // One stop path: the composer's button and ChatApp leaving the chat both call this.
+  useEffect(() => {
+    if (!cancelRunRef) return;
+    cancelRunRef.current = () => {
+      cancelledRef.current = true;
+      runtime.thread.cancelRun();
+    };
+    return () => {
+      cancelRunRef.current = null;
+    };
+  }, [cancelRunRef, runtime]);
+
+  const threadConversationId = conversationId ?? initialMessages[0]?.id;
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <InitialMessageIdsContext.Provider value={initialIds}>
       <SkaffenAvatarContext.Provider value={avatar}>
+      <ConversationIdContext.Provider value={threadConversationId}>
+      <RevealProgressProvider>
       <ShowBookingCtaToolUI />
       <ShowBriefToolUI />
-      <ThreadPersistence onMessagesChange={onMessagesChange} />
+      <ThreadPersistence threadId={threadId} onMessagesChange={onMessagesChange} />
       <RunCompleteDetector
         cancelledRef={cancelledRef}
+        onFirstSend={onFirstSend}
         onReply={onReply}
         onRunComplete={onRunComplete}
         onRunStart={clearRunError}
+        runErrorRef={runErrorRef}
+        threadId={threadId}
       />
       <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
         <ThreadBody
@@ -209,9 +259,54 @@ export function Thread({
           onConversationChange={onConversationChange}
         />
       </ThreadPrimitive.Root>
+      </RevealProgressProvider>
+      </ConversationIdContext.Provider>
       </SkaffenAvatarContext.Provider>
       </InitialMessageIdsContext.Provider>
     </AssistantRuntimeProvider>
+  );
+}
+
+// Which text parts are still appearing, shared by the reply and the composer. Stop
+// stays visible until this is empty; pressing Stop after the stream has ended shows
+// the rest of the text at once.
+type RevealProgress = {
+  revealing: boolean;
+  report: (key: string, revealing: boolean) => void;
+  finish: () => void;
+  finishSignal: number;
+};
+
+const RevealProgressContext = createContext<RevealProgress>({
+  revealing: false,
+  report: () => {},
+  finish: () => {},
+  finishSignal: 0,
+});
+
+function useRevealProgress(): RevealProgress {
+  return useContext(RevealProgressContext);
+}
+
+function RevealProgressProvider({ children }: { children: ReactNode }) {
+  const [revealingKeys, setRevealingKeys] = useState<ReadonlySet<string>>(() => new Set());
+  const [finishSignal, setFinishSignal] = useState(0);
+  const report = useCallback((key: string, revealing: boolean) => {
+    setRevealingKeys((current) => {
+      if (current.has(key) === revealing) return current;
+      const next = new Set(current);
+      if (revealing) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }, []);
+  const finish = useCallback(() => setFinishSignal((value) => value + 1), []);
+  return (
+    <RevealProgressContext.Provider
+      value={{ revealing: revealingKeys.size > 0, report, finish, finishSignal }}
+    >
+      {children}
+    </RevealProgressContext.Provider>
   );
 }
 
@@ -313,24 +408,41 @@ function getCompletedReply(messages: readonly ThreadMessage[], cancelled: boolea
   return toUIMessages([last]).length > 0 ? last : null;
 }
 
-// After each run: announces a completed reply (via onReply) and fires onRunComplete
-// once, after the first completed reply in this Thread instance. Used to auto-fork
-// static threads into history, so failed or stopped runs don't fork.
+// The one place that watches a run: it creates the chat on the first send, and
+// after a run works out whether it completed, was stopped or failed. Only a
+// completed reply is announced, saved and used for the title; the chime matches
+// the outcome, so a failure or a stop no longer plays the success sound.
 function RunCompleteDetector({
   cancelledRef,
+  onFirstSend,
   onReply,
   onRunComplete,
   onRunStart,
+  runErrorRef,
+  threadId,
 }: {
   cancelledRef: RefObject<boolean>;
+  onFirstSend?: (messages: UIMessage[]) => void;
   onReply?: (text: string) => void;
-  onRunComplete?: (messages: UIMessage[]) => void;
+  onRunComplete?: (threadId: string, messages: UIMessage[]) => void;
   onRunStart?: () => void;
+  runErrorRef: RefObject<string | null>;
+  threadId: string;
 }) {
   const isRunning = useThread((state) => state.isRunning);
   const messages = useThread((state) => state.messages);
   const prevRunning = useRef(false);
   const hasFired = useRef(false);
+  const sentFirst = useRef(false);
+
+  // The chat is created when the visitor sends, not after the reply. A failed or
+  // stopped chat is then in Recent chats straight away, and New chat can't reopen it.
+  useEffect(() => {
+    if (sentFirst.current || !onFirstSend) return;
+    if (!messages.some((message) => message.role === "user")) return;
+    sentFirst.current = true;
+    onFirstSend(toUIMessages(messages));
+  }, [messages, onFirstSend]);
 
   useEffect(() => {
     const justStarted = !prevRunning.current && isRunning;
@@ -343,9 +455,17 @@ function RunCompleteDetector({
     }
     if (!justFinished || messages.length === 0) return;
 
-    play("ready");
+    const last = messages[messages.length - 1];
+    const outcome = runOutcome({
+      cancelled: cancelledRef.current,
+      errored: runErrorRef.current !== null,
+      lastStatus: last?.status,
+    });
+    const chime = runChime(outcome);
+    if (chime) play(chime);
+    if (!runCompletes(outcome)) return;
 
-    const reply = getCompletedReply(messages, cancelledRef.current);
+    const reply = getCompletedReply(messages, false);
     if (!reply) return;
 
     const text = reply.content
@@ -356,8 +476,8 @@ function RunCompleteDetector({
 
     if (hasFired.current || !onRunComplete) return;
     hasFired.current = true;
-    onRunComplete(toUIMessages(messages));
-  }, [cancelledRef, isRunning, messages, onReply, onRunComplete, onRunStart]);
+    onRunComplete(threadId, toUIMessages(messages));
+  }, [cancelledRef, isRunning, messages, onReply, onRunComplete, onRunStart, runErrorRef, threadId]);
 
   return null;
 }
@@ -515,25 +635,24 @@ function ReplyAvatar({ isNew, isRevealing, isThinking }: { isNew: boolean; isRev
     return index > 0 && isThanks(state.messages[index - 1]);
   });
   const isVisitorTyping = useThreadComposer((state) => state.text.trim().length > 0);
-  // Writing while the reply streams and until its text has all appeared.
-  const isWriting = isRunning || isRevealing;
-  const isLoved = useHappyMoment(isNew && answersThanks && !isWriting);
-  const isHappy = useHappyMoment(isNew && bringsBrief && !isWriting);
-  const mood: AvatarMood = isThinking || (isRunning && !hasContent)
-    ? "thinking"
-    : isWriting
-      ? "writing"
-      : isLoved
-        ? "love"
-        : isHappy
-          ? "happy"
-          : isVisitorTyping
-            ? "listening"
-            : failed
-              ? "sorry"
-              : "idle";
-  const status = mood === "thinking" ? "Thinking" : mood === "writing" ? "Writing" : SITE.assistant.role;
-  const isWorking = mood === "thinking" || mood === "writing";
+  // One phase for the status line, the mood and the Stop button. Writing runs
+  // until the reply's text has all appeared, not just until the stream ends.
+  const phase = replyPhase({
+    held: isThinking,
+    running: isRunning,
+    revealing: isRevealing,
+    hasContent,
+  });
+  const isLoved = useHappyMoment(isNew && answersThanks && phase === "settled");
+  const isHappy = useHappyMoment(isNew && bringsBrief && phase === "settled");
+  const mood: AvatarMood = replyMood(phase, {
+    thanks: isLoved,
+    bringsBrief: isHappy,
+    visitorTyping: isVisitorTyping,
+    failed,
+  });
+  const status = replyStatus(phase, SITE.assistant.role);
+  const isWorking = phase !== "settled";
 
   return (
     <motion.div
@@ -573,24 +692,20 @@ function AssistantMessage() {
   const { seconds } = useMotion();
   const { held: isHeld, wasHeld } = useThinkingHold(isNew);
   const hasContent = hasVisibleContent(message);
-  const isWriting = message.status?.type === "running";
+  const isRunning = message.status?.type === "running";
   const hasText = message.content.some((part) => part.type === "text" && part.text.trim().length > 0);
-  // Text parts still appearing (MarkdownText paces them), by part index.
-  const [revealing, setRevealing] = useState<ReadonlySet<number>>(() => new Set());
-  const reportRevealing = useCallback((index: number, on: boolean) => {
-    setRevealing((current) => {
-      if (current.has(index) === on) return current;
-      const next = new Set(current);
-      if (on) next.add(index);
-      else next.delete(index);
-      return next;
-    });
-  }, []);
-  const isRevealing = revealing.size > 0;
+  const { revealing: isRevealing } = useRevealProgress();
+  const phase = replyPhase({
+    held: isHeld,
+    running: isRunning,
+    revealing: isRevealing,
+    hasContent,
+  });
+  const isWriting = phase === "writing";
 
   // An empty reply that is no longer running failed or was stopped: show nothing
   // here (RunErrorNotice shows the error) instead of an empty reply.
-  if (!hasContent && !isWriting) return null;
+  if (!hasContent && !isHeld && !isRunning) return null;
 
   return (
     <MessagePrimitive.Root className="w-full pt-7">
@@ -612,13 +727,11 @@ function AssistantMessage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: seconds(0.5), ease: "easeOut" }}
           >
-            <RevealContext.Provider value={reportRevealing}>
-              <MessagePrimitive.Parts
-                components={{
-                  Text: MarkdownText,
-                }}
-              />
-            </RevealContext.Provider>
+            <MessagePrimitive.Parts
+              components={{
+                Text: MarkdownText,
+              }}
+            />
           </motion.div>
         ) : isWriting || isHeld ? (
           // Skaffen's thinking avatar above is the visual cue; this is for screen readers.
@@ -629,7 +742,7 @@ function AssistantMessage() {
             <ErrorPrimitive.Message />
           </ErrorPrimitive.Root>
         </MessagePrimitive.Error>
-        {hasText && !isWriting && !isRevealing && !isHeld ? (
+        {showActions(phase, hasText) ? (
           <motion.div
             initial={isNew || wasHeld ? { opacity: 0, y: 6 } : false}
             animate={{ opacity: 1, y: 0 }}
@@ -707,11 +820,14 @@ function Composer({
   const composerRuntime = useComposerRuntime();
   const closed = useChatClosed();
   const isRunning = useThread((state) => state.isRunning);
-  const charCount = useComposer((state) => state.text.length);
-  const isBlank = useComposer((state) => state.text.trim().length === 0);
+  const text = useComposer((state) => state.text);
+  const input = composerInput(text);
+  const charCount = text.length;
   const [hasFocused, setHasFocused] = useState(false);
   const isLanding = variant === "landing";
-  const example = useRotatingExample(isLanding && !hasFocused && charCount === 0);
+  const example = useRotatingExample(isLanding && !hasFocused && showExample(input));
+  const { revealing, finish } = useRevealProgress();
+  const stopVisible = showStop({ running: isRunning, revealing });
   const wasRunningRef = useRef(false);
   const charCounterId = useId();
   const scrollToBottom = useThreadViewport((state) => state.scrollToBottom);
@@ -752,11 +868,20 @@ function Composer({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (closed || !isLanding || !isBlank || isRunning) return;
+    // A typed message goes through assistant-ui. An empty or whitespace-only box
+    // sends the example, which is on screen for both.
+    if (closed || !isLanding || !sendsExample(input) || isRunning) return;
     if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
       sendExample();
     }
+  };
+
+  // Stop while the stream is running; after it has ended, pressing Stop shows the
+  // rest of the paced text at once.
+  const handleStop = () => {
+    if (isRunning) onCancel();
+    else finish();
   };
 
   const motionSettings = useMotion();
@@ -800,7 +925,7 @@ function Composer({
             maxLength={MAX_MESSAGE_CHARS}
             aria-describedby={closed ? closedNoteId : charCount >= CHAR_COUNTER_FROM ? charCounterId : undefined}
           />
-          {isLanding && charCount === 0 && !closed ? (
+          {isLanding && showExample(input) && !closed ? (
             // The example slides up and out as the next one slides in.
             <div
               aria-hidden
@@ -825,16 +950,16 @@ function Composer({
           <span className={`${buttonClass} cursor-not-allowed`} aria-hidden>
             <Lock size={isLanding ? 20 : 18} />
           </span>
-        ) : isRunning ? (
+        ) : stopVisible ? (
           <ComposerPrimitive.Cancel
-            onClick={onCancel}
+            onClick={handleStop}
             className={buttonClass}
-            aria-label="Stop generating"
+            aria-label={isRunning ? "Stop generating" : "Show the rest of the reply"}
             data-cuelume-press="tick"
           >
             <Square size={16} fill="currentColor" />
           </ComposerPrimitive.Cancel>
-        ) : isLanding && isBlank ? (
+        ) : isLanding && sendsExample(input) ? (
           <button
             type="button"
             onClick={sendExample}
@@ -867,18 +992,23 @@ function Composer({
   );
 }
 
-// Saves messages when no run is streaming (so not on every token), and flushes
+// Saves messages when a run starts and ends (so not on every token), and flushes
 // unsaved messages when the page is hidden or closed and when the thread unmounts.
+// The thread id is fixed for this mounted thread, so its unmount flush can't write
+// the old chat's messages into the chat ChatApp has just opened.
 function ThreadPersistence({
   onMessagesChange,
+  threadId,
 }: {
-  onMessagesChange: (messages: UIMessage[]) => void;
+  onMessagesChange: (threadId: string, messages: UIMessage[]) => void;
+  threadId: string;
 }) {
   const isRunning = useThread((state) => state.isRunning);
   const messages = useThread((state) => state.messages);
   const onMessagesChangeRef = useRef(onMessagesChange);
   const latestMessagesRef = useRef(messages);
   const savedMessagesRef = useRef<typeof messages | null>(null);
+  const prevRunningRef = useRef(false);
 
   // Keep callback ref up to date without triggering effect
   useEffect(() => {
@@ -890,12 +1020,14 @@ function ThreadPersistence({
     if (savedMessagesRef.current === current) return;
     savedMessagesRef.current = current;
     // Convert assistant-ui messages to UIMessage format
-    onMessagesChangeRef.current(toUIMessages(current));
-  }, []);
+    onMessagesChangeRef.current(threadId, toUIMessages(current));
+  }, [threadId]);
 
   useEffect(() => {
     latestMessagesRef.current = messages;
-    if (!isRunning) flush();
+    const justStarted = isRunning && !prevRunningRef.current;
+    prevRunningRef.current = isRunning;
+    if (!isRunning || justStarted) flush();
   }, [isRunning, messages, flush]);
 
   useEffect(() => {
@@ -935,27 +1067,28 @@ function MarkdownAnchor({
 
 const markdownComponents = { a: MarkdownAnchor };
 
-// Tells the reply which of its text parts are still appearing.
-const RevealContext = createContext<(index: number, revealing: boolean) => void>(() => {});
-
 // A reply's text, appearing at the site's text speed (Settings → Motion): a new
 // reply from its first character, a restored one all at once. assistant-ui's own
-// smoothing is off; `preprocess` swaps in the part shown so far.
+// smoothing is off; `preprocess` swaps in the part shown so far. The reply reports
+// each part that is still appearing, so Stop stays visible until the last one is done.
 function MarkdownText() {
   const { text } = useMessagePartText();
   const { textCharsPerSecond } = useMotion();
   const isNew = useIsNewMessage();
   const parentId = useMessage((message) => message.parentId);
+  const messageId = useMessage((message) => message.id);
   const index = useMessage((message) =>
     Math.max(0, message.content.findIndex((part) => part.type === "text" && part.text.startsWith(text))),
   );
+  const { report, finishSignal } = useRevealProgress();
+  const key = `${messageId}:${index}`;
   const paced = usePacedText(text, textCharsPerSecond, {
     from: isNew ? 0 : text.length,
-    key: parentId ? `${parentId}:${index}` : null,
+    key: parentId ? `${parentId}:${index}` : key,
+    finishSignal,
   });
-  const report = useContext(RevealContext);
-  useLayoutEffect(() => report(index, !paced.done), [report, index, paced.done]);
-  useLayoutEffect(() => () => report(index, false), [report, index]);
+  useLayoutEffect(() => report(key, !paced.done), [report, key, paced.done]);
+  useLayoutEffect(() => () => report(key, false), [report, key]);
   const preprocess = useCallback(() => paced.text, [paced.text]);
 
   return (

@@ -3,8 +3,14 @@
 import { AvatarEditor, type AvatarConfig } from "@jamesalmeida/agent-avatars";
 import { play } from "cuelume";
 import localFont from "next/font/local";
-import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useReducer, useRef, useState, type CSSProperties } from "react";
 import { parseAvatarSetting } from "@/lib/avatar-settings";
+import {
+  initialRecorder,
+  recorderBusy,
+  recorderProgressPercent,
+  reduceRecorder,
+} from "@/lib/share-recorder";
 import {
   DEFAULT_SHARE_CARD,
   SHARE_CARD_SIZE,
@@ -87,11 +93,16 @@ function newCanvas(): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D
 export function AdminShareCard() {
   const [card, setCard] = useState<ShareCard>(DEFAULT_SHARE_CARD);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [recording, setRecording] = useState<number | null>(null);
+  const [recorder, dispatchRecorder] = useReducer(reduceRecorder, initialRecorder());
   const [status, setStatus] = useState<string | null>(null);
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cardRef = useRef(card);
+  // Set before the first await, so a double click can't start two recorders.
+  const recordingRef = useRef(false);
+  const recorderFailedRef = useRef(false);
+  // A draft is written only after an actual edit, not on the first visit.
+  const editedRef = useRef(false);
   // True once this browser's draft (if any) is in state; saving waits for it, so the
   // defaults never overwrite a draft before it's read.
   const [hasDraftLoaded, setHasDraftLoaded] = useState(false);
@@ -117,7 +128,7 @@ export function AdminShareCard() {
 
   useEffect(() => {
     cardRef.current = card;
-    if (!hasDraftLoaded) return;
+    if (!hasDraftLoaded || !editedRef.current) return;
     try {
       window.localStorage.setItem(DRAFT_KEY, JSON.stringify(card));
     } catch {
@@ -145,7 +156,10 @@ export function AdminShareCard() {
     return () => cancelAnimationFrame(frame);
   }, [isPlaying, fontsLoaded, card]);
 
-  const update = (change: Partial<ShareCard>) => setCard((current) => ({ ...current, ...change }));
+  const update = (change: Partial<ShareCard>) => {
+    editedRef.current = true;
+    setCard((current) => ({ ...current, ...change }));
+  };
 
   const downloadImage = async () => {
     await fontsReady();
@@ -161,36 +175,64 @@ export function AdminShareCard() {
   // Records the animation in real time from a canvas stream. MP4 where the browser
   // can (Chrome, Safari), WebM otherwise.
   const downloadVideo = async () => {
-    if (!video || recording !== null) return;
-    await fontsReady();
-    const { canvas, ctx } = newCanvas();
-    const snapshot = card;
-    drawShareCard(ctx, snapshot, FONTS, 0);
-    const stream = canvas.captureStream(30);
-    const recorder = new MediaRecorder(stream, { mimeType: video.mimeType, videoBitsPerSecond: 8_000_000 });
-    const chunks: Blob[] = [];
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) chunks.push(event.data);
-    };
-    recorder.onstop = () => {
-      stream.getTracks().forEach((track) => track.stop());
-      setRecording(null);
-      play("success");
-      download(new Blob(chunks, { type: video.mimeType.split(";")[0] }), `jamesalmeida-share.${video.extension}`);
-      setStatus(`Downloaded a ${snapshot.videoSeconds} s ${video.extension.toUpperCase()}.`);
-    };
+    if (!video || recordingRef.current) return;
+    recordingRef.current = true;
+    dispatchRecorder({ type: "start" });
     setStatus(null);
-    setRecording(0);
-    recorder.start(250);
-    const start = performance.now();
-    const tick = (now: number) => {
-      const t = (now - start) / 1000;
-      drawShareCard(ctx, snapshot, FONTS, Math.min(t, snapshot.videoSeconds));
-      setRecording(Math.min(t / snapshot.videoSeconds, 1));
-      if (t < snapshot.videoSeconds) requestAnimationFrame(tick);
-      else recorder.stop();
-    };
-    requestAnimationFrame(tick);
+    try {
+      await fontsReady();
+      const { canvas, ctx } = newCanvas();
+      const snapshot = card;
+      drawShareCard(ctx, snapshot, FONTS, 0);
+      const stream = canvas.captureStream(30);
+      let recorder: MediaRecorder;
+      try {
+        recorder = new MediaRecorder(stream, { mimeType: video.mimeType, videoBitsPerSecond: 8_000_000 });
+      } catch {
+        stream.getTracks().forEach((track) => track.stop());
+        throw new Error("Recording isn't available in this browser.");
+      }
+      const chunks: Blob[] = [];
+      recorderFailedRef.current = false;
+      const fail = (message: string) => {
+        recorderFailedRef.current = true;
+        recordingRef.current = false;
+        dispatchRecorder({ type: "failed", message });
+        play("error");
+        stream.getTracks().forEach((track) => track.stop());
+      };
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+      recorder.onerror = () => fail("Recording failed. Try again.");
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        recordingRef.current = false;
+        if (recorderFailedRef.current) return;
+        dispatchRecorder({ type: "idle" });
+        play("success");
+        download(new Blob(chunks, { type: video.mimeType.split(";")[0] }), `jamesalmeida-share.${video.extension}`);
+        setStatus(`Downloaded a ${snapshot.videoSeconds} s ${video.extension.toUpperCase()}.`);
+      };
+      recorder.start(250);
+      dispatchRecorder({ type: "started" });
+      const start = performance.now();
+      const tick = (now: number) => {
+        const t = (now - start) / 1000;
+        drawShareCard(ctx, snapshot, FONTS, Math.min(t, snapshot.videoSeconds));
+        dispatchRecorder({ type: "progress", progress: Math.min(t / snapshot.videoSeconds, 1) });
+        if (t < snapshot.videoSeconds) requestAnimationFrame(tick);
+        else recorder.stop();
+      };
+      requestAnimationFrame(tick);
+    } catch (error) {
+      recordingRef.current = false;
+      dispatchRecorder({
+        type: "failed",
+        message: error instanceof Error ? error.message : "Recording isn't available in this browser.",
+      });
+      play("error");
+    }
   };
 
   const textField = (id: string, label: string, key: "label" | "headline" | "highlight" | "subline" | "prompt", hint?: string) => (
@@ -230,15 +272,21 @@ export function AdminShareCard() {
           <button
             type="button"
             onClick={() => void downloadVideo()}
-            disabled={!fontsLoaded || !video || recording !== null}
+            disabled={!fontsLoaded || !video || recorderBusy(recorder)}
             className="rounded-full bg-[var(--foreground)] px-5 py-3 text-sm font-medium text-[var(--background)] transition hover:opacity-85 disabled:opacity-50"
             data-cuelume-press="tick"
           >
-            {recording !== null
-              ? `Recording… ${Math.round(recording * 100)}%`
-              : `Download video (${video?.extension.toUpperCase() ?? "not supported"})`}
+            {recorderProgressPercent(recorder) !== null
+              ? `Recording… ${recorderProgressPercent(recorder)}%`
+              : recorder.status === "preparing"
+                ? "Preparing…"
+                : `Download video (${video?.extension.toUpperCase() ?? "not supported"})`}
           </button>
-          {status ? (
+          {recorder.status === "failed" ? (
+            <p role="alert" className="text-sm text-[var(--muted)]">
+              {recorder.message}
+            </p>
+          ) : status ? (
             <p role="status" className="text-sm text-[var(--muted)]">
               {status}
             </p>
@@ -285,7 +333,14 @@ export function AdminShareCard() {
               className="w-full accent-[var(--accent)]"
             />
           </div>
-          <button type="button" onClick={() => setCard(DEFAULT_SHARE_CARD)} className={buttonClass}>
+          <button
+            type="button"
+            onClick={() => {
+              editedRef.current = true;
+              setCard(DEFAULT_SHARE_CARD);
+            }}
+            className={buttonClass}
+          >
             Reset to default
           </button>
         </div>

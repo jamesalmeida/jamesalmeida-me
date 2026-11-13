@@ -7,14 +7,20 @@ import { Modal } from "@/components/modal";
 import { SiteHeader } from "@/components/site-header";
 import { SiteMenu } from "@/components/site-menu";
 import { Thread } from "@/components/thread";
+import { clearBriefCards } from "@/lib/brief-store";
+import { clearFeedback } from "@/lib/feedback-state";
+import { replyWasBlocked } from "@/lib/jev-decision";
 import {
+  ACTIVE_THREAD_STORAGE_KEY,
+  HISTORY_THREADS_KEY,
   NEW_CHAT_ID,
+  THREAD_STORAGE_KEY,
   capHistoryThreads,
   clearStoredChats,
   createHistoryThread,
   getFirstUserText,
+  getThreadConversationId,
   getThreadMessages,
-  isStaticThreadId,
   pruneStoredThreads,
   readHistoryThreads,
   readStoredActiveThread,
@@ -27,12 +33,20 @@ import {
   type HistoryThread,
   type StoredThreads,
 } from "@/lib/threads";
+import {
+  initialThreadSession,
+  reduceThreadSession,
+  sessionConversationId,
+  sessionKey,
+  sessionThreadId,
+  type ThreadSession,
+  type ThreadSessionEvent,
+} from "@/lib/thread-session";
 import type { MotionSettings } from "@/lib/motion-settings";
 import { trackEvent } from "@/lib/visit";
 import { MotionSettingsProvider } from "@/components/motion-settings";
 import { LandingSettingsProvider, chooseHeadline } from "@/components/landing-settings";
 import { DEFAULT_LANDING, type LandingSettings } from "@/lib/landing-settings";
-import { replyWasBlocked } from "@/lib/jev-decision";
 
 let landingTracked = false;
 
@@ -42,6 +56,20 @@ function assistantReplyText(messages: UIMessage[]): string {
     .flatMap((part) => (part.type === "text" ? [part.text] : []))
     .join("\n\n")
     .trim();
+}
+
+// A stored active id that is a history chat reopens it; anything else is a landing.
+function hydrateSession(): ThreadSession {
+  const stored = readStoredThreads();
+  const history = readHistoryThreads();
+  const active = resolveActiveThreadId(readStoredActiveThread(), history);
+  if (active === NEW_CHAT_ID) return initialThreadSession();
+  return {
+    phase: "chat",
+    key: 0,
+    threadId: active,
+    conversationId: getThreadConversationId(active, stored) ?? active,
+  };
 }
 
 export function ChatApp({
@@ -58,37 +86,50 @@ export function ChatApp({
   // This visit's headline (the A/B test). Chosen in the first render, so the
   // landing_view event below already carries it.
   const [headline] = useState(() => chooseHeadline(landing));
-  const [activeThreadId, setActiveThreadId] = useState<string>(NEW_CHAT_ID);
+  const [session, setSession] = useState<ThreadSession>(initialThreadSession);
   const [storedThreads, setStoredThreads] = useState<StoredThreads>({});
   const [historyThreads, setHistoryThreads] = useState<HistoryThread[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  // Latest stored threads, so writes can happen synchronously (e.g. on pagehide).
+  // The chat on screen, readable from callbacks without a stale render.
+  const sessionRef = useRef(session);
   const storedThreadsRef = useRef<StoredThreads>({});
-  // Bumped by "New chat" and "Clear all chats". Remounts the thread, and saves from
-  // the old thread (e.g. its unmount flush) are ignored so cleared chats don't come back.
-  const [chatGeneration, setChatGeneration] = useState(0);
-  const chatGenerationRef = useRef(0);
+  const historyRef = useRef<HistoryThread[]>([]);
+  // Stop the run when leaving this chat (same path as the Stop button).
+  const cancelRunRef = useRef<(() => void) | null>(null);
   // History thread waiting for the delete confirmation.
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  // Latest finished reply, read out by the polite live region. It lives here, not
-  // in Thread, because the first reply forks the thread and remounts it.
+  // Latest finished reply, read out by the polite live region.
   const [announcement, setAnnouncement] = useState("");
   // True once the visitor has sent a message: Skaffen's avatar leaves the header and
   // shows above the latest reply instead.
   const [isConversation, setIsConversation] = useState(false);
+  // Threads whose title has already been requested.
+  const titledRef = useRef<Set<string>>(new Set());
 
-  // Updates state and writes localStorage right away. If storage was full and
-  // history threads were evicted, drop them from the menu too.
+  const applySession = useCallback((event: ThreadSessionEvent) => {
+    const next = reduceThreadSession(sessionRef.current, event);
+    if (next === sessionRef.current) return;
+    sessionRef.current = next;
+    setSession(next);
+  }, []);
+
+  // Read-modify-write from localStorage, so two tabs don't overwrite each other with
+  // their own copy. On quota eviction, drop the evicted chats from the menu too.
   const updateStoredThreads = useCallback(
-    (update: (current: StoredThreads) => StoredThreads) => {
-      const next = update(storedThreadsRef.current);
-      const written = writeStoredThreads(next) ?? next;
+    (update: (current: StoredThreads) => StoredThreads, keepId?: string) => {
+      const next = update(readStoredThreads());
+      const written = writeStoredThreads(next, keepId) ?? next;
       storedThreadsRef.current = written;
       setStoredThreads(written);
-      if (written !== next) {
-        setHistoryThreads((prev) => prev.filter((item) => item.id in written));
+      if (Object.keys(written).length !== Object.keys(next).length) {
+        const kept = historyRef.current.filter((item) => item.id in written);
+        if (kept.length !== historyRef.current.length) {
+          historyRef.current = kept;
+          setHistoryThreads(kept);
+          writeHistoryThreads(kept);
+        }
       }
     },
     [],
@@ -103,11 +144,14 @@ export function ChatApp({
 
   useEffect(() => {
     const nextStoredThreads = readStoredThreads();
-    storedThreadsRef.current = nextStoredThreads;
-    setStoredThreads(nextStoredThreads);
     const history = readHistoryThreads();
+    const nextSession = hydrateSession();
+    storedThreadsRef.current = nextStoredThreads;
+    historyRef.current = history;
+    sessionRef.current = nextSession;
+    setStoredThreads(nextStoredThreads);
     setHistoryThreads(history);
-    setActiveThreadId(resolveActiveThreadId(readStoredActiveThread(), history));
+    setSession(nextSession);
     setIsHydrated(true);
   }, []);
 
@@ -137,29 +181,96 @@ export function ChatApp({
 
   useEffect(() => {
     if (!isHydrated) return;
-    writeStoredActiveThread(activeThreadId);
-  }, [activeThreadId, isHydrated]);
+    writeStoredActiveThread(sessionThreadId(session));
+  }, [session, isHydrated]);
 
   useEffect(() => {
     if (!isHydrated) return;
     writeHistoryThreads(historyThreads);
-    // Drop stored messages for history threads that were capped out or deleted,
-    // and for the old pinned threads.
+    // Drop stored messages for history threads that were capped out or deleted.
     const historyIds = new Set(historyThreads.map((item) => item.id));
     if (pruneStoredThreads(storedThreadsRef.current, historyIds) !== storedThreadsRef.current) {
-      updateStoredThreads((current) => pruneStoredThreads(current, historyIds));
+      updateStoredThreads((current) => pruneStoredThreads(current, historyIds), sessionThreadId(sessionRef.current));
     }
   }, [isHydrated, historyThreads, updateStoredThreads]);
 
+  // Another tab wrote the chats: pick them up, and leave a chat it deleted.
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (
+        event.key !== THREAD_STORAGE_KEY &&
+        event.key !== HISTORY_THREADS_KEY &&
+        event.key !== ACTIVE_THREAD_STORAGE_KEY
+      ) {
+        return;
+      }
+      const nextStored = readStoredThreads();
+      const nextHistory = readHistoryThreads();
+      storedThreadsRef.current = nextStored;
+      historyRef.current = nextHistory;
+      setStoredThreads(nextStored);
+      setHistoryThreads(nextHistory);
+      const current = sessionRef.current;
+      if (current.phase === "chat" && !nextHistory.some((item) => item.id === current.threadId)) {
+        applySession({ type: "chat_deleted", threadId: current.threadId });
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [applySession]);
+
   const activeMessages = useMemo(
-    () => getThreadMessages(activeThreadId, storedThreads),
-    [activeThreadId, storedThreads],
+    () => (session.phase === "chat" ? getThreadMessages(session.threadId, storedThreads) : []),
+    [session, storedThreads],
   );
 
-  const handleMessagesChange = (threadId: string, messages: UIMessage[], generation: number) => {
-    if (generation !== chatGenerationRef.current) return;
-    updateStoredThreads((current) => saveThreadMessages(current, threadId, messages));
-  };
+  // The chat is created on first send, not after the reply, so a failed or stopped
+  // chat is in Recent chats straight away and the landing always stays empty.
+  const handleFirstSend = useCallback(
+    (messages: UIMessage[]) => {
+      const current = sessionRef.current;
+      if (current.phase !== "landing") return;
+      const conversationId = messages[0]?.id;
+      if (!conversationId || !messages.some((message) => message.role === "user")) return;
+
+      const history = createHistoryThread(messages, NEW_CHAT_ID);
+      const withHistory = saveThreadMessages(readStoredThreads(), history.id, messages, conversationId);
+      // The landing slot goes back to empty, with no conversation id.
+      const emptied = saveThreadMessages(withHistory, NEW_CHAT_ID, [], "");
+      const written = writeStoredThreads(emptied, history.id) ?? emptied;
+      storedThreadsRef.current = written;
+      setStoredThreads(written);
+
+      // If the write had to evict old chats, drop them from Recent chats too.
+      const capped = capHistoryThreads([history, ...historyRef.current]).filter(
+        (item) => item.id in written,
+      );
+      historyRef.current = capped;
+      setHistoryThreads(capped);
+      writeHistoryThreads(capped);
+
+      applySession({ type: "first_message_sent", threadId: history.id, conversationId });
+    },
+    [applySession],
+  );
+
+  const handleMessagesChange = useCallback(
+    (threadId: string, messages: UIMessage[]) => {
+      if (!isHydrated) return;
+      const current = sessionRef.current;
+      // A late flush from the landing after the chat moved out must not refill it.
+      if (threadId === NEW_CHAT_ID && current.phase === "chat") return;
+      // A deleted chat's unmount flush must not bring it back.
+      if (threadId !== NEW_CHAT_ID && !historyRef.current.some((item) => item.id === threadId)) return;
+      const conversationId =
+        current.phase === "chat" && current.threadId === threadId ? current.conversationId : undefined;
+      updateStoredThreads(
+        (stored) => saveThreadMessages(stored, threadId, messages, conversationId),
+        sessionThreadId(current),
+      );
+    },
+    [isHydrated, updateStoredThreads],
+  );
 
   const generateTitle = useCallback((historyId: string, firstMessage: string) => {
     fetch("/api/generate-title", {
@@ -170,69 +281,66 @@ export function ChatApp({
       .then((response) => response.json())
       .then(({ title }: { title: string | null }) => {
         if (!title) return;
-        setHistoryThreads((prev) =>
-          prev.map((item) => (item.id === historyId ? { ...item, title } : item)),
-        );
+        const next = historyRef.current.map((item) => (item.id === historyId ? { ...item, title } : item));
+        historyRef.current = next;
+        setHistoryThreads(next);
+        writeHistoryThreads(next);
       })
       .catch(() => {});
   }, []);
 
-  // Moves the new chat's messages into a history thread and empties the new chat.
-  const forkIntoHistory = useCallback(
-    (messages: UIMessage[]) => {
-      const history = createHistoryThread(messages, NEW_CHAT_ID);
-      updateStoredThreads((prev) => {
-        const withHistory = saveThreadMessages(prev, history.id, messages);
-        return saveThreadMessages(withHistory, NEW_CHAT_ID, []);
-      });
-      setHistoryThreads((prev) => capHistoryThreads([history, ...prev]));
-      const firstText = getFirstUserText(messages);
-      // A blocked turn is a canned refusal. Don't send that message to the title model.
-      if (firstText && !replyWasBlocked(assistantReplyText(messages))) generateTitle(history.id, firstText);
-      return history.id;
-    },
-    [generateTitle, updateStoredThreads],
-  );
-
+  // The title waits for the first completed reply, as before. The history entry
+  // already exists, so this only names it.
   const handleRunComplete = useCallback(
-    (messages: UIMessage[]) => {
-      if (!isStaticThreadId(activeThreadId) || messages.length === 0) return;
-      setActiveThreadId(forkIntoHistory(messages));
+    (threadId: string, messages: UIMessage[]) => {
+      if (titledRef.current.has(threadId)) return;
+      const item = historyRef.current.find((entry) => entry.id === threadId);
+      // Only a chat that still has its placeholder title needs one.
+      if (!item || item.title !== "New chat") return;
+      const firstText = getFirstUserText(messages);
+      if (!firstText) return;
+      // A blocked turn is a canned refusal. Don't send that message to the title model.
+      if (replyWasBlocked(assistantReplyText(messages))) return;
+      titledRef.current.add(threadId);
+      generateTitle(threadId, firstText);
     },
-    [activeThreadId, forkIntoHistory],
+    [generateTitle],
   );
 
-  // Shows a fresh landing (menu "New chat" and the name in the header). A new chat
-  // that never got a reply (e.g. an error) is kept in history rather than lost.
+  // Shows a fresh landing. The chat on screen was saved when its run started, so
+  // leaving it doesn't lose anything.
   const handleNewChat = useCallback(() => {
-    if (isStaticThreadId(activeThreadId)) {
-      const unsaved = storedThreadsRef.current[NEW_CHAT_ID]?.userMessages ?? [];
-      chatGenerationRef.current += 1;
-      if (unsaved.length > 0) forkIntoHistory(unsaved);
-      setChatGeneration(chatGenerationRef.current);
-      return;
-    }
-    setActiveThreadId(NEW_CHAT_ID);
-  }, [activeThreadId, forkIntoHistory]);
+    cancelRunRef.current?.();
+    applySession({ type: "new_chat" });
+  }, [applySession]);
 
   // The menu animates itself closed after these, then calls onClose.
-  const handleSelectThread = useCallback((threadId: string) => {
-    setActiveThreadId(threadId);
-  }, []);
+  const handleSelectThread = useCallback(
+    (threadId: string) => {
+      const stored = readStoredThreads();
+      const conversationId = getThreadConversationId(threadId, stored) ?? threadId;
+      cancelRunRef.current?.();
+      applySession({ type: "chat_opened", threadId, conversationId });
+    },
+    [applySession],
+  );
 
   const handleDeleteThread = useCallback(
     (threadId: string) => {
-      if (activeThreadId === threadId) {
-        setActiveThreadId(NEW_CHAT_ID);
-      }
-      setHistoryThreads((prev) => prev.filter((item) => item.id !== threadId));
-      updateStoredThreads((prev) => {
-        const next = { ...prev };
+      const current = sessionRef.current;
+      if (current.phase === "chat" && current.threadId === threadId) cancelRunRef.current?.();
+      const kept = historyRef.current.filter((item) => item.id !== threadId);
+      historyRef.current = kept;
+      setHistoryThreads(kept);
+      writeHistoryThreads(kept);
+      updateStoredThreads((stored) => {
+        const next = { ...stored };
         delete next[threadId];
         return next;
-      });
+      }, sessionThreadId(current));
+      applySession({ type: "chat_deleted", threadId });
     },
-    [activeThreadId, updateStoredThreads],
+    [applySession, updateStoredThreads],
   );
 
   const confirmDeleteThread = useCallback(() => {
@@ -241,21 +349,24 @@ export function ChatApp({
   }, [handleDeleteThread, pendingDeleteId]);
 
   const handleClearAllChats = useCallback(() => {
-    chatGenerationRef.current += 1;
+    cancelRunRef.current?.();
     clearStoredChats();
+    clearBriefCards();
+    clearFeedback();
     storedThreadsRef.current = {};
+    historyRef.current = [];
+    titledRef.current.clear();
     setStoredThreads({});
     setHistoryThreads([]);
-    setActiveThreadId(NEW_CHAT_ID);
-    setChatGeneration(chatGenerationRef.current);
-  }, []);
+    applySession({ type: "all_cleared" });
+  }, [applySession]);
 
   if (!isHydrated) {
     return fallback;
   }
 
-  const hasChats =
-    historyThreads.length > 0 || (storedThreads[NEW_CHAT_ID]?.userMessages.length ?? 0) > 0;
+  const activeThreadId = sessionThreadId(session);
+  const hasChats = historyThreads.length > 0;
 
   return (
     <MotionSettingsProvider motion={motion}>
@@ -263,6 +374,7 @@ export function ChatApp({
     <div className="app-shell flex flex-col overflow-hidden">
       <SiteHeader
         avatar={avatar}
+        conversationId={sessionConversationId(session)}
         menuButtonRef={menuButtonRef}
         onOpenMenu={() => setIsMenuOpen(true)}
         onNewChat={handleNewChat}
@@ -270,13 +382,17 @@ export function ChatApp({
       />
       <main className="flex min-h-0 flex-1 flex-col">
         <Thread
-          key={`${activeThreadId}:${chatGeneration}`}
+          key={sessionKey(session)}
+          threadId={activeThreadId}
+          conversationId={sessionConversationId(session)}
           initialMessages={activeMessages}
-          onMessagesChange={(messages) => handleMessagesChange(activeThreadId, messages, chatGeneration)}
+          onMessagesChange={handleMessagesChange}
+          onFirstSend={handleFirstSend}
+          onRunComplete={handleRunComplete}
+          cancelRunRef={cancelRunRef}
           avatar={avatar}
           onConversationChange={setIsConversation}
           onReply={setAnnouncement}
-          onRunComplete={handleRunComplete}
         />
         <div className="sr-only" aria-live="polite" aria-atomic="true">
           {announcement}
@@ -285,6 +401,7 @@ export function ChatApp({
       {isMenuOpen ? (
         <SiteMenu
           activeThreadId={activeThreadId}
+          conversationId={sessionConversationId(session)}
           hasChats={hasChats}
           historyThreads={historyThreads}
           onClearAllChats={handleClearAllChats}
