@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { conversationStage } from "../lib/conversation-stage";
 import { qualityView, wentBadlyFlag } from "../lib/jev-quality";
 import { assertServer, query } from "./lib";
 
@@ -76,9 +77,11 @@ export const dashboard = query({
       else if (conversation.userMessages === 2) depth.two += 1;
       else if (conversation.userMessages === 3) depth.three += 1;
       else depth.fourPlus += 1;
-      if (conversation.leadCaptured) outcomes.lead += 1;
-      else if (conversation.bookingClicked || conversation.emailClicked) outcomes.clicked += 1;
-      else if (conversation.briefShown) outcomes.briefOnly += 1;
+      const { stage } = conversationStage(conversation);
+      if (stage === "taken") {
+        if (conversation.leadCaptured) outcomes.lead += 1;
+        else outcomes.clicked += 1;
+      } else if (stage === "offered") outcomes.briefOnly += 1;
       else outcomes.noBrief += 1;
       if (typeof conversation.fitScore === "number") {
         jev.scored += 1;
@@ -138,7 +141,7 @@ export const dashboard = query({
           readiness: conversation.readiness ?? null,
           hasJobCard: conversation.jobCard !== undefined,
           offersShown: conversation.offers?.length ?? 0,
-          offerTaken: conversation.offers?.some((offer) => offer.outcome === "accepted") ?? false,
+          offerTaken: conversationStage(conversation).stage === "taken",
           firstMessage: first?.text.slice(0, 160) ?? "",
         };
       }),

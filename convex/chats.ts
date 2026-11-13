@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { parseClientIp } from "../lib/client-ip";
+import { conversationStage } from "../lib/conversation-stage";
 import { MAX_REASON_CHARS } from "../lib/jev-quality";
 import { mergeJobCard } from "../lib/job-card";
 import { RETENTION_MS, assertServer, mutation, query } from "./lib";
@@ -113,23 +114,75 @@ export const recordUserMessage = mutation({
   },
 });
 
-// Called by /api/chat once Skaffen's reply has finished streaming.
+// Called by /api/chat as soon as a step shows a card, not after the whole reply.
+// A card is visible before the reply ends, so the offer exists when the visitor
+// answers it. A repeat for the same card id is ignored.
+export const recordOffer = mutation({
+  args: {
+    secret: v.string(),
+    conversationId: v.string(),
+    offer: v.object({
+      // The card's tool call id, so answers are tied to the card that was shown.
+      id: v.optional(v.string()),
+      kind: offerKind,
+      lead: v.optional(offerLead),
+      reason: v.optional(offerReason),
+      readiness: v.optional(readiness),
+    }),
+  },
+  handler: async (ctx, { secret, conversationId, offer }) => {
+    assertServer(secret);
+    const now = Date.now();
+    const conversation = await ctx.db
+      .query("conversations")
+      .withIndex("by_conversationId", (q) => q.eq("conversationId", conversationId))
+      .unique();
+    if (!conversation) return;
+    const offers = conversation.offers ?? [];
+    if (offer.id && offers.some((item) => item.id === offer.id)) return;
+    const { readiness: _scores, ...shown } = offer;
+    const turn = conversation.userMessages;
+    await ctx.db.patch(conversation._id, {
+      offers: [
+        ...offers,
+        { ...shown, ...(offer.id ? { id: offer.id } : {}), at: now, turn },
+      ].slice(-MAX_STORED_OFFERS),
+    });
+    if (conversation.visitId) {
+      await ctx.db.insert("events", {
+        type: "offer_shown",
+        visitId: conversation.visitId,
+        conversationId,
+        offer: { ...offer, turn },
+        at: now,
+        expiresAt: now + RETENTION_MS,
+      });
+    }
+    if (offer.kind !== "brief" || conversation.briefShown) return;
+    await ctx.db.patch(conversation._id, { briefShown: true });
+    if (conversation.visitId) {
+      await ctx.db.insert("events", {
+        type: "brief_shown",
+        visitId: conversation.visitId,
+        conversationId,
+        at: now,
+        expiresAt: now + RETENTION_MS,
+      });
+    }
+  },
+});
+
+// Called by /api/chat once Skaffen's reply has finished streaming. Offers are
+// recorded at the step that showed them (recordOffer); this stores the message and
+// keeps the brief flag for old clients.
 export const recordReply = mutation({
   args: {
     secret: v.string(),
     conversationId: v.string(),
     text: v.string(),
     tools: v.array(v.string()),
-    offer: v.optional(
-      v.object({
-        kind: offerKind,
-        lead: v.optional(offerLead),
-        reason: v.optional(offerReason),
-        readiness: v.optional(readiness),
-      }),
-    ),
   },
-  handler: async (ctx, { secret, conversationId, text, tools, offer }) => {
+  handler: async (ctx, { secret, conversationId, text, tools }) => {
     assertServer(secret);
     const now = Date.now();
     await ctx.db.insert("messages", {
@@ -145,23 +198,6 @@ export const recordReply = mutation({
       .withIndex("by_conversationId", (q) => q.eq("conversationId", conversationId))
       .unique();
     if (!conversation) return;
-    if (offer) {
-      const { readiness: _scores, ...shown } = offer;
-      const turn = conversation.userMessages;
-      await ctx.db.patch(conversation._id, {
-        offers: [...(conversation.offers ?? []), { ...shown, at: now, turn }].slice(-MAX_STORED_OFFERS),
-      });
-      if (conversation.visitId) {
-        await ctx.db.insert("events", {
-          type: "offer_shown",
-          visitId: conversation.visitId,
-          conversationId,
-          offer: { ...offer, turn },
-          at: now,
-          expiresAt: now + RETENTION_MS,
-        });
-      }
-    }
     if (!tools.includes("showBrief") || conversation.briefShown) return;
     await ctx.db.patch(conversation._id, { briefShown: true });
     if (conversation.visitId) {
@@ -235,10 +271,8 @@ export const blockState = query({
       offers: {
         shown: offers.length,
         lastTurn: offers.at(-1)?.turn ?? null,
-        taken:
-          conversation?.leadCaptured === true ||
-          conversation?.bookingClicked === true ||
-          conversation?.emailClicked === true,
+        // One definition of taken, shared with /admin (lib/conversation-stage.ts).
+        taken: conversation ? conversationStage(conversation).stage === "taken" : false,
         turn: (conversation?.userMessages ?? 0) + 1,
       },
     };

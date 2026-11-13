@@ -50,10 +50,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [systemTheme, setSystemTheme] = useState<Theme>("light");
   // Sounds are on unless the visitor turned them off.
   const [soundsEnabled, setSoundsEnabled] = useState(true);
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     const stored = readStorage(THEME_STORAGE_KEY);
     const known = THEME_PREFERENCES.find((option) => option === stored);
     if (known) setPreferenceState(known);
@@ -74,11 +72,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const theme = preference === "system" ? systemTheme : preference;
 
   useEffect(() => {
-    if (!mounted) return;
     document.documentElement.classList.toggle("dark", theme === "dark");
     // Update iOS Safari theme-color meta tag for status bar / home indicator
     document.getElementById("theme-color-meta")?.setAttribute("content", THEME_COLORS[theme]);
-  }, [theme, mounted]);
+  }, [theme]);
 
   const transitionTimer = useRef<number | undefined>(undefined);
 
@@ -107,17 +104,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // The theme class is set before paint by the inline script in app/layout.tsx.
   // reducedMotion="user" turns off framer-motion transforms for prefers-reduced-motion.
+  // The provider is always here, so the element type never changes and the tree is
+  // not mounted twice on a page load.
   return (
     <MotionConfig reducedMotion="user">
-      {mounted ? (
-        <ThemeContext.Provider
-          value={{ theme, preference, setPreference, soundsEnabled, toggleSounds }}
-        >
-          {children}
-        </ThemeContext.Provider>
-      ) : (
-        children
-      )}
+      <ThemeContext.Provider
+        value={{ theme, preference, setPreference, soundsEnabled, toggleSounds }}
+      >
+        {children}
+      </ThemeContext.Provider>
     </MotionConfig>
   );
 }

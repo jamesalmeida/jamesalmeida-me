@@ -3,7 +3,7 @@ import { parseLead } from "@/lib/analytics";
 import { notifyNewLead } from "@/lib/lead-notify.server";
 import { readPublicJson } from "@/lib/public-request";
 import { leadIpLimiter } from "@/lib/rate-limit";
-import { storeApi, storeMutation } from "@/lib/store.server";
+import { storeApi, storeMutationResult } from "@/lib/store.server";
 
 export const dynamic = "force-dynamic";
 
@@ -19,12 +19,13 @@ export async function POST(request: Request) {
   if (!lead) return Response.json({ error: "Please enter a valid email address." }, { status: 400 });
 
   try {
-    const saved = await storeMutation(storeApi.leads.submit, lead);
+    const saved = await storeMutationResult<{ created: boolean }>(storeApi.leads.submit, lead);
     if (!saved) return Response.json({ error: "Saving isn't set up." }, { status: 503 });
+    // Only a new lead emails James; a repeat send for the same card updates it.
+    if (saved.created) after(() => notifyNewLead(lead));
+    return Response.json({ ok: true, created: saved.created });
   } catch (error) {
     console.error("Saving a lead failed.", error);
     return Response.json({ error: "Could not save your email." }, { status: 503 });
   }
-  after(() => notifyNewLead(lead));
-  return Response.json({ ok: true });
 }

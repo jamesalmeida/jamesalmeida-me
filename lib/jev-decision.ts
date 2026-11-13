@@ -95,6 +95,18 @@ const EARLIER_BLOCKED_REPLY = `I can't take that one further. If you're here abo
 
 const CLOSED_REPLIES = [BLOCKED_REPLY, EARLIER_BLOCKED_REPLY];
 
+/** The id prefix of the canned refusal. The wording can change without reopening old chats. */
+export const CLOSED_MESSAGE_ID_PREFIX = "closed-";
+
+/** A stable id for the refusal message, so the client marks the message, not the copy. */
+export function closedMessageId(): string {
+  return `${CLOSED_MESSAGE_ID_PREFIX}${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function isClosedMessageId(id: string | undefined): boolean {
+  return typeof id === "string" && id.startsWith(CLOSED_MESSAGE_ID_PREFIX);
+}
+
 /** True when the reply is the canned refusal, so the client must not send the turn to the title model. */
 export function replyWasBlocked(text: string): boolean {
   const trimmed = text.trim();
@@ -103,12 +115,21 @@ export function replyWasBlocked(text: string): boolean {
 
 type TextPart = { type: string; text?: unknown };
 
-/** True when an earlier assistant turn was the canned refusal, so this chat stays closed. */
+/**
+ * True when an earlier assistant turn was the canned refusal, so this chat stays closed.
+ * New refusals carry a `closed-…` id; the text check stays for threads closed before that.
+ */
 export function threadIsClosed(
-  messages: readonly { role: string; parts?: readonly TextPart[]; content?: readonly TextPart[] }[],
+  messages: readonly {
+    id?: string;
+    role: string;
+    parts?: readonly TextPart[];
+    content?: readonly TextPart[];
+  }[],
 ): boolean {
   return messages.some((message) => {
     if (message.role !== "assistant") return false;
+    if (isClosedMessageId(message.id)) return true;
     const parts = message.parts ?? message.content ?? [];
     const text = parts
       .flatMap((part) => (part.type === "text" && typeof part.text === "string" ? [part.text] : []))
@@ -292,6 +313,8 @@ export function intentNudge(nudge: Exclude<JevNudge, "none">): string {
 }
 
 export type OfferWrite = {
+  /** The card's tool call id, so an answer is tied to the card that was shown. */
+  id?: string;
   kind: "brief" | "booking";
   lead?: BriefLead;
   reason?: OfferReason;
@@ -300,14 +323,16 @@ export type OfferWrite = {
 
 /** The card a finished reply showed, if any. Offers the reply model made on its own have no reason. */
 export function offerFromReply(
-  calls: readonly { toolName: string; input?: unknown }[],
+  calls: readonly { toolName: string; toolCallId?: string; input?: unknown }[],
   decision: JevDecision | null,
 ): OfferWrite | undefined {
   const brief = calls.find((call) => call.toolName === "showBrief");
-  const booking = calls.some((call) => call.toolName === "showBookingCta");
+  const booking = calls.find((call) => call.toolName === "showBookingCta");
   if (!brief && !booking) return undefined;
   const lead = brief && typeof brief.input === "object" && brief.input ? (brief.input as { lead?: unknown }).lead : undefined;
+  const id = (brief ?? booking)?.toolCallId;
   return {
+    ...(id ? { id } : {}),
     kind: brief ? "brief" : "booking",
     ...(lead === "book" || lead === "note" ? { lead } : {}),
     ...(decision?.offerReason ? { reason: decision.offerReason } : {}),

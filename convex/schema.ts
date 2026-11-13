@@ -72,6 +72,9 @@ export const offerLead = v.union(v.literal("book"), v.literal("note"));
 export const offer = v.object({
   at: v.number(),
   turn: v.number(),
+  // The card's tool call id. Answers are tied to it, so an older card can't answer
+  // the newest offer. Optional on offers stored before ids existed.
+  id: v.optional(v.string()),
   kind: offerKind,
   lead: v.optional(offerLead),
   reason: v.optional(offerReason),
@@ -154,6 +157,7 @@ export default defineSchema({
       v.object({
         kind: offerKind,
         turn: v.number(),
+        id: v.optional(v.string()),
         lead: v.optional(offerLead),
         reason: v.optional(offerReason),
         readiness: v.optional(readiness),
@@ -174,6 +178,9 @@ export default defineSchema({
     details: v.string(),
     replyText: v.string(),
     userText: v.string(),
+    // Client sequence for this reply's writes, so a quick click can't land after a
+    // newer one. Optional on rows stored before it existed.
+    sequence: v.optional(v.number()),
     createdAt: v.number(),
     expiresAt: v.number(),
   })
@@ -188,10 +195,17 @@ export default defineSchema({
     // The visitor's own note. Written by them and not screened, so it's untrusted text.
     note: v.optional(v.string()),
     conversationId: v.optional(v.string()),
+    // The card's tool call id. A repeat send updates the same lead, so James gets
+    // one lead and one email.
+    offerId: v.optional(v.string()),
     // Copied from the conversation when the lead is saved, so it outlives the 90-day transcript.
     fitScore: v.optional(v.number()),
+    // The chat was already closed when this lead was sent. /admin shows a Blocked badge.
+    blocked: v.optional(v.boolean()),
     createdAt: v.number(),
-  }).index("by_createdAt", ["createdAt"]),
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_offerId", ["offerId"]),
 
   settings: defineTable({
     key: v.string(),

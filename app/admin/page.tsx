@@ -17,6 +17,15 @@ import {
 } from "@/components/admin-dashboard";
 import { serif } from "@/components/booking-button";
 import { Modal } from "@/components/modal";
+import { formNotice, useSettingsForm, type SettingsLoad, type SettingsSave } from "@/components/use-settings-form";
+import {
+  contentBlurred,
+  contentHidden,
+  sessionAfterCheck,
+  sessionAfterExpiry,
+  sessionAfterLock,
+  type AdminSession,
+} from "@/lib/admin-session";
 import {
   MODEL_OPTIONS,
   getDefaultModelId,
@@ -47,94 +56,114 @@ const TABS: { id: Tab; label: string }[] = [
 
 // Loads locked: the page sits blurred behind a password dialog until this browser
 // has an admin session (POST /api/admin/verify sets a signed httpOnly cookie for 12
-// hours). A 401 from any admin route locks it again.
+// hours). A 401 from any admin route expires the session: the settings stay mounted
+// and blurred, so unsaved drafts survive. Lock hides them on purpose.
 export default function AdminPage() {
-  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  const [session, setSession] = useState<AdminSession>("checking");
   const [tab, setTab] = useState<Tab>("insights");
   const [openConversation, setOpenConversation] = useState<string | null>(null);
-  const lock = useCallback(() => setSignedIn(false), []);
+  const [lockError, setLockError] = useState<string | null>(null);
+  // Remounts the dashboard after an unlock, so a load that stopped on a 401 retries.
+  // Settings are not keyed, so their drafts stay.
+  const [dashboardEpoch, setDashboardEpoch] = useState(0);
+  const expire = useCallback(() => setSession(sessionAfterExpiry()), []);
 
   useEffect(() => {
     fetch("/api/admin/verify", { cache: "no-store" })
       .then((response) => response.json())
-      .then((payload: { signedIn?: boolean }) => setSignedIn(payload.signedIn === true))
-      .catch(() => setSignedIn(false));
+      .then((payload: { signedIn?: boolean }) => setSession(sessionAfterCheck(payload.signedIn === true)))
+      .catch(() => setSession("locked"));
   }, []);
 
   const handleLock = async () => {
-    await fetch("/api/admin/verify", { method: "DELETE" }).catch(() => {});
-    setSignedIn(false);
+    setLockError(null);
+    try {
+      const response = await fetch("/api/admin/verify", { method: "DELETE" });
+      // Only show the page as locked once the session cookie is actually cleared.
+      setSession(sessionAfterLock(response.ok));
+      if (!response.ok) setLockError("Could not lock. Try again.");
+    } catch {
+      setLockError("Could not lock. Try again.");
+    }
   };
 
-  const isLocked = signedIn !== true;
+  const hidden = contentHidden(session);
+  const blurred = contentBlurred(session);
+  const showContent = !hidden;
 
   return (
     <main className="site-page px-4 py-6 sm:px-6 sm:py-10">
-      <div
-        inert={isLocked}
-        aria-hidden={isLocked}
-        className={`mx-auto max-w-6xl space-y-6 transition-[filter] duration-500 ${
-          isLocked ? "pointer-events-none select-none blur-md" : ""
-        }`}
-      >
-        <div className="flex flex-wrap items-end justify-between gap-4 px-1">
-          <div className="space-y-2">
-            <p className="eyebrow text-xs text-[var(--muted)]">Admin</p>
-            <h1 className={`text-4xl tracking-[-0.04em] ${serif}`}>jamesalmeida.me</h1>
+      {showContent ? (
+        <div
+          inert={blurred}
+          aria-hidden={blurred}
+          className={`mx-auto max-w-6xl space-y-6 transition-[filter] duration-500 ${
+            blurred ? "pointer-events-none select-none blur-md" : ""
+          }`}
+        >
+          <div className="flex flex-wrap items-end justify-between gap-4 px-1">
+            <div className="space-y-2">
+              <p className="eyebrow text-xs text-[var(--muted)]">Admin</p>
+              <h1 className={`text-4xl tracking-[-0.04em] ${serif}`}>jamesalmeida.me</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* A full page load, not a client-side Link: the router would reuse its
+                  cached copy of / and hide a just-saved avatar. */}
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+              <a
+                href="/"
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--border-strong)] px-4 py-2 text-sm font-medium transition hover:border-[var(--foreground)]"
+              >
+                <ArrowLeft size={14} aria-hidden />
+                Back to site
+              </a>
+              <button
+                type="button"
+                onClick={handleLock}
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--border-strong)] px-4 py-2 text-sm font-medium transition hover:border-[var(--foreground)]"
+              >
+                <Lock size={14} aria-hidden />
+                Lock
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {/* A full page load, not a client-side Link: the router would reuse its
-                cached copy of / and hide a just-saved avatar. */}
-            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-            <a
-              href="/"
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--border-strong)] px-4 py-2 text-sm font-medium transition hover:border-[var(--foreground)]"
-            >
-              <ArrowLeft size={14} aria-hidden />
-              Back to site
-            </a>
-            <button
-              type="button"
-              onClick={handleLock}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--border-strong)] px-4 py-2 text-sm font-medium transition hover:border-[var(--foreground)]"
-            >
-              <Lock size={14} aria-hidden />
-              Lock
-            </button>
+
+          {lockError ? (
+            <p role="alert" className="px-1 text-sm text-[var(--muted)]">
+              {lockError}
+            </p>
+          ) : null}
+
+          <div role="tablist" aria-label="Admin sections" className="flex gap-1.5 px-1">
+            {TABS.map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={tab === id}
+                onClick={() => setTab(id)}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                  tab === id ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--muted)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-        </div>
 
-        <div role="tablist" aria-label="Admin sections" className="flex gap-1.5 px-1">
-          {TABS.map(({ id, label }) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={tab === id}
-              onClick={() => setTab(id)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                tab === id ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--muted)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {signedIn ? (
-          tab === "settings" ? (
+          {tab === "settings" ? (
             <>
               <Section
                 title="Skaffen’s avatar"
                 description="The avatar every visitor sees in the header. Saved to the site database; until something is saved, the site uses SITE.assistant.avatar."
               >
-                <AdminAvatarSettings onLocked={lock} />
+                <AdminAvatarSettings onLocked={expire} />
               </Section>
               <Section
                 title="Landing"
                 description="The headlines in the A/B test, the example prompts in the composer and how long each one shows. Saved for every visitor; Insights shows how each one does."
               >
-                <AdminLandingSettings onLocked={lock} />
+                <AdminLandingSettings onLocked={expire} />
               </Section>
               <Section
                 title="Share card"
@@ -146,26 +175,40 @@ export default function AdminPage() {
                 title="Motion"
                 description="How fast the chat's animations run, and how long Skaffen always thinks before a reply shows. Saved for every visitor."
               >
-                <AdminMotionSettings onLocked={lock} />
+                <AdminMotionSettings onLocked={expire} />
               </Section>
               <Section
                 title="Model"
                 description="Which model the assistant uses in this browser only. Saving stores a signed httpOnly cookie for 30 days. Every other visitor keeps the default model (set with DEFAULT_MODEL)."
               >
-                <ModelSwitcher onLocked={lock} />
+                <ModelSwitcher onLocked={expire} />
               </Section>
             </>
           ) : (
-            <DashboardTabs tab={tab} onLocked={lock} onOpenConversation={setOpenConversation} />
-          )
-        ) : (
+            <DashboardTabs
+              key={dashboardEpoch}
+              tab={tab}
+              onLocked={expire}
+              onOpenConversation={setOpenConversation}
+            />
+          )}
+        </div>
+      ) : (
+        <div className="mx-auto max-w-6xl">
           <div className="h-[60dvh] rounded-[2rem] border border-[var(--border)] bg-[var(--panel)]" />
-        )}
-      </div>
+        </div>
+      )}
 
-      {signedIn === false ? <UnlockDialog onUnlock={() => setSignedIn(true)} /> : null}
-      {openConversation && signedIn ? (
-        <TranscriptDialog conversationId={openConversation} onClose={() => setOpenConversation(null)} onLocked={lock} />
+      {session === "locked" || session === "expired" ? (
+        <UnlockDialog
+          onUnlock={() => {
+            setSession("open");
+            setDashboardEpoch((value) => value + 1);
+          }}
+        />
+      ) : null}
+      {openConversation && showContent ? (
+        <TranscriptDialog conversationId={openConversation} onClose={() => setOpenConversation(null)} onLocked={expire} />
       ) : null}
     </main>
   );
@@ -194,15 +237,28 @@ function DashboardTabs({
       </p>
     );
   }
-  if (tab === "leads") {
-    return <Leads leads={state.leads} onOpenConversation={onOpenConversation} onDeleted={reload} />;
-  }
   return (
     <div className="space-y-4">
-      <div className="px-1">
-        <RangePicker days={days} onChange={setDays} />
-      </div>
-      <Insights dashboard={state.dashboard} onOpenConversation={onOpenConversation} />
+      {state.refreshing ? (
+        <p role="status" className="px-1 text-sm text-[var(--muted)]">
+          Updating…
+        </p>
+      ) : null}
+      {tab === "leads" ? (
+        <Leads
+          leads={state.leads}
+          onOpenConversation={onOpenConversation}
+          onDeleted={reload}
+          onLocked={onLocked}
+        />
+      ) : (
+        <>
+          <div className="px-1">
+            <RangePicker days={days} onChange={setDays} />
+          </div>
+          <Insights dashboard={state.dashboard} onOpenConversation={onOpenConversation} />
+        </>
+      )}
     </div>
   );
 }
@@ -295,76 +351,81 @@ function UnlockDialog({ onUnlock }: { onUnlock: () => void }) {
   );
 }
 
+type ModelDraft = { model: ModelId; isOverride: boolean };
+
 function ModelSwitcher({ onLocked }: { onLocked: () => void }) {
-  const [model, setModel] = useState<ModelId>(getDefaultModelId());
-  const [isOverride, setIsOverride] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    fetch("/api/admin/model")
-      .then(async (response) => {
-        if (!response.ok) return;
-        const payload = (await response.json()) as {
-          model?: string;
-          isOverride?: boolean;
-        };
-        if (cancelled) return;
-        const known = MODEL_OPTIONS.find((option) => option.id === payload.model);
-        if (known) setModel(known.id);
-        setIsOverride(payload.isOverride === true);
-      })
-      .catch(() => {
-        // Cookie is httpOnly; without the API the page can only show the default.
-      });
-
-    return () => {
-      cancelled = true;
-    };
+  const load = useCallback(async (): Promise<SettingsLoad<ModelDraft>> => {
+    try {
+      const response = await fetch("/api/admin/model");
+      const payload = (await response.json().catch(() => ({}))) as {
+        model?: string;
+        isOverride?: boolean;
+        error?: string;
+      };
+      if (!response.ok) return { error: payload.error ?? "Could not load the model." };
+      const known = MODEL_OPTIONS.find((option) => option.id === payload.model);
+      return {
+        draft: { model: known?.id ?? getDefaultModelId(), isOverride: payload.isOverride === true },
+        canSave: true,
+      };
+    } catch {
+      // Cookie is httpOnly; without the API the page can only show the default.
+      return { error: "Could not load the model. Using the default." };
+    }
   }, []);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setIsSaving(true);
-    setStatus(null);
-
+  const save = useCallback(async (draft: ModelDraft): Promise<SettingsSave<ModelDraft>> => {
     try {
       const response = await fetch("/api/admin/model", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model }),
+        body: JSON.stringify({ model: draft.model }),
       });
-
-      const payload = (await response.json()) as { error?: string };
-
-      if (response.status === 401) {
-        play("error");
-        onLocked();
-        return;
-      }
-      if (!response.ok) {
-        play("error");
-        setStatus(payload.error ?? "Unable to update model.");
-        return;
-      }
-
-      play("success");
-      setIsOverride(true);
-      setStatus(`Model saved for this browser: ${model}`);
+      if (response.status === 401) return { locked: true };
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) return { error: payload.error ?? "Unable to update model." };
+      const saved = { model: draft.model, isOverride: true };
+      return { ok: true, savedDraft: saved, draft: saved };
     } catch {
-      play("error");
-      setStatus("Request failed before the model could be saved.");
-    } finally {
-      setIsSaving(false);
+      return { error: "Request failed before the model could be saved." };
     }
-  };
+  }, []);
+
+  const { state, edit, submit, retry } = useSettingsForm<ModelDraft>({
+    load,
+    save,
+    onLocked,
+    savedNotice: "Model saved for this browser.",
+  });
+
+  if (state.status === "loading") {
+    return <p className="text-sm text-[var(--muted)]">Loading…</p>;
+  }
+  if (state.status === "load_failed") {
+    return (
+      <p role="alert" className="text-sm leading-6 text-[var(--muted)]">
+        {state.message}{" "}
+        <button type="button" onClick={() => void retry()} className="underline underline-offset-4">
+          Retry
+        </button>
+      </p>
+    );
+  }
+
+  const draft = state.draft;
+  const isSaving = state.status === "saving";
+  const notice = formNotice(state);
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
+    <form
+      className="space-y-5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void submit();
+      }}
+    >
       <p className="text-sm text-[var(--muted)]">
-        {isOverride
+        {draft.isOverride
           ? "Signed cookie: active override for this browser."
           : "Signed cookie: none. Using the default model."}
       </p>
@@ -372,8 +433,8 @@ function ModelSwitcher({ onLocked }: { onLocked: () => void }) {
         <span className="text-sm font-medium">Model</span>
         <select
           className={inputClass}
-          onChange={(event) => setModel(event.target.value as ModelId)}
-          value={model}
+          onChange={(event) => edit((current) => ({ ...current, model: event.target.value as ModelId }))}
+          value={draft.model}
         >
           {MODEL_OPTIONS.map((option) => (
             <option key={option.id} value={option.id}>
@@ -388,7 +449,7 @@ function ModelSwitcher({ onLocked }: { onLocked: () => void }) {
           <div
             key={option.id}
             className={`rounded-[1.25rem] border p-4 text-sm ${
-              option.id === model
+              option.id === draft.model
                 ? "border-[var(--border-strong)] bg-[var(--foreground)] text-[var(--background)]"
                 : "border-[var(--border)] bg-[var(--panel)] text-[var(--muted)]"
             }`}
@@ -409,9 +470,9 @@ function ModelSwitcher({ onLocked }: { onLocked: () => void }) {
         >
           {isSaving ? "Saving..." : "Save model"}
         </button>
-        {status ? (
+        {notice ? (
           <p role="status" className="text-sm text-[var(--muted)]">
-            {status}
+            {notice.message}
           </p>
         ) : null}
       </div>

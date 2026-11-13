@@ -2,7 +2,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { readAdminJson, requireAdminSession } from "@/lib/admin-auth";
 import { parseLandingSetting } from "@/lib/landing-settings";
-import { SITE_LANDING_TAG, getSiteLanding, saveSiteLanding } from "@/lib/landing-settings.server";
+import { SITE_LANDING_TAG, getSiteLandingForAdmin, saveSiteLanding } from "@/lib/landing-settings.server";
 import { isStoreConfigured } from "@/lib/store.server";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,14 @@ export const dynamic = "force-dynamic";
 // The landing's headlines (A/B test), example prompts and their timing, and whether
 // this deployment can save them.
 export async function GET() {
-  return NextResponse.json({ landing: await getSiteLanding(), canSave: isStoreConfigured() });
+  const landing = await getSiteLandingForAdmin();
+  if (!landing) {
+    return NextResponse.json(
+      { error: "Could not read the saved landing settings. Try again." },
+      { status: 503 },
+    );
+  }
+  return NextResponse.json({ landing, canSave: isStoreConfigured() });
 }
 
 export async function POST(request: Request) {

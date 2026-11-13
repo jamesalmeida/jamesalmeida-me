@@ -77,6 +77,7 @@ export function parseClientEvent(input: unknown) {
     type,
     visitId,
     conversationId: parseId(raw.conversationId),
+    offerId: parseId(raw.offerId),
     ...(example ? { example } : {}),
     context: parseVisitContext(raw.context),
   };
@@ -98,6 +99,11 @@ export function parseFeedback(input: unknown) {
     details: text(raw.details, MAX_FEEDBACK_DETAILS_CHARS) ?? "",
     replyText: text(raw.replyText, MAX_REPLY_CHARS) ?? "",
     userText: text(raw.userText, MAX_USER_TEXT_CHARS) ?? "",
+    update: raw.update === "rating" ? ("rating" as const) : ("details" as const),
+    sequence:
+      typeof raw.sequence === "number" && Number.isFinite(raw.sequence)
+        ? Math.max(0, Math.floor(raw.sequence))
+        : 0,
   };
 }
 
@@ -125,5 +131,7 @@ export function parseLead(input: unknown) {
     brief: parseBrief(raw.brief),
     note: text(raw.note, MAX_NOTE_CHARS),
     conversationId: parseId(raw.conversationId),
+    // The card's tool call id: the offer this lead answers, and the idempotency key.
+    offerId: parseId(raw.offerId) ?? parseId(raw.toolCallId),
   };
 }

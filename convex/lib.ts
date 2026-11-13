@@ -9,6 +9,7 @@ import {
   type QueryBuilder,
 } from "convex/server";
 import { ConvexError } from "convex/values";
+import { nextOfferOutcome, offerAnswerChanges, type OfferAnswer } from "../lib/offer-outcome";
 import type schema from "./schema";
 
 // Typed function builders, the same as convex/_generated/server would export. This
@@ -33,18 +34,26 @@ export function assertServer(secret: string) {
 type Conversation = DocumentByName<DataModel, "conversations">;
 
 /**
- * Records what the visitor did with the latest offer. Taking it wins over an earlier
- * "Not yet". Only the first answer of each kind adds an event, so counts stay honest.
+ * Records what the visitor did with the offer they answered. The card sends its
+ * tool call id, so "Not yet" on an older card can't decline the newest offer.
+ * Taking it wins over an earlier "Not yet", and only a change adds an event.
  */
-export async function answerLatestOffer(
+export async function answerOffer(
   ctx: GenericMutationCtx<DataModel>,
   conversation: Conversation,
-  outcome: "accepted" | "declined",
+  offerId: string | undefined,
+  outcome: OfferAnswer,
 ) {
   const offers = conversation.offers ?? [];
-  const latest = offers.at(-1);
-  if (!latest || latest.outcome === outcome || latest.outcome === "accepted") return;
-  await ctx.db.patch(conversation._id, { offers: [...offers.slice(0, -1), { ...latest, outcome }] });
+  // Without an id (an older client, a header booking link) answer the newest offer.
+  const index = offerId ? offers.findIndex((offer) => offer.id === offerId) : offers.length - 1;
+  const offer = index >= 0 ? offers[index] : undefined;
+  if (!offer || !offerAnswerChanges(offer.outcome, outcome)) return;
+  const next = nextOfferOutcome(offer.outcome, outcome);
+  if (!next) return;
+  await ctx.db.patch(conversation._id, {
+    offers: offers.map((item, at) => (at === index ? { ...item, outcome: next } : item)),
+  });
   if (!conversation.visitId) return;
   const now = Date.now();
   await ctx.db.insert("events", {
@@ -52,10 +61,11 @@ export async function answerLatestOffer(
     visitId: conversation.visitId,
     conversationId: conversation.conversationId,
     offer: {
-      kind: latest.kind,
-      turn: latest.turn,
-      ...(latest.lead ? { lead: latest.lead } : {}),
-      ...(latest.reason ? { reason: latest.reason } : {}),
+      kind: offer.kind,
+      turn: offer.turn,
+      ...(offer.id ? { id: offer.id } : {}),
+      ...(offer.lead ? { lead: offer.lead } : {}),
+      ...(offer.reason ? { reason: offer.reason } : {}),
     },
     at: now,
     expiresAt: now + RETENTION_MS,

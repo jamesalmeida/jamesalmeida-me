@@ -18,11 +18,14 @@ export function BookingButton({
   label = SITE.bookingLabel,
   variant = "primary",
   className = "",
+  conversationId,
 }: {
   href?: string;
   label?: string;
   variant?: "primary" | "outline";
   className?: string;
+  /** Ties a booking from the header or menu to the chat it came from. */
+  conversationId?: string;
 }) {
   return (
     <a
@@ -31,6 +34,7 @@ export function BookingButton({
       rel="noopener noreferrer"
       className={`${variant === "primary" ? primaryButtonClass : outlineButtonClass} ${className}`}
       data-track="booking_clicked"
+      data-conversation-id={conversationId}
       data-cuelume-hover="whisper"
       data-cuelume-press="tick"
     >

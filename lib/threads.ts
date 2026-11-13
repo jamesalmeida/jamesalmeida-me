@@ -10,6 +10,8 @@ export type StoredThreadState = {
   userMessages: UIMessage[];
   createdAt: number;
   lastVisited: number;
+  /** The chat's server conversation id (its first message id), kept so capping can't change it. */
+  conversationId?: string;
 };
 
 export type StoredThreads = Record<string, StoredThreadState>;
@@ -175,9 +177,10 @@ export function pruneStoredThreads(
 }
 
 // Removes the oldest half (at least one) of the non-static threads by createdAt.
-export function evictOldestHistory(storedThreads: StoredThreads): StoredThreads {
+// `keepId` is the chat on screen: it is never evicted, so saving it can't remove it.
+export function evictOldestHistory(storedThreads: StoredThreads, keepId?: string): StoredThreads {
   const historyIds = Object.keys(storedThreads)
-    .filter((threadId) => !isStaticThreadId(threadId))
+    .filter((threadId) => !isStaticThreadId(threadId) && threadId !== keepId)
     .sort((a, b) => storedThreads[a].createdAt - storedThreads[b].createdAt);
   if (historyIds.length === 0) return storedThreads;
   const next = { ...storedThreads };
@@ -210,21 +213,24 @@ export function readStoredThreads(): StoredThreads {
             }),
           )
         : [];
+      const conversationId =
+        typeof candidate.conversationId === "string" ? candidate.conversationId : undefined;
 
-      return [[threadId, { createdAt, lastVisited, userMessages }]];
+      return [[threadId, { createdAt, lastVisited, userMessages, ...(conversationId ? { conversationId } : {}) }]];
     }),
   );
 }
 
 // Writes the threads. On QuotaExceededError, evicts the oldest history threads and
-// retries once. Returns what was written (possibly with history evicted), or null
-// if nothing could be written. Never throws.
-export function writeStoredThreads(threads: StoredThreads): StoredThreads | null {
+// retries once, never removing the chat on screen (`keepId`). Returns what was
+// written (possibly with history evicted), or null if nothing could be written.
+// Never throws.
+export function writeStoredThreads(threads: StoredThreads, keepId?: string): StoredThreads | null {
   const result = safeSetItem(THREAD_STORAGE_KEY, JSON.stringify(threads));
   if (result === "ok") return threads;
   if (result === "error") return null;
 
-  const evicted = evictOldestHistory(threads);
+  const evicted = evictOldestHistory(threads, keepId);
   if (evicted === threads) return null;
   return safeSetItem(THREAD_STORAGE_KEY, JSON.stringify(evicted)) === "ok" ? evicted : null;
 }
@@ -317,16 +323,28 @@ export function saveThreadMessages(
   storedThreads: StoredThreads,
   threadId: string,
   messages: UIMessage[],
+  conversationId?: string,
 ): StoredThreads {
   const existing = storedThreads[threadId];
+  // An explicit id wins; an empty string clears it (the landing after a chat moves out).
+  const storedConversationId = conversationId !== undefined ? conversationId : existing?.conversationId;
   const nextState: StoredThreadState = {
     createdAt: existing?.createdAt ?? Date.now(),
     lastVisited: Date.now(),
     userMessages: capMessages(messages),
+    ...(storedConversationId ? { conversationId: storedConversationId } : {}),
   };
 
   return {
     ...storedThreads,
     [threadId]: nextState,
   };
+}
+
+/** The chat's server conversation id, falling back to its first message id for older chats. */
+export function getThreadConversationId(
+  threadId: string,
+  storedThreads: StoredThreads,
+): string | undefined {
+  return storedThreads[threadId]?.conversationId ?? getThreadMessages(threadId, storedThreads)[0]?.id;
 }

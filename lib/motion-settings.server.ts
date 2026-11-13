@@ -25,6 +25,20 @@ export async function getSiteMotion(): Promise<MotionSettings> {
   }
 }
 
+/**
+ * The motion setting for /admin. A failed read returns null (the route answers 503)
+ * instead of the default, so Save can't overwrite the real setting with the fallback.
+ */
+export async function getSiteMotionForAdmin(): Promise<MotionSettings | null> {
+  if (!isStoreConfigured()) return DEFAULT_MOTION;
+  try {
+    return storedMotionOrDefault(await readStoredMotion());
+  } catch (error) {
+    console.error("Reading the motion setting failed.", error);
+    return null;
+  }
+}
+
 /** Saves the motion setting for every visitor. Returns an error message, or null. */
 export async function saveSiteMotion(motion: MotionSettings): Promise<string | null> {
   try {

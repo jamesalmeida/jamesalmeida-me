@@ -13,22 +13,32 @@ export const submit = mutation({
     details: v.string(),
     replyText: v.string(),
     userText: v.string(),
+    // "rating" leaves the details as they are; "details" adds them.
+    update: v.union(v.literal("rating"), v.literal("details")),
+    sequence: v.number(),
   },
-  handler: async (ctx, { secret, rating, ...feedback }) => {
+  handler: async (ctx, { secret, rating, update, sequence, ...feedback }) => {
     assertServer(secret);
     const existing = await ctx.db
       .query("feedback")
       .withIndex("by_messageId", (q) => q.eq("messageId", feedback.messageId))
       .unique();
+    // A quick click can arrive after a newer one; the newer write wins.
+    if (existing && sequence < (existing.sequence ?? 0)) return;
     if (rating === null) {
       if (existing) await ctx.db.delete(existing._id);
       return;
     }
     const now = Date.now();
     if (existing) {
-      await ctx.db.patch(existing._id, { ...feedback, rating, createdAt: now, expiresAt: now + RETENTION_MS });
+      // A rating alone keeps the visitor's reasons and details.
+      const patch =
+        update === "rating"
+          ? { rating, sequence, createdAt: now, expiresAt: now + RETENTION_MS }
+          : { ...feedback, rating, sequence, createdAt: now, expiresAt: now + RETENTION_MS };
+      await ctx.db.patch(existing._id, patch);
     } else {
-      await ctx.db.insert("feedback", { ...feedback, rating, createdAt: now, expiresAt: now + RETENTION_MS });
+      await ctx.db.insert("feedback", { ...feedback, rating, sequence, createdAt: now, expiresAt: now + RETENTION_MS });
     }
   },
 });

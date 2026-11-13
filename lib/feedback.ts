@@ -15,6 +15,9 @@ export const DOWN_REASONS = [
 
 export const MAX_FEEDBACK_DETAILS_CHARS = 1000;
 
+/** `rating` keeps any details already saved; `details` adds them. */
+export type FeedbackUpdate = "rating" | "details";
+
 export type FeedbackPayload = {
   messageId: string;
   conversationId?: string;
@@ -23,6 +26,9 @@ export type FeedbackPayload = {
   details: string;
   replyText: string;
   userText: string;
+  update: FeedbackUpdate;
+  /** This reply's write order, so an older click can't land after a newer one. */
+  sequence: number;
 };
 
 export function buildFeedbackPayload(input: {
@@ -33,6 +39,8 @@ export function buildFeedbackPayload(input: {
   details?: string;
   replyText: string;
   userText?: string;
+  update: FeedbackUpdate;
+  sequence: number;
 }): FeedbackPayload {
   return {
     messageId: input.messageId,
@@ -44,6 +52,8 @@ export function buildFeedbackPayload(input: {
     details: (input.details ?? "").trim().slice(0, MAX_FEEDBACK_DETAILS_CHARS),
     replyText: input.replyText,
     userText: input.userText ?? "",
+    update: input.update,
+    sequence: input.sequence,
   };
 }
 

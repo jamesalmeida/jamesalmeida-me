@@ -30,6 +30,21 @@ export async function getSiteLanding(): Promise<LandingSettings> {
   }
 }
 
+/**
+ * The landing setting for /admin. Unlike `getSiteLanding`, a failed read returns
+ * null (the route answers 503) instead of the default, so Save can't overwrite the
+ * real setting with the fallback. Without a store, the default is right.
+ */
+export async function getSiteLandingForAdmin(): Promise<LandingSettings | null> {
+  if (!isStoreConfigured()) return DEFAULT_LANDING;
+  try {
+    return storedLandingOrDefault(await readStoredLanding());
+  } catch (error) {
+    console.error("Reading the landing setting failed.", error);
+    return null;
+  }
+}
+
 /** Saves the landing setting for every visitor. Returns an error message, or null. */
 export async function saveSiteLanding(landing: LandingSettings): Promise<string | null> {
   try {
